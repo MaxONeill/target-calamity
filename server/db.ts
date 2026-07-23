@@ -2,15 +2,11 @@
  * Kysely over a node-postgres `Pool`, plus the hand-written `DB`
  * interface mirroring `db/migrations/001_init.sql`.
  *
- * : keyset pagination is the code most likely to break silently, so the
- * SQL that drives it is typed. The complex projections (json_agg / LATERAL /
- * PostGIS) are written as raw `sql` templates — still Kysely, still typed via
- * `sql<Row>` and still auto-parameterized, but without fighting the query
- * builder over hierarchical JSON. This interface is the source of truth for the
- * column shapes those templates read.
- *
- * The interface encodes the schema AS CORRECTED BY THE ADRs, not the literal
- * spec DDL. Deviations are flagged inline with their ADR number.
+ * Keyset pagination is the code most likely to break silently, so the SQL that
+ * drives it is typed. The hierarchical projections (json_agg / LATERAL /
+ * PostGIS) are raw `sql` templates — still typed via `sql<Row>` and still
+ * auto-parameterized, without fighting the query builder over nested JSON.
+ * This interface is the source of truth for the column shapes they read.
  */
 import { Kysely, PostgresDialect } from 'kysely';
 import type { ColumnType, Generated, GeneratedAlways } from 'kysely';
@@ -40,12 +36,11 @@ interface FactorsTable {
   id: Generated<UUID>;
 
   /**
-   * the spec paginates on
-   * `updated_at`, which Phase D rewrites to NOW() on every escalation.
-   * A row below the live cursor that escalates jumps above it and is skipped
-   * for the rest of the scroll session — biased toward the most active factors.
-   * `seq` is an insert-only monotonic identity assigned once and NEVER bumped;
-   * the feed keysets on it instead. Kept out of the wire contract entirely.
+   * Insert-only monotonic identity, assigned once and never bumped, so the feed
+   * can keyset on it. Keying on `updated_at` instead would let a row that
+   * escalates below the live cursor jump above it and be skipped for the rest
+   * of the scroll session, biasing the feed toward the most active factors.
+   * Kept out of the wire contract entirely.
    */
   seq: GeneratedAlways<string>; // BIGINT IDENTITY; pg returns int8 as string.
 
@@ -85,8 +80,8 @@ interface FactorsTable {
   verification_state: Generated<VerificationState>;
 
 
-  created_at: Timestamptz; // NOT NULL (ADR-11).
-  updated_at: Timestamptz; // NOT NULL (ADR-11); mutated by Phase D — NOT a cursor key.
+  created_at: Timestamptz; // NOT NULL.
+  updated_at: Timestamptz; // NOT NULL; mutated by Phase D — NOT a cursor key.
 }
 
 interface CitationsTable {
@@ -103,10 +98,10 @@ interface CitationsTable {
 }
 
 /**
- * the spec calls the store "event-sourced" but keeps a
- * single mutable table and overwrites `effect`/`significance` in place. This
- * append-only revision log makes the claim true and gives Phase D an audit
- * trail. `factors` is the current-state projection of the newest revision.
+ * Append-only revision log. Every change to a factor's effect or significance
+ * lands here rather than overwriting in place, so a factor's current state is a
+ * fold over its citation history and can be recomputed if the escalation
+ * formula changes. `factors` is the projection of the newest revision.
  */
 interface FactorRevisionsTable {
   id: Generated<UUID>;

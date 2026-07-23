@@ -1,11 +1,7 @@
 -- =============================================================================
 -- Target: Calamity — 001_init.sql
--- Phase 1 schema. Derived from spec-comprehensive.md §2 (authoritative baseline)
--- and spec.md (v3.2) §2, as revised by the adopted ADRs in docs/ARCHITECTURE.md.
---
--- Every departure from the literal spec DDL carries a ""
--- comment stating what the spec said, what we do instead, and why. A full,
--- ADR-keyed deviation list also lives in db/README.md.
+-- Phase 1 schema. Design rationale for the non-obvious choices here is in
+-- docs/ARCHITECTURE.md; platform version floors are in db/README.md.
 --
 -- -----------------------------------------------------------------------------
 -- MINIMUM PLATFORM REQUIREMENTS (verified against pgvector/pgvector:pg17 —
@@ -49,27 +45,25 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 -- the HNSW index, which both come from it.
 CREATE EXTENSION IF NOT EXISTS vector;   -- pgvector: halfvec type, hnsw AM, cosine opclass
 CREATE EXTENSION IF NOT EXISTS ltree;    -- hierarchical spatial_path
--- the specs never enable PostGIS; the
--- viewport filter was a raw `lat/lon BETWEEN` box. We add PostGIS so viewport
--- queries use a real spherical predicate (ST_DWithin / ST_Intersects) that does
--- not break across the antimeridian or degenerate at the poles (findings #20/#22/#34).
+-- PostGIS gives viewport queries a real spherical predicate (ST_DWithin /
+-- ST_Intersects). A `lat/lon BETWEEN` box returns nothing across the
+-- antimeridian and degenerates at the poles.
 CREATE EXTENSION IF NOT EXISTS postgis;  -- geography(Point,4326) + GiST
 
 -- -----------------------------------------------------------------------------
 -- factors — current-state projection of the append-only factor_revisions log.
 -- -----------------------------------------------------------------------------
--- On event sourcing:  calls the store "event-sourced"
--- but the spec schema is a single mutable table whose Phase D UPDATE destroys the
--- prior effect/significance in place. We make the claim true:
--- `factor_revisions` (below) is the append-only log; `factors` is the current-state
--- read model maintained from it by trigger. Direct INSERT seeds a factor (and auto-
--- writes its genesis revision); escalations (Phase D) append a revision, which the
--- projection trigger folds into these columns. See the "Write path" note at the end.
+-- `factor_revisions` (below) is the append-only log; this table is the
+-- current-state read model maintained from it by trigger. A direct INSERT seeds
+-- a factor and auto-writes its genesis revision; an escalation appends a
+-- revision that the projection trigger folds into these columns. Nothing
+-- overwrites a prior effect/significance in place. See the write-path note at
+-- the end of this file.
 CREATE TABLE factors (
     id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
-    -- the spec paginates the feed on
-    -- (updated_at, id). Phase D mutates updated_at, so a factor sitting below a
+    -- The feed keysets on this rather than (updated_at, id): ingestion mutates
+    -- updated_at, so a factor sitting below a
     -- live keyset cursor that escalates jumps ABOVE the cursor and is silently
     -- skipped for the rest of the scroll session (findings #13/#21). `seq` is an
     -- insert-only, monotonic, immutable total-order key: assigned once at INSERT,
@@ -80,7 +74,7 @@ CREATE TABLE factors (
     -- spec had bare `LTREE NOT NULL` with the "global /
     -- global.[country_code]" bound stated only in a comment. We enforce it: the
     -- path must be rooted at `global` and be at most 2 levels deep (findings
-    -- #11/#33). One-line ALTER to relax when the §8/Phase-2 variable-depth phase
+    -- #11/#33). One-line ALTER to relax when the Phase-2 variable-depth phase
     -- lands. Verified: this rejects rootless paths ('foo.bar') and depth-3 paths.
     spatial_path             LTREE NOT NULL
                                CHECK (spatial_path <@ 'global'::ltree
@@ -120,7 +114,7 @@ CREATE TABLE factors (
     lat                      DOUBLE PRECISION NOT NULL CHECK (lat BETWEEN -90.0 AND 90.0),
     lon                      DOUBLE PRECISION NOT NULL CHECK (lon BETWEEN -180.0 AND 180.0),
 
-    -- the spec has no spatial column; §4 filtered a lat/lon
+    -- No spatial column existed originally; the viewport filtered a lat/lon
     -- box. `geog` is a GENERATED point in SRID 4326 derived from (lon, lat) — note
     -- ST_MakePoint takes (X=lon, Y=lat). It backs ST_DWithin/ST_Intersects viewport
     -- queries with no antimeridian/pole special cases. Verified IMMUTABLE:
@@ -135,7 +129,7 @@ CREATE TABLE factors (
     -- nlevel(spatial_path) — the two could drift (findings #11/#33). We derive it as
     -- a STORED generated column so drift is structurally impossible. Verified:
     -- nlevel() is IMMUTABLE, so this is legal (the  trigger fallback is NOT
-    -- needed). Wire format is byte-identical to the spec (still a TEXT 'global' /
+    -- needed). Wire format is unchanged (still a TEXT 'global' /
     -- 'national'). The `ELSE 'national'` branch is only correct while depth <= 2,
     -- which the spatial_path CHECK above guarantees.
     zone_level               TEXT GENERATED ALWAYS AS
@@ -144,7 +138,7 @@ CREATE TABLE factors (
 
     -- factors extracted by the Phase A/B LLM pipeline land
     -- 'pending' and are marked unreviewed in the UI, distinct from 'verified'
-    -- entries. §3 is an unbounded LLM write path; this costs nothing and lets the
+    -- entries. Ingestion is an unbounded LLM write path; this costs nothing and lets the
     -- feed / field / Clock gate on review state. Default 'pending' so ingestion is
     -- fail-safe; seed/hand-curated rows are inserted 'verified'.
     verification_state       TEXT NOT NULL DEFAULT 'pending'
@@ -196,7 +190,7 @@ CREATE TABLE citations (
 -- -----------------------------------------------------------------------------
 -- factor_revisions — the append-only event log.
 -- -----------------------------------------------------------------------------
--- the spec has no history table and Phase D overwrites
+-- Without this log, escalation would overwrite
 -- effect/significance in place (finding #17/#31). Every change to a factor's
 -- weighting is appended here; `factors` is the projection of the newest revision.
 -- This makes Phase D auditable (before/after + reason + the citation that
@@ -283,7 +277,7 @@ CREATE TRIGGER trg_apply_revision_to_projection
 -- From : hierarchical spatial_path traversal.
 CREATE INDEX idx_factors_spatial_path ON factors USING gist (spatial_path);
 
--- replaces the spec's idx_factors_cursor_pagination on
+-- Replaces a cursor-pagination index on
 -- (updated_at DESC, id DESC) as the FEED cursor index. The feed keysets on the
 -- immutable seq (see the seq column note); seq is unique on its own, id kept as a
 -- defensive tiebreak.
@@ -294,9 +288,9 @@ CREATE INDEX idx_factors_feed_seq ON factors (seq DESC, id DESC);
 -- rather than driving a keyset scroll.
 CREATE INDEX idx_factors_updated_at ON factors (updated_at DESC, id DESC);
 
--- supports the §4 "Sorting Override" magnitude mode
+-- Supports the magnitude sort mode
 -- (ORDER BY abs(effect) DESC, id DESC). abs(real) is IMMUTABLE so the expression
--- index is legal; the spec provided no index for this sort, making it a full scan +
+-- index is legal; without one this sort is a full scan +
 -- sort every request (findings #18/#19/#23).
 CREATE INDEX idx_factors_magnitude ON factors (abs(effect) DESC, id DESC);
 
@@ -324,7 +318,7 @@ CREATE INDEX idx_factors_embedding_hnsw
 -- hybrid retrieval.
 CREATE INDEX idx_factors_search_tsv ON factors USING gin (search_tsv);
 
--- the spec provided no index on the FK
+-- Without an index on the FK
 -- referencing side. Postgres never auto-indexes it, so every ON DELETE CASCADE and
 -- every per-card citation fetch was a full scan of the (largest) citations table.
 -- factor_id leads (serves the equality lookup and the cascade); retrieved_at DESC
@@ -335,7 +329,7 @@ CREATE INDEX idx_citations_factor_id ON citations (factor_id, retrieved_at DESC)
 CREATE INDEX idx_factor_revisions_factor ON factor_revisions (factor_id, changed_at DESC);
 
 -- =============================================================================
--- Write-path contract, for implementers of the ingestion pipeline (§3):
+-- Write-path contract, for implementers of the ingestion pipeline:
 --
 --   INSERT a new factor  (Phase D "No Collision"):
 --     1. INSERT INTO factors (...) VALUES (...) RETURNING id;    -- genesis revision auto-written

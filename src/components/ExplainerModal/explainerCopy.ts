@@ -1,23 +1,20 @@
 /**
- * Explainer copy for the Clock meta-system modal (spec.md  / comprehensive
- * §7). The prose below is transcribed VERBATIM from docs/spec.md §4 — character
- * for character, including the "aims to" in "How It Matters", which is the
- * product owner's deliberate, final wording. Do not edit, hedge, or restore any
- * earlier phrasing: this file is a transcription, not authored content.
+ * Explainer copy for the Clock modal.
  *
- * v3.2 governs the copy (it gives it verbatim); the comprehensive spec only
- * paraphrases §7, so there is no conflict to resolve here.
+ * This is the product owner's wording, reproduced character for character —
+ * including the "aims to" in "How It Matters", which is deliberate. Treat it as
+ * transcription, not authored content: do not reword, hedge, or tighten it.
  */
 
 export interface ExplainerSection {
-  /** Section heading exactly as written in the spec ("What It Is", etc.). */
+  /** Section heading, e.g. "What It Is". */
   readonly heading: string;
   /** Section body, transcribed verbatim. */
   readonly body: string;
 }
 
 export interface ExplainerCopy {
-  /** Panel title, from the spec's "System Overview: The Clock Mechanics". */
+  /** Panel title. */
   readonly title: string;
   readonly sections: readonly ExplainerSection[];
 }

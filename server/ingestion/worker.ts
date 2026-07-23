@@ -11,7 +11,7 @@
  *       → pg_notify('factor_updates', …)           ← SSE fan-out (pgRepository)
  *
  * The pipeline's Phase A is wired to `researchFactors` via `createResearchExtractor`
- *; Phase B (embed), C (similarity), D (resolve/escalate) and the 
+ *; Phase B (embed), C (similarity), D (resolve/escalate) and the
  * recalculation are untouched. Idempotency is per-finding (source URL), so
  * re-running the same topics each cycle only ingests genuinely new findings.
  *
@@ -372,7 +372,7 @@ function startScheduler(): void {
       '[ingest] scheduled ingestion DISABLED — requires DATABASE_URL, ' +
         'FIREWORKS_API_KEY and FIRECRAWL_API_KEY. Running neither a first cycle ' +
         'nor a timer. ' +
-        '(This is the correct seed-mode / no-creds behavior, ADR-32.)',
+        '(This is the correct seed-mode / no-creds behavior.)',
     );
     return;
   }

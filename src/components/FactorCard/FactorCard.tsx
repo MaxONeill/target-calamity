@@ -1,18 +1,17 @@
-import './FactorCard.css';
 /**
- * FactorCard — one row of the linear factor feed.
+ * One row of the factor feed.
  *
- * DELIBERATELY MINIMAL: the card is a scannable index entry, not a dossier. It
- * renders only the name, the description, a diverging effect indicator (crimson
- * for negative / Calamity, electric blue for positive / Humanity — mirroring the
- * globe ramp,  / ) and a significance bar. Everything else — the
- * sources, the verification/reputability audit trail, the tipping point, the
+ * Deliberately minimal — a scannable index entry, not a dossier. It shows the
+ * name, description, a diverging effect indicator mirroring the globe ramp, and
+ * a significance bar; sources, the verification audit trail and the tipping
+ * point all live in FactorDetails, one click away.
  *
- * Rendered as `role="option"` inside the Sidebar's `role="listbox"`. It is not
- * a native focusable control; the Sidebar owns roving tabindex + keyboard nav
- * and passes the current `tabIndex` in. Selection commits via `onSelect`.
+ * Rendered as `role="option"` inside the Sidebar's listbox. It is not a native
+ * focusable control: the Sidebar owns roving tabindex and keyboard navigation
+ * and passes the current `tabIndex` in.
  */
 import { forwardRef } from 'react';
+import './FactorCard.css';
 import type { Factor } from '../../../shared/types.js';
 
 export interface FactorCardProps {

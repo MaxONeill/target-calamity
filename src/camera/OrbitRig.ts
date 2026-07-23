@@ -160,7 +160,7 @@ export class OrbitRig {
     this.#onChange = options.onChange;
     this.#onUserInput = options.onUserInput;
 
-    // : pin the near plane so the mesh can never clip when fully zoomed.
+    // Pin the near plane so the mesh can never clip when fully zoomed.
     if (this.camera.near > CAMERA_NEAR) {
       this.camera.near = CAMERA_NEAR;
       this.camera.updateProjectionMatrix();

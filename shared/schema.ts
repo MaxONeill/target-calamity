@@ -194,11 +194,11 @@ export const ViewportSchema = z.object({
  * of silently returning an incoherent page. The discriminant is `mode`, which
  * also selects the keyset tuple. The wire form is an opaque base64url string.
  *
- * : recent mode keysets on the IMMUTABLE insert-only `seq` (a BIGINT
- * identity transmitted as a lossless decimal string), NOT `updated_at`. Phase D
- * rewrites `updated_at = NOW()` on escalation, so an `updated_at` key
- * would silently skip escalating rows for the rest of a scroll session (and it
- * also truncates microseconds across a JSON round-trip). `seq` has neither flaw.
+ * Recent mode keysets on the immutable insert-only `seq` — a BIGINT identity
+ * transmitted as a lossless decimal string — not on `updated_at`. Ingestion
+ * rewrites `updated_at = NOW()` when a factor escalates, so an `updated_at` key
+ * would silently skip escalating rows for the rest of a scroll session, and it
+ * truncates microseconds across a JSON round trip. `seq` has neither flaw.
  *
  * Magnitude mode is a bounded top-N snapshot, not deep pagination (`abs(effect)`
  * is likewise Phase-D-mutated and unsafe as a stable key), so the server never

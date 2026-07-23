@@ -74,7 +74,7 @@ export default async function streamRoutes(fastify: FastifyInstance): Promise<vo
 
     fastify.log.info({ channel: NOTIFY_CHANNEL }, 'SSE stream bound to Postgres LISTEN/NOTIFY');
   } else {
-    fastify.log.info('SSE stream in seed mode: keepalive only, no live deltas (ADR-17 degrade)');
+    fastify.log.info('SSE stream in seed mode: keepalive only, no live deltas ( degrade)');
   }
 
   fastify.get('/api/stream', (req: FastifyRequest, reply: FastifyReply) => {

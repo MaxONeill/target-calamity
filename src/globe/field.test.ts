@@ -51,7 +51,7 @@ describe('kernel (accumulateAt)', () => {
   });
 });
 
-describe('direction grid (ADR-25 inverse)', () => {
+describe('direction grid ( inverse)', () => {
   it('matches latLonToVector3 at every texel center', () => {
     const w = 16;
     const h = 8;
@@ -75,7 +75,7 @@ describe('bake (acceptance: one Calamity factor at (0,0))', () => {
   const h = 128;
   const field = bakeFieldData([CALAMITY], DEFAULT_FIELD_PARAMS, w, h);
 
-  it("argmax-W texel decodes back to an OFF-ORIGIN pin's lat/lon (ADR-25)", () => {
+  it("argmax-W texel decodes back to an OFF-ORIGIN pin's lat/lon", () => {
     // An off-origin pin is what actually catches a mirrored/rotated/V-flipped
     // bake — a flip would move the argmax by tens of degrees. Tolerance covers
     // the eps-clamp plateau (chord ≤ eps ⇒ angle ≤ ~2.86°) plus one texel.

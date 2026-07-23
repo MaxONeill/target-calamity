@@ -1,18 +1,15 @@
 /**
  * CPU accumulation field — the reference implementation of the chromatic
- * shading model AND the unit-test target.
+ * shading model, and the unit-test target.
  *
- * the spec has the fragment
- * shader loop over every active factor per fragment, accumulating
- * `C(p) = Σ Eᵢ·Sᵢ / max(d, ε)^k`. That is O(N) per pixel per frame, needs a
- * compile-time MAX_FACTORS cap, and recompiles when the count changes. Instead
- * the accumulation happens ONCE per data change on the CPU, here, and is baked
- * into an equirectangular texture (see bakeField.ts) that the shader samples in
- * O(1). This module is the single reference kernel; the GLSL never accumulates.
+ * Accumulation runs once per data change here on the CPU and is baked into an
+ * equirectangular texture (see bakeField.ts) the shader samples in O(1). The
+ * GLSL never accumulates, so there is no per-fragment factor loop, no
+ * MAX_FACTORS cap, and no shader recompile when the factor count changes.
  *
- * the spec's single scalar `C(p)` conflates "no data"
- * with "contested equilibrium" — both render purple. We compute TWO fields with
- * a compact-support kernel and gate color on evidence:
+ * Two fields are computed rather than one scalar, because a single scalar makes
+ * "no data" indistinguishable from "contested equilibrium" — both decay to
+ * zero. Color is gated on evidence density so the two stay distinct:
  *
  *   w_i(p) = S_i / max(d(p,x_i), eps)^k         for d <= d_max, else 0   (k = 2.0)
  *   W(p)   = Σ_i w_i(p)                          evidence density  (>= 0)
@@ -22,11 +19,10 @@
  * `d_max` derives from an angular cutoff θ_max (default 15°). `eps` cancels
  * between P's numerator and denominator, so P → Eᵢ as p → x_i regardless of eps.
  *
- * distance is measured as ANGULAR separation via the dot
- * product of unit vectors, not the Euclidean chord the spec names. The cutoff
- * test is a single `dot >= cos(θ_max)`; the falloff magnitude uses the chord
- * `d = sqrt(2 − 2·dot)` on the unit sphere (a monotone function of the angle),
- * which keeps 's chord-kernel form while avoiding `acos`/`length()`.
+ * Distance is ANGULAR separation via the dot product of unit vectors, not a
+ * Euclidean chord: the cutoff test is a single `dot >= cos(θ_max)`, and the
+ * falloff uses the chord `d = sqrt(2 − 2·dot)`, which is monotone in the angle
+ * and avoids `acos`/`length()` entirely.
  *
  * every texel→direction mapping is derived by CALLING
  * `latLonToVector3` (via {@link getDirectionGrid}) — never by hand-writing trig

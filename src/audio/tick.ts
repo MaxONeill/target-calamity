@@ -3,7 +3,7 @@
  *
  *  /  reference a "background
  * ambient clock ticking sound" that the explainer modal "halts", but neither
- * spec defines the sound, how it is produced, or its lifecycle. We synthesize it
+ * Nothing external defines this sound or its lifecycle, so it is synthesized
  * at runtime so the bundle ships no audio assets, and expose the minimal control
  * surface the UI needs: start / stop / isRunning, plus mute and dispose.
  *

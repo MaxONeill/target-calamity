@@ -53,7 +53,7 @@ describe('angle constants and scalar helpers', () => {
   });
 });
 
-describe('latLonToVector3 — known reference vectors (ADR-25 sign convention)', () => {
+describe('latLonToVector3 — known reference vectors ( sign convention)', () => {
   const cases: Array<[number, number, [number, number, number]]> = [
     // (lat 0, lon 0) → +X
     [0, 0, [1, 0, 0]],
@@ -124,7 +124,7 @@ describe('latLonToVector3 — radius handling', () => {
   });
 });
 
-describe('latLonToVector3 — degrees are actually converted (the ADR-25 bug guard)', () => {
+describe('latLonToVector3 — degrees are actually converted (the  bug guard)', () => {
   // This is the test a `|v| = R` assertion cannot substitute for: it fails
   // loudly if the implementation forgets the π/180 conversion.
   it('London↔Tokyo separation is the true great-circle angle (~86°), not ~148°', () => {

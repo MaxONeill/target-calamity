@@ -6,7 +6,7 @@
  * We do NOT slerp orientation. Slerping between two look-at quaternions takes the
  * shortest arc in SO(3), which mixes TWIST about the view axis into the path: the
  * horizon tilts (rolls) mid-flight and rights itself at the endpoints, so the
- * artifact is invisible in any start/end screenshot. The spec's Step Three also
+ * artifact is invisible in any start/end screenshot. An orientation slerp also
  * never applies Step Two's position, so as written the pin never actually comes
  * to face the camera.
  *
@@ -73,7 +73,7 @@ export function easeInOutCubic(t: number): number {
 
 /**
  * Geodesic (great-circle) interpolation of two UNIT direction vectors — the
- * position-space slerp that replaces the spec's orientation slerp.
+ * position-space slerp, which cannot introduce roll.
  * `a` and `b` must be normalized; `out` receives a normalized result.
  */
 export function slerpDirection(

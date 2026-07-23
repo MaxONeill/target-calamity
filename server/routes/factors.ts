@@ -1,21 +1,20 @@
 /**
  * GET /api/factors  (alias: GET /api/feed) — the sidebar feed.
  *
- * : this path drives the sidebar and NOTHING else. It is cursor-paginated
- * and viewport-clipped; it must never feed the shader (that is `/api/field`).
+ * Cursor-paginated and viewport-clipped. This path drives the sidebar and
+ * nothing else; it must never feed the shader, which is `/api/field`.
  *
- * : citations are returned inline via a `LATERAL` + `json_agg` in ONE
- * round trip — never an N+1 per 50-row page.
+ * Citations come back inline via a `LATERAL` + `json_agg` in one round trip
+ * rather than an N+1 per page.
  *
- * : viewport filtering uses PostGIS, not a `lat/lon BETWEEN`. The visible
- * region is intersected with a geometry envelope built from the viewport, with
- * the antimeridian handled by splitting into two envelopes (confirmed defects
- * #20 & #34). A `lat BETWEEN … AND lon BETWEEN …` returns zero rows across the
- * date line and degenerates near the poles; PostGIS makes those cases correct.
+ * Viewport filtering intersects a PostGIS envelope rather than testing
+ * `lat/lon BETWEEN`, which returns zero rows across the antimeridian and
+ * degenerates near the poles. A viewport crossing the date line is split into
+ * two envelopes.
  *
- *  / : recent mode keysets on the immutable `seq`; magnitude mode
- * is a bounded top-N snapshot (see pagination.ts for why neither uses a
- * Phase-D-mutated column as its key).
+ * Recent mode keysets on the immutable `seq`; magnitude mode is a bounded top-N
+ * snapshot. See pagination.ts for why neither keys on a column that ingestion
+ * mutates.
  */
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { sql } from 'kysely';

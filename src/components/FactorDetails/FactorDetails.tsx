@@ -108,7 +108,7 @@ function DetailHead({
           {verificationState === 'pending' ? (
             <span
               className="tc-badge tc-badge--pending"
-              title="Machine-extracted; awaiting review (ADR-20)."
+              title="Machine-extracted; awaiting review."
             >
               Pending
             </span>
@@ -185,7 +185,7 @@ function TippingPointBlock({ tp }: { tp: TippingPoint }): JSX.Element {
       {tp.label ? <p className="tc-details__tipping-label">{tp.label}</p> : null}
       <p className="tc-details__tipping-note">
         A published, uncertain threshold estimate — not a measured deadline. It
-        informs the Clock's countdown baseline (ADR-34).
+        informs the Clock's countdown baseline.
       </p>
     </section>
   );
@@ -223,8 +223,8 @@ function ReputabilityBlock({
       </div>
       <p className="tc-details__rep-why">
         {state === 'verified'
-          ? 'Cleared the reputability gate — the deciding source scored at or above the verification threshold (ADR-33).'
-          : 'Below the reputability gate threshold — kept pending, off the Clock aggregate (ADR-33).'}
+          ? 'Cleared the reputability gate — the deciding source scored at or above the verification threshold.'
+          : 'Below the reputability gate threshold — kept pending, off the Clock aggregate.'}
       </p>
       {reasoning ? <p className="tc-details__rep-reasoning">{reasoning}</p> : null}
     </section>

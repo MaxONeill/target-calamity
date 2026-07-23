@@ -19,8 +19,8 @@
  * land-relief displacement FALLBACK can raise continents without a GPU
  * readback.
  *
- * : no lat/lon trig happens here — equirectangular rasterization is linear
- * in lon/lat, not trigonometric, so it does not fall under the trig ban.
+ * No coordinate trigonometry happens here: equirectangular rasterization is
+ * linear in lon/lat, so this does not need the shared geo conversion.
  */
 import * as THREE from 'three';
 import { feature } from 'topojson-client';

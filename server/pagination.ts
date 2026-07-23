@@ -8,21 +8,16 @@
  * 400 a cursor that disagrees with the request (a sort toggle or viewport
  * change invalidates the cursor and the feed restarts from page one).
  *
- * the spec paginates
- * `recent` on `updated_at`. Phase D rewrites `updated_at = NOW()` on
- * escalation, so keying pagination on it silently SKIPS escalating rows for the
- * rest of a scroll session. The shared `CursorSchema` (which this module now
- * imports as its single source of truth) therefore keys `recent` on the
- * immutable insert-only `seq` (BIGINT identity, never bumped). This also
- * sidesteps confirmed defect #25 (microsecond timestamp truncation across a JSON
- * round-trip): `seq` is an exact integer transmitted as a decimal string. The
- * shared schema used to contradict this by keying on `updatedAt`; it no longer
- * exists as a separate declaration — server and contract share one schema.
+ * `recent` keysets on the immutable insert-only `seq`, not on `updated_at`.
+ * Ingestion rewrites `updated_at = NOW()` when a factor escalates, so keying on
+ * it would silently skip escalating rows for the rest of a scroll session.
+ * `seq` is also an exact integer transmitted as a decimal string, which avoids
+ * the microsecond truncation a timestamp suffers across a JSON round trip.
  *
- * `magnitude` mode is NOT deep-keyset-paginated.
- * `abs(effect)` is also mutated by Phase D, so it is not a safe stable key. The
- * feed serves magnitude as a single bounded top-N snapshot (nextCursor = null);
- * there is therefore never a magnitude cursor to resume from.
+ * `magnitude` is not deep-paginated at all. `abs(effect)` is mutated by the same
+ * path, so it is no safer a key; the feed serves magnitude as a single bounded
+ * top-N snapshot with `nextCursor = null`, and there is never a magnitude cursor
+ * to resume from.
  */
 import { CursorSchema } from '../shared/schema.js';
 import type { Cursor, SortMode, Viewport } from '../shared/types.js';

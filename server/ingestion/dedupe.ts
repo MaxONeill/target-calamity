@@ -36,11 +36,9 @@
  *   ORDER BY embedding <=> :query
  *   LIMIT :k;
  *
- * the spec's
- * "queried for cosine distance collisions (< 0.15)" reads as a
- * `WHERE embedding <=> :q < 0.15` predicate. pgvector only uses the HNSW index
- * for the `ORDER BY ... LIMIT` shape; a bare predicate falls back to a
- * sequential scan computing 1536/512-dim distance on every row. The `ORDER BY`
+ * The order-by-limit shape is required, not stylistic: pgvector only uses the
+ * HNSW index for it. A bare `WHERE embedding <=> :q < 0.15` predicate falls
+ * back to a sequential scan computing the distance on every row. The `ORDER BY`
  * form both uses the index and returns rows in EXACT distance order (the `<=>`
  * operator computes exact distance; HNSW only affects which rows are visited),
  * so `candidates[0]` is the true nearest and the `distance` field is exact.
@@ -202,9 +200,7 @@ export function escalationLambda(citationCount: number): number {
 /**
  *  — the escalation recalculation, defined once as a pure function.
  *
- * the spec says effect and
- * significance are "dynamically recalculated" and gives no formula. We use a
- * citation-count-weighted convex blend:
+ * A citation-count-weighted convex blend:
  *
  *   λ            = 1 / (parent.citationCount + 1)
  *   effect'      = clamp((1-λ)·effect_parent + λ·effect_new, -1, 1)

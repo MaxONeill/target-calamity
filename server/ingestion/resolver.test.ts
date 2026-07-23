@@ -32,7 +32,7 @@ function req(overrides: Partial<ResolutionRequest> = {}): ResolutionRequest {
   };
 }
 
-describe('clampTo — domain clamping (ADR-11a)', () => {
+describe('clampTo — domain clamping', () => {
   it('clamps into range and collapses non-finite to lo', () => {
     expect(clampTo(2, -1, 1)).toBe(1);
     expect(clampTo(-2, -1, 1)).toBe(-1);

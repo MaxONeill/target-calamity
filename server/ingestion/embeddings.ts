@@ -23,11 +23,11 @@
  * no key set and `NODE_ENV === 'production'` it throws rather than returning the
  * stub.
  *
- * the specs store `embedding VECTOR(1536)`. We request
- * 512 dims via the API's `dimensions` parameter (Matryoshka truncation) to match
- * the `halfvec(512)` column  adopts. Every vector this module emits has
- * length `EMBEDDING_DIMENSIONS`, and the provider swap in  deliberately
- * chose a model that supports that width so the DB column is unchanged.
+ * 512 dimensions are requested via the API's `dimensions` parameter, so the
+ * provider truncates server-side (valid only because the model is
+ * Matryoshka-trained — never slice a vector yourself) to match the
+ * `halfvec(512)` column. Every vector this module emits has length
+ * `EMBEDDING_DIMENSIONS`; a width mismatch would silently break dedupe.
  */
 import { FIREWORKS_BASE_URL } from './llmClient.js';
 

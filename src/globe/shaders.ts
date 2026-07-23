@@ -1,18 +1,14 @@
 /**
- * GLSL ES 3.00 shaders for the wireframe globe, plus the shared color model
- *. Written for WebGL2 via a three.js `ShaderMaterial` with
+ * GLSL ES 3.00 shaders for the globe, plus the shared color model.
+ *
+ * Written for WebGL2 via a three.js `ShaderMaterial` with
  * `glslVersion: THREE.GLSL3`, which prepends `#version 300 es` and the standard
- * three.js uniforms/attributes; we declare our own varyings and fragment output.
+ * three.js uniforms; this module declares its own varyings and fragment output.
  *
- * the spec's fragment shader loops over every
- * factor and sums `C(p)`. This shader does NOT loop — it samples the pre-baked
+ * The fragment shader does not loop over factors. It samples the pre-baked
  * two-channel field texture (R = net polarity P, G = evidence density W) and
- * applies the three-state color model. No factor loop, no MAX_FACTORS cap, no
- * recompile on count change.
- *
- * a single scalar C(p) makes "no data" (C→0 far from all
- * pins) indistinguishable from "contested equilibrium" (C≈0 from balanced pins)
- * — both would render purple. We gate on W:
+ * applies the three-state color model, gating hue on W so that absence of data
+ * and contested equilibrium — which both sit at P ≈ 0 — never render alike:
  *   W < W_min            → INERT GREY  (off-ramp unlit baseline ~#3A3A42)
  *   W >= W_min           → hue = ramp(P), crimson(−1)–purple(0)–blue(+1),
  *                          saturation = smoothstep(W_min, W_full, W)
@@ -164,7 +160,7 @@ function lerp(a: number, b: number, t: number): number {
  * world-space position (for the view-facing depth cue). No lat/lon ever enters
  * GLSL: the field is sampled by direction, not by geographic angle.
  *
- * : the globe's vertices are CPU-displaced by elevation, so a vertex's
+ * The globe's vertices are CPU-displaced by elevation, so a vertex's
  * RADIAL LENGTH already encodes its height. `vElev = (|position| − R) / R` hands
  * that to the fragment stage as the elevation fraction driving the
  * green→brown→white land ramp — no extra attribute or texture needed. This same
@@ -206,21 +202,21 @@ const geoFieldChunk = /* glsl */ `
 precision highp float;
 
 uniform sampler2D uField;   // R = net polarity P, G = evidence density W
-uniform sampler2D uLandMask; // R = land fraction (1 = land, 0 = ocean) — ADR-41
+uniform sampler2D uLandMask; // R = land fraction (1 = land, 0 = ocean)
 uniform float uWMin;
 uniform float uWFull;
 uniform float uRampEdge;
-uniform float uFieldCap;    // ADR-41 cap on field tint over the geographic base
+uniform float uFieldCap;    //  cap on field tint over the geographic base
 uniform vec3 uCrimson;
 uniform vec3 uPurple;
 uniform vec3 uBlue;
-uniform vec3 uOceanColor;   // ADR-41 geographic base — ocean
-uniform vec3 uLandColor;    // ADR-41 geographic base — land (low ground)
-uniform vec3 uMountainColor; // ADR-43 elevation ramp — high ground (brown)
+uniform vec3 uOceanColor;   //  geographic base — ocean
+uniform vec3 uLandColor;    //  geographic base — land (low ground)
+uniform vec3 uMountainColor; //  elevation ramp — high ground (brown)
 uniform vec3 uCameraPos;    // world-space camera position for the depth cue
 
 const float PI = 3.141592653589793;
-const vec3 ICE = vec3(${COLOR_ICE.map((c) => c.toFixed(3)).join(', ')}); // ADR-41 polar snow/ice
+const vec3 ICE = vec3(${COLOR_ICE.map((c) => c.toFixed(3)).join(', ')}); //  polar snow/ice
 
 // crimson(P=-1) — purple(P=0) — electric blue(P=+1), saturating at |P| = uRampEdge.
 vec3 ramp(float p) {

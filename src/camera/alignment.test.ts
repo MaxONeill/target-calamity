@@ -87,7 +87,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('slerpDirection (position-space interpolation, ADR-27)', () => {
+describe('slerpDirection (position-space interpolation)', () => {
   it('returns a unit vector at the geodesic midpoint, equidistant from both ends', () => {
     const a = LONDON.clone().normalize();
     const b = SYDNEY.clone().normalize();
@@ -98,7 +98,7 @@ describe('slerpDirection (position-space interpolation, ADR-27)', () => {
   });
 });
 
-describe('mid-flight camera roll (ADR-27 regression)', () => {
+describe('mid-flight camera roll (regression)', () => {
   it('holds the horizon flat at t=0.5 of a London→Sydney alignment (real tick)', () => {
     const { camera, align } = driveToMidFlight(LONDON, SYDNEY, 0.5);
     const right = cameraRight(camera);

@@ -202,7 +202,7 @@ describe('deriveClock — polarity monotonicity, clamping, poison resistance', (
   });
 });
 
-describe('deriveClock — pending exclusion (ADR-20)', () => {
+describe('deriveClock — pending exclusion', () => {
   it('pending factors are excluded from both derivation and baseline', () => {
     const m = deriveClock([
       { effect: -1, significance: 1, verificationState: 'verified', tippingPoint: { centralYear: 2050 } },

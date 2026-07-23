@@ -252,7 +252,7 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   Right-edge slideout (ADR-40): a single panel hosting the factor FEED XOR the
+   Right-edge slideout: a single panel hosting the factor FEED XOR the
    node DETAIL, sliding over the full-bleed globe. Closed by default (globe is
    the hero); the FEED tab or a pin/card selection opens it.
    -------------------------------------------------------------------------- */

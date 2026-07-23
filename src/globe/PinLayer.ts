@@ -1,20 +1,14 @@
 /**
- * Pin layer: every factor pin rendered as ONE `InstancedMesh` — one
- * draw call regardless of factor count — with instance scale by significance and
- * instance color by effect sign. Hit-testing is GPU picking (render per-instance
- * IDs to an offscreen target and read back one pixel), never raycasting N objects.
+ * Every factor pin rendered as one `InstancedMesh` — a single draw call
+ * whatever the factor count — scaled by significance and colored by effect.
  *
- * the spec implies a pin object per factor with
- * per-object raycast picking. Both scale with N — N draw calls and an O(N)
- * raycast per pointer move. Instancing collapses the draw to one call; ID-buffer
- * picking is O(1) in the factor count.
+ * Hit-testing is GPU picking: per-instance IDs render to an offscreen target
+ * and one pixel is read back, which stays O(1) in the factor count where
+ * raycasting every pin would not.
  *
- * pin positions come from `latLonToVector3` (the one
- * sanctioned lat/lon→vector conversion) — no trig on lat/lon here.
- *
- * pins share the field's ramp (`rampColor`), so a pin
- * and the region it charges read as the same hue: crimson for Calamity,
- * electric blue for Humanity, purple near zero.
+ * Pins share the field's ramp, so a pin and the region it charges read as the
+ * same hue. Positions come from `latLonToVector3`, the one sanctioned lat/lon
+ * conversion — no trigonometry on coordinates happens here.
  */
 import * as THREE from 'three';
 import { latLonToVector3 } from '../lib/geo.js';

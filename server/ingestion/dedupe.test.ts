@@ -60,7 +60,7 @@ describe('escalationLambda — blend weight decays with corroboration', () => {
   });
 });
 
-describe('recalculateOnEscalation — the ADR-19 convex blend', () => {
+describe('recalculateOnEscalation — the  convex blend', () => {
   it('blends effect at λ and never lowers significance when corroborating', () => {
     // λ = 1/(1+1) = 0.5. effect' = 0.5·0.4 + 0.5·0.8 = 0.6.
     // blendedSig = 0.5·0.6 + 0.5·0.4 = 0.5, but corroborating takes max(parent,blend)=0.6.

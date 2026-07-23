@@ -243,7 +243,7 @@
 
 /* The four outcomes differ only in the accent stripe. `received` covers both a
    genuine acceptance and a shadow-banned submitter — by design there is nothing
-   here that could tell them apart (ADR-45). */
+   here that could tell them apart. */
 .tc-submit__result--received {
   border-left-color: var(--tc-humanity);
 }

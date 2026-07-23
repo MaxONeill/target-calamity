@@ -13,7 +13,7 @@
    .tc-effectbar, .tc-sigbar, .tc-badge, .tc-cite__* — are
    defined in sidebar.css against custom properties declared on `.tc-sidebar`.
    FactorDetails renders INSTEAD of the Sidebar (they are mutually exclusive in
-   the slideout, ADR-40), so it is never a descendant of `.tc-sidebar` and every
+   the slideout), so it is never a descendant of `.tc-sidebar` and every
    one of those `var(--tc-panel-3)` / `var(--tc-text-dim)` references resolved to
    nothing — an invalid `background` computes to transparent, which is why the
    SIG bar (and its track) painted at the right WIDTH but with no colour at all.

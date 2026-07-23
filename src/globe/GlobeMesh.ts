@@ -1,34 +1,21 @@
 /**
- * The wireframe globe. Owns the icosphere
- * geometry, the field `ShaderMaterial`, and the `FieldBaker`, and exposes a
- * render-on-demand signal so the app can avoid an unconditional rAF loop.
+ * The globe. Owns the icosphere geometry, the field `ShaderMaterial` and the
+ * `FieldBaker`, and signals when it actually needs a redraw so the app can
+ * repaint on demand instead of running a standing animation loop.
  *
- * `IcosahedronGeometry(R, detail)`, not `SphereGeometry`.
- * A UV sphere crowds vertices at the poles — uneven wireframe density and
- * non-uniform field sampling. The icosphere distributes near-uniformly.
+ * Geometry is an icosphere rather than a UV sphere, which would crowd vertices
+ * at the poles and sample the field non-uniformly. The fragment shader renders
+ * a geographic base from the land-mask texture and blends the baked field over
+ * it, so it stays O(1) per fragment however many factors exist.
  *
- * the material samples a baked two-field texture
- * instead of looping over factors per fragment. `update()` rebakes that texture;
- * the fragment shader stays O(1) with no MAX_FACTORS cap.
- *
- * the globe reports when it actually needs a redraw
- * (`onNeedsRender`) rather than assuming the app repaints every frame. Between
- * data changes the field is static, so nothing here forces a repaint.
- *
- * `update()` takes the `/api/field` pin set only. It
- * must be called on receipt of a new field response, never on camera motion or
- * feed pagination — the field is camera-invariant by construction.
- *
- * : the fragment shader now renders a geographic base (ocean/land) from a
- * land-mask texture and blends the field on top; GlobeMesh wires the mask.
- *
- * : the icosphere is DISPLACED on the CPU by real elevation. Each vertex
- * is offset outward along its unit normal by `max(0, meters)/EARTH_RADIUS ·
- * exaggeration · radius` — ocean/bathymetry (meters ≤ 0) stays FLAT at the base
- * radius, only land rises. Displacement can be (re)applied after construction
- * once the real elevation grid loads; before that a land-relief sampler keeps
- * continents in relief offline. The wireframe overlay and vertex normals are
+ * Vertices are displaced on the CPU by elevation: each is offset outward by
+ * `max(0, meters)/EARTH_RADIUS · exaggeration · radius`, so ocean stays flat at
+ * the base radius and only land rises. Displacement can be re-applied after
+ * construction once the real grid loads; the wireframe and vertex normals are
  * rebuilt from the displaced positions.
+ *
+ * `update()` accepts the field pin set only, and must be called on receipt of a
+ * new field response — never on camera motion or feed pagination.
  */
 import * as THREE from 'three';
 import { FieldBaker } from './bakeField.js';
@@ -104,7 +91,7 @@ export class GlobeMesh {
     this.baker = new FieldBaker(params);
     this.uniforms = createGlobeUniforms();
     this.uniforms.uField.value = this.baker.texture;
-    // : the base radius is the denominator of the vertex shader's
+    // The base radius is the denominator of the vertex shader's
     // elevation fraction `(|position| − R) / R`, which drives the land ramp.
     this.uniforms.uRadius.value = this.radius;
     if (options.landMaskTexture) this.uniforms.uLandMask.value = options.landMaskTexture;
