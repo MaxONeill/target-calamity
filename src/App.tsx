@@ -30,7 +30,7 @@ export function App(): JSX.Element {
   const [following, setFollowing] = useState(false);
 
   const feed = useFactorFeed();
-  const { fieldPins, reloadField } = useFieldPins();
+  const { fieldPins, globalFactors, reloadField } = useFieldPins();
   const panel = useSlideoutPanel();
 
   const coordsRef = useFactorCoords(fieldPins, feed.factors);
@@ -58,6 +58,7 @@ export function App(): JSX.Element {
     mountRef,
     sceneRef,
     fieldPins,
+    globalFactors,
     landVisible,
     onPickFactor: useCallback(
       (id: string) => selectFactor(id, { scrollIntoView: true }),
@@ -87,7 +88,14 @@ export function App(): JSX.Element {
     [panel.selectedId, selectedFactor, fieldPins],
   );
 
-  const clockFactors = useMemo(() => fieldPins.map(toClockFactor), [fieldPins]);
+  // Placeless factors are aggregated alongside located ones. They are off the
+  // spatial bake, but they are frequently the heaviest in the set, so excluding
+  // them here would quietly bias the countdown toward whatever happens to have
+  // coordinates.
+  const clockFactors = useMemo(
+    () => [...fieldPins, ...globalFactors].map(toClockFactor),
+    [fieldPins, globalFactors],
+  );
 
   return (
     <div className="tc-app">

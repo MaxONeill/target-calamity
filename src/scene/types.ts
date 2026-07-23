@@ -1,4 +1,4 @@
-import type { FieldPin } from '../../shared/types.js';
+import type { FieldPin, GlobalFactor } from '../../shared/types.js';
 
 export interface SceneHandle {
   /**
@@ -7,6 +7,11 @@ export interface SceneHandle {
    * stops being a function of the data alone.
    */
   setFieldPins(pins: readonly FieldPin[]): void;
+  /**
+   * Sets the placeless factors: the ring arcs, and the uniform global wash.
+   * Same rule as {@link setFieldPins} — data-driven only.
+   */
+  setGlobalFactors(factors: readonly GlobalFactor[]): void;
   alignToLatLon(lat: number, lon: number): void;
   setLandVisible(visible: boolean): void;
   dispose(): void;

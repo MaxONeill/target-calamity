@@ -27,6 +27,8 @@ import {
   lineFragmentShader,
   vertexShader,
   LINE_BOOST,
+  GLOBAL_TINT_CAP,
+  rampColor,
   type GlobeUniforms,
 } from './shaders.js';
 
@@ -163,6 +165,39 @@ export class GlobeMesh {
   update(pins: readonly FieldInputPin[]): void {
     if (this.disposed) return;
     this.baker.bake(pins);
+    this.emitNeedsRender();
+  }
+
+  /**
+   * Sets the uniform wash contributed by placeless factors.
+   *
+   * Applied evenly across the sphere beneath the local field, because these
+   * factors have no position. Strength is the significance-weighted magnitude
+   * of their net polarity, capped by {@link GLOBAL_TINT_CAP}.
+   */
+  setGlobalAggregate(factors: readonly { effect: number; significance: number }[]): void {
+    if (this.disposed) return;
+
+    let weightSum = 0;
+    let weightedEffect = 0;
+    for (const factor of factors) {
+      const weight = Math.max(0, factor.significance);
+      weightSum += weight;
+      weightedEffect += factor.effect * weight;
+    }
+
+    if (weightSum <= 0) {
+      this.uniforms.uGlobalTintStrength.value = 0;
+      this.emitNeedsRender();
+      return;
+    }
+
+    const netPolarity = weightedEffect / weightSum;
+    rampColor(netPolarity, this.uniforms.uGlobalTint.value);
+    this.uniforms.uGlobalTintStrength.value = Math.min(
+      Math.abs(netPolarity),
+      1,
+    ) * GLOBAL_TINT_CAP;
     this.emitNeedsRender();
   }
 

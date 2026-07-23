@@ -1,4 +1,4 @@
-import type { FieldPin } from '../../../shared/types.js';
+import type { FieldPin, GlobalFactor } from '../../../shared/types.js';
 import type { ClockFactorInput, TippingPoint } from './clockModel.js';
 
 /**
@@ -10,7 +10,7 @@ import type { ClockFactorInput, TippingPoint } from './clockModel.js';
  * is rebuilt carrying only the fields actually present — no cast, and no
  * `undefined` leaking into a property that claims to be absent.
  */
-export function toClockFactor(pin: FieldPin): ClockFactorInput {
+export function toClockFactor(pin: FieldPin | GlobalFactor): ClockFactorInput {
   const source = pin.tippingPoint;
   let tippingPoint: TippingPoint | null = null;
 

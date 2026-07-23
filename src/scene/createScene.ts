@@ -3,6 +3,7 @@ import { GlobeMesh } from '../globe/GlobeMesh.js';
 import { Coastlines } from '../globe/Coastlines.js';
 import { createLandMask } from '../globe/landMask.js';
 import { PinLayer } from '../globe/PinLayer.js';
+import { GlobalRing } from '../globe/GlobalRing.js';
 import { OrbitRig, GLOBE_RADIUS, MIN_ZOOM, MAX_ZOOM } from '../camera/OrbitRig.js';
 import { OrbitAlignment } from '../camera/alignment.js';
 import { attachInterrupt } from '../camera/interrupt.js';
@@ -58,10 +59,12 @@ export function createScene(
   });
   const pins = new PinLayer({ radius: GLOBE_RADIUS });
   const coastlines = new Coastlines({ radius: GLOBE_RADIUS, lift: COASTLINE_LIFT });
+  const ring = new GlobalRing({ radius: GLOBE_RADIUS });
 
   scene.add(globe.object3D);
   scene.add(pins.object3D);
   scene.add(coastlines.object3D);
+  scene.add(ring.object3D);
 
   let frameHandle: number | null = null;
   const renderFrame = (): void => {
@@ -89,12 +92,14 @@ export function createScene(
 
   const unsubGlobe = globe.onNeedsRender(requestRender);
   const unsubPins = pins.onNeedsRender(requestRender);
+  const unsubRing = ring.onNeedsRender(requestRender);
 
   const detachPicking = attachPicking({
     canvas,
     renderer,
     camera,
     pins,
+    ring,
     globeRadius: GLOBE_RADIUS,
     onPick: callbacks.onPickFactor,
     requestRender,
@@ -124,6 +129,11 @@ export function createScene(
       pins.update(pinSet);
     },
 
+    setGlobalFactors(factors): void {
+      ring.update(factors);
+      globe.setGlobalAggregate(factors);
+    },
+
     alignToLatLon(lat, lon): void {
       void alignment.alignToLatLon(lat, lon, { onFrame: requestRender });
     },
@@ -141,11 +151,13 @@ export function createScene(
       interruptGuard.dispose();
       unsubGlobe();
       unsubPins();
+      unsubRing();
       alignment.cancel();
       rig.dispose();
       globe.dispose();
       pins.dispose();
       coastlines.dispose();
+      ring.dispose();
       landMask.dispose();
       renderer.dispose();
       // renderer.dispose() frees GL resources but leaves the context live. A

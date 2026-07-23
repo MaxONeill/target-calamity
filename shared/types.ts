@@ -13,6 +13,7 @@ import type {
   CitationSchema,
   FactorSchema,
   FieldPinSchema,
+  GlobalFactorSchema,
   FieldResponseSchema,
   ViewportSchema,
   CursorSchema,
@@ -33,6 +34,7 @@ export type Citation = z.infer<typeof CitationSchema>;
 export type Factor = z.infer<typeof FactorSchema>;
 
 export type FieldPin = z.infer<typeof FieldPinSchema>;
+export type GlobalFactor = z.infer<typeof GlobalFactorSchema>;
 export type FieldResponse = z.infer<typeof FieldResponseSchema>;
 
 export type Viewport = z.infer<typeof ViewportSchema>;

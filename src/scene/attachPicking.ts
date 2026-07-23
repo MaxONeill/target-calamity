@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { PinLayer } from '../globe/PinLayer.js';
+import type { GlobalRing } from '../globe/GlobalRing.js';
 
 /** Movement in CSS px below which a pointer down→up counts as a click, not a drag. */
 const CLICK_SLOP_PX = 5;
@@ -9,6 +10,7 @@ export interface PickingOptions {
   renderer: THREE.WebGLRenderer;
   camera: THREE.PerspectiveCamera;
   pins: PinLayer;
+  ring: GlobalRing;
   globeRadius: number;
   onPick: (id: string) => void;
   /** Picking rebinds the pin material, so the scene must repaint afterwards. */
@@ -26,7 +28,7 @@ export interface PickingOptions {
  * @returns a teardown function removing both listeners.
  */
 export function attachPicking(options: PickingOptions): () => void {
-  const { canvas, renderer, camera, pins, globeRadius, onPick, requestRender } = options;
+  const { canvas, renderer, camera, pins, ring, globeRadius, onPick, requestRender } = options;
 
   const raycaster = new THREE.Raycaster();
   const globeSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), globeRadius);
@@ -55,10 +57,16 @@ export function attachPicking(options: PickingOptions): () => void {
     const y = event.clientY - rect.top;
 
     let id = pins.pick(renderer, camera, x, y);
+
     if (id === null) {
       ndc.set((x / rect.width) * 2 - 1, -((y / rect.height) * 2 - 1));
       raycaster.setFromCamera(ndc, camera);
-      if (raycaster.ray.intersectSphere(globeSphere, surfaceHit)) {
+
+      // The ring sits outside the globe, so it is tested first: a click landing
+      // on an arc is unambiguous, where a halo hit is a fallback guess.
+      id = ring.pick(raycaster);
+
+      if (id === null && raycaster.ray.intersectSphere(globeSphere, surfaceHit)) {
         id = pins.pickHalo(surfaceHit.normalize());
       }
     }

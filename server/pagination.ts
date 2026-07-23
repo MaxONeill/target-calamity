@@ -96,7 +96,14 @@ export function viewportsEqual(a: Viewport, b: Viewport): boolean {
  * (ViewportSchema): the longitude test becomes a UNION of two arcs rather than
  * a single interval. Latitude never wraps.
  */
-export function factorInViewport(lat: number, lon: number, vp: Viewport): boolean {
+export function factorInViewport(
+  lat: number | null,
+  lon: number | null,
+  vp: Viewport,
+): boolean {
+  // A placeless factor is nowhere in particular, so it is in every viewport.
+  // This mirrors the `geog IS NULL` branch of the DB-mode predicate.
+  if (lat === null || lon === null) return true;
   if (lat < vp.minLat || lat > vp.maxLat) return false;
   if (vp.minLon <= vp.maxLon) {
     return lon >= vp.minLon && lon <= vp.maxLon;

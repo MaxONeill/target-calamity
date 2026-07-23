@@ -107,10 +107,14 @@ export const FactorSchema = z.object({
   effect: z.number().gte(-1).lte(1),
   /** Weight coefficient mapping to physical vertex weight. */
   significance: z.number().gte(0).lte(1),
-  /** WGS84 degrees, [-90, 90]. */
-  lat: z.number().gte(-90).lte(90),
-  /** WGS84 degrees, [-180, 180]. */
-  lon: z.number().gte(-180).lte(180),
+  /**
+   * WGS84 degrees. `null` on a PLACELESS factor — one with no meaningful
+   * centroid, such as global income concentration. Placeless factors render on
+   * the global ring instead of as pins, stay out of the field bake, and still
+   * count toward the Clock. `lat` and `lon` are null together or not at all.
+   */
+  lat: z.number().gte(-90).lte(90).nullable(),
+  lon: z.number().gte(-180).lte(180).nullable(),
   zoneLevel: ZoneLevelSchema,
   verificationState: VerificationStateSchema,
   createdAt: z.string().datetime({ offset: true }),
@@ -151,10 +155,24 @@ export const FieldPinSchema = z.object({
   lat: z.number().gte(-90).lte(90),
   lon: z.number().gte(-180).lte(180),
   /**
-   * Dated tipping-point threshold, if any. The Clock reads the FIELD
-   * set (`<Clock factors={fieldPins} />`), so a pin must carry its tipping point
-   * for the countdown baseline to include it. Absent on most pins.
+   * Dated tipping-point threshold, if any. The Clock aggregates the field
+   * response, so a pin must carry its tipping point for the countdown baseline
+   * to include it. Absent on most pins.
    */
+  tippingPoint: TippingPointSchema.optional(),
+});
+
+/**
+ * A factor with no location: same charge, no position.
+ *
+ * Carries `name` because the ring is directly clickable and needs a label,
+ * where a pin gets its identity from the feed on selection.
+ */
+export const GlobalFactorSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  effect: z.number().gte(-1).lte(1),
+  significance: z.number().gte(0).lte(1),
   tippingPoint: TippingPointSchema.optional(),
 });
 
@@ -165,6 +183,12 @@ export const FieldPinSchema = z.object({
  */
 export const FieldResponseSchema = z.object({
   pins: z.array(FieldPinSchema),
+  /**
+   * Placeless factors. Excluded from the spatial bake, but the Clock aggregates
+   * them alongside `pins` — they are often the heaviest factors in the set, so
+   * dropping them here would silently distort the countdown.
+   */
+  globalFactors: z.array(GlobalFactorSchema),
   fieldEpoch: z.string().datetime({ offset: true }),
 });
 

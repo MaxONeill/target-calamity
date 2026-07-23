@@ -84,11 +84,14 @@ interface FeedRow {
  * and the migration may add a functional index if selectivity demands it.
  */
 function viewportFilter(vp: Viewport): RawBuilder<unknown> {
+  // A placeless factor has a NULL geog, and ST_Intersects would drop it from
+  // every page. It is nowhere in particular, so it can never be out of view.
   if (vp.minLon <= vp.maxLon) {
-    return sql`ST_Intersects(f.geog::geometry, ST_MakeEnvelope(${vp.minLon}, ${vp.minLat}, ${vp.maxLon}, ${vp.maxLat}, 4326))`;
+    return sql`(f.geog IS NULL OR ST_Intersects(f.geog::geometry, ST_MakeEnvelope(${vp.minLon}, ${vp.minLat}, ${vp.maxLon}, ${vp.maxLat}, 4326)))`;
   }
   return sql`(
-      ST_Intersects(f.geog::geometry, ST_MakeEnvelope(${vp.minLon}, ${vp.minLat}, 180, ${vp.maxLat}, 4326))
+      f.geog IS NULL
+   OR ST_Intersects(f.geog::geometry, ST_MakeEnvelope(${vp.minLon}, ${vp.minLat}, 180, ${vp.maxLat}, 4326))
    OR ST_Intersects(f.geog::geometry, ST_MakeEnvelope(-180, ${vp.minLat}, ${vp.maxLon}, ${vp.maxLat}, 4326))
   )`;
 }

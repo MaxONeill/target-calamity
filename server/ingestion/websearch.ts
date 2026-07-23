@@ -87,9 +87,9 @@ export interface CandidateFactor {
   /** Magnitude / weight. Clamped to [0, 1]. */
   significance: number;
   /** WGS84 degrees, [-90, 90]. */
-  lat: number;
+  lat: number | null;
   /** WGS84 degrees, [-180, 180]. */
-  lon: number;
+  lon: number | null;
   /** `global` or `global.<code>` (depth ≤ 2). */
   spatialPath: string;
   /**
@@ -166,8 +166,8 @@ const ExtractionCandidateSchema = z.object({
   description: z.string(),
   effect: z.number(),
   significance: z.number(),
-  lat: z.number(),
-  lon: z.number(),
+  lat: z.number().nullable(),
+  lon: z.number().nullable(),
   spatialPath: z.string(),
   tippingPoint: ExtractionTippingPointSchema.optional(),
   sources: z.array(ExtractionSourceSchema),
@@ -188,8 +188,15 @@ const EXTRACTION_SYSTEM =
   'present in the notes — do not invent sources or figures. effect is a SIGNED ' +
   'number in [-1, 1]: negative = Calamity (systemic decay), positive = Humanity ' +
   '(resilient counter-measure); its MAGNITUDE reflects how decisive the force is. ' +
-  'significance is in [0, 1] (weight/confidence). lat/lon are WGS84 degrees; use ' +
-  'the geographic centre of the phenomenon (0,0 if genuinely global). spatialPath ' +
+  'significance is in [0, 1] (weight/confidence). lat/lon are WGS84 degrees. ' +
+  'PREFER a real, defensible location: the centre of the affected region, the ' +
+  'basin, biome, ice sheet, or country the sources actually discuss (e.g. an ' +
+  'AMOC finding belongs in the North Atlantic, an ice-sheet finding in ' +
+  'Greenland or Antarctica, a reef finding in the tropical reef belt). ' +
+  'Set lat AND lon to null ONLY when the factor is genuinely placeless — an ' +
+  'aggregate with no meaningful centre, such as global income concentration. ' +
+  'NEVER use 0,0 to mean "global": that is a real location in the Gulf of ' +
+  'Guinea and would place the factor there. spatialPath ' +
   "is 'global' for worldwide factors or 'global.<iso-ish-code>' for one country. " +
   'Set tippingPoint ONLY when the sources give a concrete dated or near-dated, ' +
   '(near-)irreversible threshold for THIS factor (e.g. a projected AMOC-collapse ' +
@@ -312,8 +319,9 @@ export function normalizeCandidate(
     description: raw.description.trim().slice(0, 20_000) || name,
     effect: clamp(raw.effect, -1, 1),
     significance: clamp(raw.significance, 0, 1),
-    lat: clamp(raw.lat, -90, 90),
-    lon: clamp(raw.lon, -180, 180),
+    // Both or neither: a half-located factor is not a meaningful state.
+    lat: raw.lat === null || raw.lon === null ? null : clamp(raw.lat, -90, 90),
+    lon: raw.lat === null || raw.lon === null ? null : clamp(raw.lon, -180, 180),
     spatialPath: normalizeSpatialPath(raw.spatialPath.trim()),
     // Present only when a concrete dated threshold survived normalization.
     ...(tippingPoint ? { tippingPoint } : {}),

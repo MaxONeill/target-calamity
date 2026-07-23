@@ -31,8 +31,8 @@ export interface StoredFactor {
   description: string;
   effect: number;
   significance: number;
-  lat: number;
-  lon: number;
+  lat: number | null;
+  lon: number | null;
   spatialPath: string;
   verificationState: VerificationState;
   reputabilityScore: number | undefined;

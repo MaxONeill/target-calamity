@@ -22,7 +22,12 @@ export function useFactorCoords(
   useEffect(() => {
     const map = new Map<string, Coords>();
     for (const pin of fieldPins) map.set(pin.id, { lat: pin.lat, lon: pin.lon });
-    for (const factor of feedFactors) map.set(factor.id, { lat: factor.lat, lon: factor.lon });
+    // Placeless factors are deliberately absent: there is nowhere to fly to, so
+    // selecting one leaves the camera where it is rather than inventing a target.
+    for (const factor of feedFactors) {
+      if (factor.lat === null || factor.lon === null) continue;
+      map.set(factor.id, { lat: factor.lat, lon: factor.lon });
+    }
     coordsRef.current = map;
   }, [fieldPins, feedFactors]);
 

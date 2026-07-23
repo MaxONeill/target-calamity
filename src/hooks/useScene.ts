@@ -1,7 +1,7 @@
 import { useEffect, useRef, type MutableRefObject, type RefObject } from 'react';
 import { createScene } from '../scene/createScene.js';
 import type { SceneHandle } from '../scene/types.js';
-import type { FieldPin } from '../../shared/types.js';
+import type { FieldPin, GlobalFactor } from '../../shared/types.js';
 
 export interface UseSceneOptions {
   mountRef: RefObject<HTMLDivElement>;
@@ -11,6 +11,7 @@ export interface UseSceneOptions {
    */
   sceneRef: MutableRefObject<SceneHandle | null>;
   fieldPins: readonly FieldPin[];
+  globalFactors: readonly GlobalFactor[];
   landVisible: boolean;
   onPickFactor: (id: string) => void;
   onInterrupt: () => void;
@@ -27,6 +28,7 @@ export function useScene({
   mountRef,
   sceneRef,
   fieldPins,
+  globalFactors,
   landVisible,
   onPickFactor,
   onInterrupt,
@@ -57,6 +59,10 @@ export function useScene({
   useEffect(() => {
     sceneRef.current?.setFieldPins(fieldPins);
   }, [fieldPins, sceneRef]);
+
+  useEffect(() => {
+    sceneRef.current?.setGlobalFactors(globalFactors);
+  }, [globalFactors, sceneRef]);
 
   useEffect(() => {
     sceneRef.current?.setLandVisible(landVisible);

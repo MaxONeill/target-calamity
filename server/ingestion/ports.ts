@@ -78,8 +78,9 @@ export interface NewFactorInput {
   description: string;
   effect: number;
   significance: number;
-  lat: number;
-  lon: number;
+  /** WGS84 degrees, or null for a placeless factor. Both or neither. */
+  lat: number | null;
+  lon: number | null;
   spatialPath: string;
   /** 512-dim vector, stored as `halfvec(512)` by the repository. */
   embedding: number[];

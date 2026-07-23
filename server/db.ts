@@ -59,10 +59,10 @@ interface FactorsTable {
   effect: number;
   /** `NUMERIC` → `REAL`. CHECK [0,1]. */
   significance: number;
-  /** `NUMERIC(8,6)` → `DOUBLE PRECISION`. Degrees, CHECK [-90,90]. */
-  lat: number;
-  /** `NUMERIC(9,6)` → `DOUBLE PRECISION`. Degrees, CHECK [-180,180]. */
-  lon: number;
+  /** Degrees, CHECK [-90,90]. NULL on a placeless factor. */
+  lat: number | null;
+  /** Degrees, CHECK [-180,180]. NULL on a placeless factor. */
+  lon: number | null;
 
   /**
    * the lat/lon BETWEEN viewport filter is replaced by

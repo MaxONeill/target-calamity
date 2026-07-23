@@ -16,7 +16,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { sql } from 'kysely';
 import { FieldResponseSchema } from '../../shared/schema.js';
-import type { FieldPin, FieldResponse } from '../../shared/types.js';
+import type { FieldPin, FieldResponse, GlobalFactor } from '../../shared/types.js';
 import type { Database } from '../db.js';
 import { SEED_FACTORS } from '../../shared/seed.js';
 
@@ -41,18 +41,18 @@ interface FieldQueryRow {
  * would be rejected. The pin must CARRY its tipping point so the Clock,
  * which reads the FIELD set, gets it in DB mode too.
  */
-function stripNullTippingPoint(pin: FieldPin): FieldPin {
-  if (pin.tippingPoint == null) {
-    const { tippingPoint: _omit, ...rest } = pin;
-    return rest;
+function stripNullTippingPoint<T extends { tippingPoint?: unknown }>(entry: T): T {
+  if (entry.tippingPoint == null) {
+    const { tippingPoint: _omit, ...rest } = entry;
+    return rest as T;
   }
-  return pin;
+  return entry;
 }
 
 async function fieldDb(db: Database): Promise<FieldResponse> {
   const { rows } = await sql<FieldQueryRow>`
     WITH picked AS (
-      SELECT id, effect, significance, lat, lon, tipping_point, updated_at
+      SELECT id, name, effect, significance, lat, lon, tipping_point, updated_at
       FROM factors
       WHERE verification_state = 'verified'
         AND ABS(effect * significance) >= ${WEIGHT_FLOOR}
@@ -67,7 +67,17 @@ async function fieldDb(db: Database): Promise<FieldResponse> {
             'tippingPoint', tipping_point
           )
           ORDER BY ABS(effect * significance) DESC, id ASC
-        ),
+        ) FILTER (WHERE lat IS NOT NULL),
+        '[]'::json
+      ),
+      'globalFactors', COALESCE(
+        json_agg(
+          json_build_object(
+            'id', id, 'name', name, 'effect', effect, 'significance', significance,
+            'tippingPoint', tipping_point
+          )
+          ORDER BY ABS(effect * significance) DESC, id ASC
+        ) FILTER (WHERE lat IS NULL),
         '[]'::json
       ),
       'fieldEpoch', to_char(COALESCE(MAX(updated_at), NOW()) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')
@@ -76,8 +86,14 @@ async function fieldDb(db: Database): Promise<FieldResponse> {
   `.execute(db);
 
   const first = rows[0];
-  if (!first) return { pins: [], fieldEpoch: new Date().toISOString() };
-  return { ...first.payload, pins: first.payload.pins.map(stripNullTippingPoint) };
+  if (!first) {
+    return { pins: [], globalFactors: [], fieldEpoch: new Date().toISOString() };
+  }
+  return {
+    ...first.payload,
+    pins: first.payload.pins.map(stripNullTippingPoint),
+    globalFactors: first.payload.globalFactors.map(stripNullTippingPoint),
+  };
 }
 
 function fieldSeed(): FieldResponse {
@@ -95,14 +111,26 @@ function fieldSeed(): FieldResponse {
   // Copy tippingPoint through so the Clock (which reads the field set) anchors to
   // it in seed mode too. Spread it only when present, to keep the key
   // absent (not null) under exactOptionalPropertyTypes / the `.optional()` schema.
-  const pins: FieldPin[] = picked.map((f) => ({
-    id: f.id,
-    effect: f.effect,
-    significance: f.significance,
-    lat: f.lat,
-    lon: f.lon,
-    ...(f.tippingPoint ? { tippingPoint: f.tippingPoint } : {}),
-  }));
+  const pins: FieldPin[] = picked
+    .filter((f): f is typeof f & { lat: number; lon: number } => f.lat !== null && f.lon !== null)
+    .map((f) => ({
+      id: f.id,
+      effect: f.effect,
+      significance: f.significance,
+      lat: f.lat,
+      lon: f.lon,
+      ...(f.tippingPoint ? { tippingPoint: f.tippingPoint } : {}),
+    }));
+
+  const globalFactors: GlobalFactor[] = picked
+    .filter((f) => f.lat === null || f.lon === null)
+    .map((f) => ({
+      id: f.id,
+      name: f.name,
+      effect: f.effect,
+      significance: f.significance,
+      ...(f.tippingPoint ? { tippingPoint: f.tippingPoint } : {}),
+    }));
 
   // fieldEpoch = MAX(updated_at) over the set (ISO strings sort lexically in UTC).
   const first = picked[0];
@@ -110,7 +138,7 @@ function fieldSeed(): FieldResponse {
     ? picked.reduce((max, f) => (f.updatedAt > max ? f.updatedAt : max), first.updatedAt)
     : new Date().toISOString();
 
-  return { pins, fieldEpoch };
+  return { pins, globalFactors, fieldEpoch };
 }
 
 export default async function fieldRoutes(fastify: FastifyInstance): Promise<void> {

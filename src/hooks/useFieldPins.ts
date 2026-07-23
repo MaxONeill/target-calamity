@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { FieldResponseSchema } from '../../shared/schema.js';
-import type { FieldPin } from '../../shared/types.js';
+import type { FieldPin, GlobalFactor } from '../../shared/types.js';
 
 export interface FieldPinsState {
   fieldPins: FieldPin[];
+  /** Factors with no location. Off the bake, but still part of the aggregate. */
+  globalFactors: GlobalFactor[];
   /** Refetches the field set. Called on mount and on a stream invalidation. */
   reloadField: () => Promise<void>;
 }
@@ -19,6 +21,7 @@ export interface FieldPinsState {
  */
 export function useFieldPins(): FieldPinsState {
   const [fieldPins, setFieldPins] = useState<FieldPin[]>([]);
+  const [globalFactors, setGlobalFactors] = useState<GlobalFactor[]>([]);
 
   const reloadField = useCallback(async (): Promise<void> => {
     try {
@@ -26,6 +29,7 @@ export function useFieldPins(): FieldPinsState {
       if (!res.ok) throw new Error(`field ${res.status}`);
       const parsed = FieldResponseSchema.parse(await res.json());
       setFieldPins(parsed.pins);
+      setGlobalFactors(parsed.globalFactors);
     } catch (err) {
       console.error('[field] fetch failed:', err);
     }
@@ -35,5 +39,5 @@ export function useFieldPins(): FieldPinsState {
     void reloadField();
   }, [reloadField]);
 
-  return { fieldPins, reloadField };
+  return { fieldPins, globalFactors, reloadField };
 }

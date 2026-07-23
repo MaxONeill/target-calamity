@@ -49,7 +49,11 @@ export function draftContentHash(draft: ExtractedFactorDraft): string {
  * hashes) cannot.
  */
 export function bucketKey(draft: ExtractedFactorDraft): string {
-  const latCell = Math.floor(draft.lat);
-  const lonCell = Math.floor(draft.lon);
-  return `${draft.spatialPath}:${latCell}:${lonCell}`;
+  // Placeless factors have no cell, so they serialize on their spatial path
+  // alone. There are few of them and they collide with each other far more
+  // often than with anything located.
+  if (draft.lat === null || draft.lon === null) {
+    return `${draft.spatialPath}:global`;
+  }
+  return `${draft.spatialPath}:${Math.floor(draft.lat)}:${Math.floor(draft.lon)}`;
 }

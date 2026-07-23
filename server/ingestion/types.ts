@@ -31,8 +31,9 @@ export interface ExtractedFactorDraft {
   description: string;
   effect: number;
   significance: number;
-  lat: number;
-  lon: number;
+  /** WGS84 degrees, or null when the factor is genuinely placeless. */
+  lat: number | null;
+  lon: number | null;
   spatialPath: string;
   /**
    * The verification state Phase A already resolved for this draft: the
@@ -78,8 +79,9 @@ export const ExtractedFactorSchema = z.object({
   description: z.string().min(1).max(20_000),
   effect: z.number().finite().gte(-1).lte(1),
   significance: z.number().finite().gte(0).lte(1),
-  lat: z.number().finite().gte(-90).lte(90),
-  lon: z.number().finite().gte(-180).lte(180),
+  // Nullable: a placeless factor has no centre. Both or neither, enforced below.
+  lat: z.number().finite().gte(-90).lte(90).nullable(),
+  lon: z.number().finite().gte(-180).lte(180).nullable(),
   // 'global' or 'global.<segment>' — one root, at most one child (Phase 1).
   spatialPath: z.string().regex(/^global(\.[a-z0-9_]+)?$/, {
     message: "spatialPath must be 'global' or 'global.<code>' (depth <= 2)",

@@ -84,6 +84,17 @@ export const SNOW_FULL = 0.93; // |sin lat| ≈ 68°
 export const FIELD_STRENGTH_CAP = 0.6;
 
 /**
+ * Ceiling on the placeless-factor wash.
+ *
+ * Placeless factors have no position, so this tint is applied UNIFORMLY across
+ * the whole sphere. Kept deliberately low: the spatially-varying local field
+ * must stay visually dominant, so that a varying tint always means "evidence
+ * located here" and only a flat, even shift means "global factors". Raising
+ * this materially would start to erase that distinction.
+ */
+export const GLOBAL_TINT_CAP = 0.18;
+
+/**
  * Radial attenuation window. The field kernel `W ∝ 1/dᵏ` (k=2.5, eps=0.05)
  * has a huge dynamic range — across one 8° halo `W` runs ~120 at the rim to ~1600
  * at the pin — so a `smoothstep(W_MIN, W_FULL, W)` saturates and the halo reads as
@@ -207,6 +218,8 @@ uniform float uWMin;
 uniform float uWFull;
 uniform float uRampEdge;
 uniform float uFieldCap;    //  cap on field tint over the geographic base
+uniform vec3  uGlobalTint;  // ramp color of the placeless-factor aggregate
+uniform float uGlobalTintStrength; // 0 when there are none; <= GLOBAL_TINT_CAP
 uniform vec3 uCrimson;
 uniform vec3 uPurple;
 uniform vec3 uBlue;
@@ -282,7 +295,11 @@ vec3 geoFieldColor(vec3 dir, float e) {
   float lw = log(max(W, 1e-6));
   float t = clamp((lw - log(${HALO_RIM.toFixed(1)})) / (log(${HALO_PEAK.toFixed(1)}) - log(${HALO_RIM.toFixed(1)})), 0.0, 1.0);
   float fieldStrength = smoothstep(0.0, 1.0, t) * uFieldCap * step(uWMin, W);
-  return mix(geoBase, fieldColor, fieldStrength);
+
+  // Placeless factors wash the whole sphere evenly, beneath the local field, so
+  // a flat shift reads as "global" and any variation still means "located here".
+  vec3 washed = mix(geoBase, uGlobalTint, uGlobalTintStrength);
+  return mix(washed, fieldColor, fieldStrength);
 }
 
 // View-facing depth cue: dim the far side of the globe so the near hemisphere
@@ -351,6 +368,8 @@ export interface GlobeUniforms {
   uWFull: { value: number };
   uRampEdge: { value: number };
   uFieldCap: { value: number };
+  uGlobalTint: { value: THREE.Color };
+  uGlobalTintStrength: { value: number };
   uCrimson: { value: THREE.Vector3 };
   uPurple: { value: THREE.Vector3 };
   uBlue: { value: THREE.Vector3 };
@@ -372,6 +391,8 @@ export function createGlobeUniforms(): GlobeUniforms {
     uWFull: { value: W_FULL },
     uRampEdge: { value: RAMP_EDGE },
     uFieldCap: { value: FIELD_STRENGTH_CAP },
+    uGlobalTint: { value: new THREE.Color(0, 0, 0) },
+    uGlobalTintStrength: { value: 0 },
     uCrimson: { value: new THREE.Vector3(...COLOR_CRIMSON) },
     uPurple: { value: new THREE.Vector3(...COLOR_PURPLE) },
     uBlue: { value: new THREE.Vector3(...COLOR_BLUE) },
