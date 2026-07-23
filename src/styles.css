@@ -1,0 +1,392 @@
+/**
+ * Global layout + design tokens for Target: Calamity.
+ *
+ * Scope: this file owns ONLY the app shell — the full-bleed globe mount, the
+ * overlay grid, the top status bar, the panel slots, and shared design tokens
+ * (palette, type, scrollbars). The Clock and Sidebar style their own internals
+ * in src/ui/clock.css and src/ui/sidebar.css; nothing here reaches inside them.
+ *
+ * Aesthetic: a dark, monospace-forward instrument panel. Sober and technical —
+ * the credibility of an empirical tracker depends on it not reading as doomer
+ * theatre. Restrained accents, hairline rules, terminal typography.
+ */
+
+:root {
+  /* Surface palette — near-black with a faint cool cast. */
+  --tc-bg: #08080b;
+  --tc-panel: rgba(14, 15, 20, 0.82);
+  --tc-panel-solid: #0e0f14;
+  --tc-hairline: rgba(150, 160, 190, 0.14);
+  --tc-hairline-strong: rgba(150, 160, 190, 0.28);
+
+  /* Ink. */
+  --tc-ink: #c9ccd6;
+  --tc-ink-dim: #8b8f9e;
+  --tc-ink-faint: #5b5f6e;
+
+  /* Semantic accents — shared with the field ramp (ADR-3). */
+  --tc-calamity: #d92947; /* crimson  — negative effect */
+  --tc-humanity: #2e9ef7; /* electric blue — positive effect */
+  --tc-equilibrium: #6b2c8c; /* contested purple */
+  --tc-signal: #c8b26a; /* amber — advisory / pending */
+  --tc-live: #3fbf7f; /* green — live stream */
+
+  --tc-font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code",
+    Menlo, Consolas, "Liberation Mono", monospace;
+
+  --tc-topbar-h: 44px;
+  --tc-sidebar-w: 400px;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  background: var(--tc-bg);
+  color: var(--tc-ink);
+  font-family: var(--tc-font-mono);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgba(46, 158, 247, 0.32);
+  color: #fff;
+}
+
+/* Thin, dark scrollbars everywhere the app scrolls. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--tc-hairline-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--tc-hairline-strong);
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* -------------------------------------------------------------------------- */
+/* App shell                                                                  */
+/* -------------------------------------------------------------------------- */
+
+.tc-app {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 120% 90% at 50% 40%, rgba(30, 34, 52, 0.35), transparent 70%),
+    var(--tc-bg);
+}
+
+/* The three.js canvas mount fills the viewport behind everything. */
+.tc-globe-mount {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.tc-globe-canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  touch-action: none; /* let the orbit rig own pointer gestures */
+}
+
+/* Overlay layer — transparent to pointer events except its interactive panels,
+   so the globe stays draggable in every gap between the chrome. */
+.tc-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: var(--tc-topbar-h) 1fr auto;
+  grid-template-areas:
+    "topbar"
+    "clock"
+    "hint";
+  pointer-events: none;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Top status bar                                                             */
+/* -------------------------------------------------------------------------- */
+
+.tc-topbar {
+  grid-area: topbar;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--tc-topbar-h);
+  padding: 0 16px;
+  background: linear-gradient(180deg, rgba(8, 8, 11, 0.92), rgba(8, 8, 11, 0.55));
+  border-bottom: 1px solid var(--tc-hairline);
+  backdrop-filter: blur(6px);
+}
+
+.tc-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+.tc-brand-mark {
+  color: var(--tc-humanity);
+  font-size: 15px;
+  transform: translateY(1px);
+}
+.tc-brand-name {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: var(--tc-ink);
+  white-space: nowrap;
+}
+
+.tc-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  color: var(--tc-ink-dim);
+  white-space: nowrap;
+}
+.tc-status-sep {
+  color: var(--tc-ink-faint);
+}
+.tc-status-label--follow {
+  color: var(--tc-humanity);
+}
+/* Coastline overlay toggle (ADR-39) — reads as a status label, acts as a button. */
+.tc-status-toggle {
+  font: inherit;
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  color: var(--tc-ink-dim);
+  background: transparent;
+  border: 1px solid var(--tc-ink-faint);
+  border-radius: 3px;
+  padding: 1px 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tc-status-toggle:hover {
+  color: var(--tc-ink);
+  border-color: var(--tc-ink-dim);
+}
+.tc-status-toggle[aria-pressed='true'] {
+  color: #5fd0d8;
+  border-color: #5fd0d8;
+}
+.tc-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--tc-ink-faint);
+  box-shadow: 0 0 0 0 currentColor;
+}
+.tc-status-dot--connecting {
+  background: var(--tc-signal);
+  animation: tc-pulse 1.4s ease-in-out infinite;
+}
+.tc-status-dot--live {
+  background: var(--tc-live);
+  animation: tc-pulse 2.4s ease-in-out infinite;
+}
+.tc-status-dot--seed {
+  background: var(--tc-humanity);
+}
+.tc-status-dot--closed {
+  background: var(--tc-calamity);
+  animation: tc-pulse 1s ease-in-out infinite;
+}
+
+@keyframes tc-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tc-status-dot {
+    animation: none !important;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Panel slots                                                                */
+/* -------------------------------------------------------------------------- */
+
+.tc-clock-slot {
+  grid-area: clock;
+  pointer-events: auto;
+  align-self: start;
+  justify-self: start;
+  margin: 16px;
+  max-width: min(460px, 42vw);
+  width: max-content;
+}
+
+/* --------------------------------------------------------------------------
+   Right-edge slideout (ADR-40): a single panel hosting the factor FEED XOR the
+   node DETAIL, sliding over the full-bleed globe. Closed by default (globe is
+   the hero); the FEED tab or a pin/card selection opens it.
+   -------------------------------------------------------------------------- */
+
+.tc-slideout {
+  position: absolute;
+  top: var(--tc-topbar-h);
+  right: 0;
+  bottom: 0;
+  width: var(--tc-sidebar-w);
+  max-width: 100%;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--tc-hairline-strong);
+  background: var(--tc-panel);
+  backdrop-filter: blur(8px);
+  box-shadow: -18px 0 48px rgba(0, 0, 0, 0.5);
+  /* Closed: slid fully off the right edge and inert. */
+  transform: translateX(100%);
+  pointer-events: none;
+  transition: transform 240ms ease;
+}
+.tc-slideout--open {
+  transform: translateX(0);
+  pointer-events: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tc-slideout {
+    transition: none;
+  }
+}
+
+.tc-slideout__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+/* Sidebar/FactorDetails fill the body and manage their own inner scroll. */
+.tc-slideout__body > .tc-sidebar,
+.tc-slideout__body > .tc-details {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Collapse handle — a reverse tab clinging to the panel's outer-left edge,
+   over the globe. Only interactive/visible while the panel is open. */
+.tc-slideout__collapse {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translate(-100%, -50%);
+  width: 22px;
+  height: 66px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--tc-font-mono);
+  font-size: 16px;
+  color: var(--tc-ink-dim);
+  background: var(--tc-panel);
+  border: 1px solid var(--tc-hairline-strong);
+  border-right: none;
+  border-radius: 5px 0 0 5px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.tc-slideout__collapse:hover {
+  color: var(--tc-ink);
+}
+.tc-slideout__collapse:focus-visible {
+  outline: 2px solid var(--tc-humanity);
+  outline-offset: 1px;
+}
+.tc-slideout:not(.tc-slideout--open) .tc-slideout__collapse {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* FEED tab — the always-available opener on the right edge when closed. */
+.tc-feed-tab {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  z-index: 2;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 8px;
+  font-family: var(--tc-font-mono);
+  color: var(--tc-ink-dim);
+  background: linear-gradient(180deg, rgba(14, 15, 20, 0.94), rgba(14, 15, 20, 0.78));
+  border: 1px solid var(--tc-hairline-strong);
+  border-right: none;
+  border-radius: 6px 0 0 6px;
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+.tc-feed-tab:hover {
+  color: var(--tc-ink);
+  border-color: var(--tc-humanity);
+}
+.tc-feed-tab:focus-visible {
+  outline: 2px solid var(--tc-humanity);
+  outline-offset: 1px;
+}
+.tc-feed-tab__label {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  letter-spacing: 0.28em;
+  font-size: 11px;
+}
+
+.tc-hint {
+  grid-area: hint;
+  pointer-events: none;
+  align-self: end;
+  justify-self: start;
+  margin: 0 16px 14px;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--tc-ink-faint);
+  text-transform: uppercase;
+}
+
+@media (max-width: 860px) {
+  :root {
+    --tc-sidebar-w: 320px;
+  }
+  .tc-clock-slot {
+    max-width: min(360px, 60vw);
+  }
+}

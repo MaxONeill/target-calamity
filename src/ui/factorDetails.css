@@ -1,0 +1,316 @@
+/**
+ * FactorDetails panel (ADR-36). A floating instrument-panel drawer anchored
+ * bottom-left, over the globe, clear of the top-left Clock and the right Sidebar
+ * so all three stay usable. Reuses the shared card/citation classes defined in
+ * sidebar.css (tc-badge, tc-effectbar, tc-metric, tc-sigbar, tc-cite__*), which
+ * load globally; this file styles only the tc-details* wrapper.
+ */
+
+/* ADR-40: FactorDetails is no longer a separately-positioned floating drawer.
+   It fills the shared right-edge slideout body — the slideout owns position,
+   width, background and slide animation; this panel just fills it. */
+/* BUGFIX (polish pass): the shared card classes reused here — .tc-metric,
+   .tc-effectbar, .tc-sigbar, .tc-badge, .tc-cite__*, .tc-gestalt__* — are
+   defined in sidebar.css against custom properties declared on `.tc-sidebar`.
+   FactorDetails renders INSTEAD of the Sidebar (they are mutually exclusive in
+   the slideout, ADR-40), so it is never a descendant of `.tc-sidebar` and every
+   one of those `var(--tc-panel-3)` / `var(--tc-text-dim)` references resolved to
+   nothing — an invalid `background` computes to transparent, which is why the
+   SIG bar (and its track) painted at the right WIDTH but with no colour at all.
+   Re-declaring the same palette on `.tc-details` makes the inherited rules
+   resolve, so the detail bars now match the card's exactly. */
+.tc-details {
+  --tc-panel: #101017;
+  --tc-panel-2: #15151d;
+  --tc-panel-3: #1b1b24;
+  --tc-border: #23232e;
+  --tc-border-bright: #33333f;
+  --tc-text: #c8c8d0;
+  --tc-text-dim: #8b8b98;
+  --tc-text-faint: #5a5a66;
+  --tc-calamity: #ff3b5c;
+  --tc-humanity: #37b6ff;
+  --tc-pending: #d9a441;
+  --tc-radius: 3px;
+
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+  font-family: var(--tc-font-mono);
+  color: var(--tc-ink);
+  outline: none;
+}
+
+.tc-details__bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--tc-hairline);
+  flex: 0 0 auto;
+}
+.tc-details__tag {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--tc-ink-dim);
+  text-transform: uppercase;
+  margin-right: auto;
+}
+.tc-details__back {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--tc-hairline);
+  border-radius: 4px;
+  color: var(--tc-ink-dim);
+  font-family: inherit;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  padding: 5px 8px;
+  cursor: pointer;
+}
+.tc-details__back:hover {
+  color: var(--tc-ink);
+  border-color: var(--tc-hairline-strong);
+}
+.tc-details__back:focus-visible {
+  outline: 2px solid var(--tc-humanity);
+  outline-offset: 1px;
+}
+.tc-details__close {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--tc-hairline);
+  border-radius: 4px;
+  color: var(--tc-ink-dim);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1;
+  padding: 4px 7px;
+  cursor: pointer;
+}
+.tc-details__close:hover {
+  color: var(--tc-ink);
+  border-color: var(--tc-hairline-strong);
+}
+.tc-details__close:focus-visible {
+  outline: 2px solid var(--tc-humanity);
+  outline-offset: 1px;
+}
+
+.tc-details__body {
+  padding: 12px 14px 16px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.tc-details__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.tc-details__name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--tc-ink);
+}
+.tc-details__badges {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.tc-details__metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid var(--tc-hairline);
+  border-bottom: 1px solid var(--tc-hairline);
+}
+
+.tc-details__section-head {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--tc-ink-dim);
+  margin: 14px 0 6px;
+}
+.tc-details__count {
+  color: var(--tc-ink-faint);
+}
+
+/* Tipping point ---------------------------------------------------------- */
+.tc-details__tipping {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--tc-hairline);
+  border-left: 2px solid var(--tc-signal);
+  border-radius: 4px;
+  background: rgba(200, 178, 106, 0.06);
+}
+.tc-details__tipping .tc-details__section-head {
+  margin-top: 0;
+}
+.tc-details__tipping-year {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.tc-details__tipping-approx {
+  color: var(--tc-ink-faint);
+  font-size: 15px;
+}
+.tc-details__tipping-value {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--tc-signal);
+}
+.tc-details__tipping-range {
+  font-size: 11px;
+  color: var(--tc-ink-dim);
+}
+.tc-details__tipping-label {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  color: var(--tc-ink);
+}
+.tc-details__tipping-note {
+  margin: 6px 0 0;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--tc-ink-faint);
+}
+
+/* Reputability audit trail (ADR-33/-37) --------------------------------- */
+.tc-details__rep {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--tc-hairline);
+  border-left: 2px solid var(--tc-hairline-strong);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.tc-details__rep--pending {
+  border-left-color: var(--tc-pending);
+}
+.tc-details__rep .tc-details__section-head {
+  margin-top: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.tc-details__rep-score {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--tc-ink);
+  font-variant-numeric: tabular-nums;
+}
+.tc-details__rep-bar {
+  position: relative;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--tc-hairline);
+  overflow: hidden;
+  margin: 2px 0 8px;
+}
+.tc-details__rep-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 2px;
+}
+.tc-details__rep-fill--verified {
+  background: var(--tc-ink-dim);
+}
+.tc-details__rep-fill--pending {
+  background: var(--tc-pending);
+}
+.tc-details__rep-why {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--tc-ink-dim);
+}
+.tc-details__rep-reasoning {
+  margin: 6px 0 0;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--tc-ink-faint);
+  font-style: italic;
+}
+
+/* Description ------------------------------------------------------------- */
+.tc-details__desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--tc-ink);
+}
+
+/* Sources — a plain list: publisher + the URL as a real link, nothing else. */
+.tc-details__source-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tc-details__source {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--tc-hairline);
+  border-radius: 4px;
+  background: rgba(8, 8, 11, 0.4);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.tc-details__source-publisher {
+  color: var(--tc-ink);
+  overflow-wrap: anywhere;
+}
+.tc-details__source .tc-cite__link {
+  font-size: 10.5px;
+  overflow-wrap: anywhere;
+}
+
+/* Gestalt hand-off (moved here from the card). */
+.tc-details .tc-gestalt {
+  margin-top: 16px;
+}
+
+.tc-details__no-sources {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  font-size: 11.5px;
+  color: var(--tc-signal);
+  border: 1px dashed rgba(200, 178, 106, 0.4);
+  border-radius: 4px;
+}
+
+.tc-details__loading {
+  margin-top: 14px;
+  padding: 10px 12px;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--tc-ink-dim);
+  border: 1px dashed var(--tc-hairline-strong);
+  border-radius: 4px;
+}

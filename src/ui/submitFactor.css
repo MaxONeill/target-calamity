@@ -1,0 +1,301 @@
+/*
+ * Submission form styling (ADR-45) — the same dark instrument-panel language as
+ * the sidebar feed. Tokens are re-declared (not inherited) so the component is
+ * self-contained and can be mounted anywhere in the slideout without depending
+ * on `.tc-sidebar` being an ancestor.
+ */
+
+.tc-submit {
+  --tc-bg: #0a0a0e;
+  --tc-panel: #101017;
+  --tc-panel-2: #15151d;
+  --tc-panel-3: #1b1b24;
+  --tc-border: #23232e;
+  --tc-border-bright: #33333f;
+  --tc-text: #c8c8d0;
+  --tc-text-dim: #8b8b98;
+  --tc-text-faint: #5a5a66;
+  --tc-humanity: #37b6ff;
+  --tc-calamity: #ff3b5c;
+  --tc-pending: #d9a441;
+  --tc-radius: 3px;
+  --tc-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo,
+    Consolas, monospace;
+
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  width: 100%;
+  overflow-y: auto;
+  box-sizing: border-box;
+  background: var(--tc-bg);
+  color: var(--tc-text);
+  font-family: var(--tc-mono);
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+.tc-submit *,
+.tc-submit *::before,
+.tc-submit *::after {
+  box-sizing: border-box;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Header                                                                     */
+/* -------------------------------------------------------------------------- */
+
+.tc-submit__header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--tc-border);
+  background: linear-gradient(180deg, var(--tc-panel) 0%, var(--tc-bg) 100%);
+}
+
+.tc-submit__title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--tc-text-dim);
+}
+
+.tc-submit__close {
+  appearance: none;
+  border: 0;
+  background: none;
+  color: var(--tc-text-faint);
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 4px;
+  cursor: pointer;
+}
+
+.tc-submit__close:hover {
+  color: var(--tc-text);
+}
+
+.tc-submit__close:focus-visible {
+  outline: 1px solid var(--tc-humanity);
+  outline-offset: 2px;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Copy                                                                       */
+/* -------------------------------------------------------------------------- */
+
+.tc-submit__intro,
+.tc-submit__note {
+  margin: 0;
+  padding: 12px 14px 0;
+  font-size: 11.5px;
+  color: var(--tc-text-dim);
+  line-height: 1.55;
+}
+
+.tc-submit__note {
+  padding: 14px;
+  margin-top: auto;
+  color: var(--tc-text-faint);
+  font-size: 10.5px;
+  border-top: 1px solid var(--tc-border);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Form                                                                       */
+/* -------------------------------------------------------------------------- */
+
+.tc-submit__form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+}
+
+.tc-submit__label {
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--tc-text-faint);
+  margin-top: 6px;
+}
+
+.tc-submit__optional {
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+.tc-submit__input,
+.tc-submit__textarea {
+  width: 100%;
+  appearance: none;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--tc-text);
+  background: var(--tc-panel);
+  border: 1px solid var(--tc-border-bright);
+  border-radius: var(--tc-radius);
+  padding: 8px 9px;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.tc-submit__textarea {
+  resize: vertical;
+  min-height: 76px;
+}
+
+.tc-submit__input::placeholder,
+.tc-submit__textarea::placeholder {
+  color: var(--tc-text-faint);
+}
+
+.tc-submit__input:focus,
+.tc-submit__textarea:focus {
+  outline: none;
+  border-color: var(--tc-humanity);
+  background: var(--tc-panel-2);
+}
+
+.tc-submit__input:disabled,
+.tc-submit__textarea:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.tc-submit__counter {
+  align-self: flex-end;
+  font-size: 9.5px;
+  color: var(--tc-text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.tc-submit__error {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--tc-calamity);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Button                                                                     */
+/* -------------------------------------------------------------------------- */
+
+.tc-submit__btn {
+  appearance: none;
+  margin-top: 12px;
+  font-family: inherit;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 9px 12px;
+  border: 1px solid var(--tc-border-bright);
+  border-radius: var(--tc-radius);
+  background: var(--tc-panel-3);
+  color: var(--tc-text);
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.tc-submit__btn:hover:not(:disabled) {
+  background: var(--tc-panel-2);
+  border-color: var(--tc-humanity);
+}
+
+.tc-submit__btn:focus-visible {
+  outline: 1px solid var(--tc-humanity);
+  outline-offset: 2px;
+}
+
+.tc-submit__btn:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.tc-submit__btn--ghost {
+  background: transparent;
+  color: var(--tc-text-dim);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Result panel                                                               */
+/* -------------------------------------------------------------------------- */
+
+.tc-submit__result {
+  margin: 14px;
+  padding: 14px;
+  border: 1px solid var(--tc-border-bright);
+  border-left-width: 2px;
+  border-radius: var(--tc-radius);
+  background: var(--tc-panel);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+/* The four outcomes differ only in the accent stripe. `received` covers both a
+   genuine acceptance and a shadow-banned submitter — by design there is nothing
+   here that could tell them apart (ADR-45). */
+.tc-submit__result--received {
+  border-left-color: var(--tc-humanity);
+}
+.tc-submit__result--duplicate,
+.tc-submit__result--rejected {
+  border-left-color: var(--tc-text-faint);
+}
+.tc-submit__result--rate_limited {
+  border-left-color: var(--tc-pending);
+}
+
+.tc-submit__result-msg {
+  margin: 0;
+  font-size: 12px;
+  color: var(--tc-text-dim);
+  line-height: 1.55;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Status-bar trigger                                                         */
+/* -------------------------------------------------------------------------- */
+
+.tc-status-submit {
+  appearance: none;
+  border: 1px solid rgba(55, 182, 255, 0.35);
+  border-radius: 3px;
+  background: rgba(55, 182, 255, 0.08);
+  color: #37b6ff;
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background 120ms ease;
+}
+
+.tc-status-submit:hover {
+  background: rgba(55, 182, 255, 0.16);
+}
+
+.tc-status-submit:focus-visible {
+  outline: 1px solid #37b6ff;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tc-submit__input,
+  .tc-submit__textarea,
+  .tc-submit__btn,
+  .tc-status-submit {
+    transition: none;
+  }
+}

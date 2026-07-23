@@ -1,0 +1,141 @@
+/**
+ * Opaque, mode-tagged keyset cursors (ADR-15).
+ *
+ * A cursor is an internal, server-owned token: the client never inspects or
+ * constructs one, it only echoes back the `nextCursor` string it was handed.
+ * The wire form is base64url(JSON). The client sends `sortMode` and `viewport`
+ * as their own params, and the cursor carries copies of both so the server can
+ * 400 a cursor that disagrees with the request (a sort toggle or viewport
+ * change invalidates the cursor and the feed restarts from page one).
+ *
+ * SPEC DEVIATION (ADR-15a / confirmed defects #13 & #21): the spec paginates
+ * `recent` on `updated_at`. Phase D (ADR-19) rewrites `updated_at = NOW()` on
+ * escalation, so keying pagination on it silently SKIPS escalating rows for the
+ * rest of a scroll session. The shared `CursorSchema` (which this module now
+ * imports as its single source of truth) therefore keys `recent` on the
+ * immutable insert-only `seq` (BIGINT identity, never bumped). This also
+ * sidesteps confirmed defect #25 (microsecond timestamp truncation across a JSON
+ * round-trip): `seq` is an exact integer transmitted as a decimal string. The
+ * shared schema used to contradict this by keying on `updatedAt`; it no longer
+ * exists as a separate declaration — server and contract share one schema.
+ *
+ * SPEC DEVIATION (ADR-15 / task): `magnitude` mode is NOT deep-keyset-paginated.
+ * `abs(effect)` is also mutated by Phase D, so it is not a safe stable key. The
+ * feed serves magnitude as a single bounded top-N snapshot (nextCursor = null);
+ * there is therefore never a magnitude cursor to resume from.
+ */
+import { CursorSchema } from '../shared/schema.js';
+import type { Cursor, SortMode, Viewport } from '../shared/types.js';
+
+/* -------------------------------------------------------------------------- */
+/* Cursor payload (THE shared shape)                                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The cursor payload IS the shared `CursorSchema` (recent → immutable `seq`,
+ * magnitude → bounded `absEffect` snapshot). Importing it — rather than
+ * redeclaring a parallel schema — is what stops the shared contract and the
+ * server's real cursor from drifting again (they contradicted each other before:
+ * the shared schema keyed `recent` on `updatedAt`, which ADR-15a forbids).
+ */
+const CursorPayloadSchema = CursorSchema;
+
+export type CursorPayload = Cursor;
+export type RecentCursor = Extract<Cursor, { mode: 'recent' }>;
+export type MagnitudeCursor = Extract<Cursor, { mode: 'magnitude' }>;
+
+/** Thrown for any malformed / mismatched cursor. Routes map it to HTTP 400. */
+export class CursorError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CursorError';
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Encode / decode                                                            */
+/* -------------------------------------------------------------------------- */
+
+export function encodeCursor(payload: CursorPayload): string {
+  return Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+}
+
+export function decodeCursor(token: string): CursorPayload {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(Buffer.from(token, 'base64url').toString('utf8'));
+  } catch {
+    throw new CursorError('cursor is not valid base64url-encoded JSON');
+  }
+  const parsed = CursorPayloadSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw new CursorError('cursor payload failed schema validation');
+  }
+  return parsed.data;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Viewport helpers                                                           */
+/* -------------------------------------------------------------------------- */
+
+/** The whole globe — used when a request omits an explicit viewport. */
+export const FULL_GLOBE_VIEWPORT: Viewport = {
+  minLat: -90,
+  maxLat: 90,
+  minLon: -180,
+  maxLon: 180,
+};
+
+export function viewportsEqual(a: Viewport, b: Viewport): boolean {
+  return (
+    a.minLat === b.minLat &&
+    a.maxLat === b.maxLat &&
+    a.minLon === b.minLon &&
+    a.maxLon === b.maxLon
+  );
+}
+
+/**
+ * In-memory viewport test for seed mode, mirroring the PostGIS envelope in
+ * `factors.ts`. `minLon > maxLon` is the legal antimeridian-crossing signal
+ * (ViewportSchema): the longitude test becomes a UNION of two arcs rather than
+ * a single interval. Latitude never wraps.
+ */
+export function factorInViewport(lat: number, lon: number, vp: Viewport): boolean {
+  if (lat < vp.minLat || lat > vp.maxLat) return false;
+  if (vp.minLon <= vp.maxLon) {
+    return lon >= vp.minLon && lon <= vp.maxLon;
+  }
+  return lon >= vp.minLon || lon <= vp.maxLon; // crosses the antimeridian
+}
+
+/* -------------------------------------------------------------------------- */
+/* Request-time resolution                                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Decode a cursor and assert it belongs to this request. Returns `null` for the
+ * first page (no cursor). Throws {@link CursorError} on a malformed token, a
+ * sort-mode mismatch, or a viewport mismatch — the caller returns 400 and the
+ * client restarts from page one.
+ *
+ * Never emits a predicate over a NULL cursor (confirmed defect #26): a `null`
+ * return tells the query builder to omit the keyset predicate entirely.
+ */
+export function resolveCursor(
+  token: string | undefined,
+  mode: SortMode,
+  viewport: Viewport,
+): CursorPayload | null {
+  if (token === undefined || token === '') return null;
+  const cursor = decodeCursor(token);
+  if (cursor.mode !== mode) {
+    throw new CursorError(
+      `cursor sort mode "${cursor.mode}" does not match requested sort mode "${mode}"`,
+    );
+  }
+  if (!viewportsEqual(cursor.viewport, viewport)) {
+    throw new CursorError('cursor viewport does not match the requested viewport');
+  }
+  return cursor;
+}

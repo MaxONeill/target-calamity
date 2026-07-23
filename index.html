@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <meta
+      name="description"
+      content="Target: Calamity — an empirical, non-linear reality tracker measuring humanity's window of viable course-correction against cascading systemic tipping points."
+    />
+    <title>Target: Calamity</title>
+    <style>
+      /* Boot-time baseline so there is no white flash before the app mounts.
+         The application owns all real styling; this is only the dark canvas. */
+      :root {
+        color-scheme: dark;
+      }
+      html,
+      body,
+      #root {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        width: 100%;
+      }
+      body {
+        background: #08080b;
+        color: #c8c8d0;
+        font-family: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code",
+          Menlo, Consolas, monospace;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

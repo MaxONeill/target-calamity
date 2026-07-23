@@ -1,0 +1,45 @@
+{
+  "name": "target-calamity",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Target: Calamity — an empirical, non-linear reality tracker rendered on a 3D WebGL globe.",
+  "scripts": {
+    "dev": "vite",
+    "server": "tsx watch server/index.ts",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:up": "docker compose up -d",
+    "db:migrate": "tsx server/db/migrate.ts",
+    "ingest": "tsx server/ingestion/worker.ts",
+    "ingest:once": "tsx server/ingestion/worker.ts --once",
+    "fetch:elevation": "node scripts/fetch-elevation.mjs"
+  },
+  "dependencies": {
+    "fastify": "^5.1.0",
+    "kysely": "^0.27.4",
+    "openai": "^6.48.0",
+    "pg": "^8.13.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "three": "^0.171.0",
+    "topojson-client": "^3.1.0",
+    "world-atlas": "^2.0.2",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
+    "@types/react": "^18.3.17",
+    "@types/react-dom": "^18.3.5",
+    "@types/three": "^0.171.0",
+    "@types/topojson-client": "^3.1.5",
+    "@types/topojson-specification": "^1.0.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5",
+    "vitest": "^2.1.8"
+  }
+}

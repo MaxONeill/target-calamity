@@ -1,0 +1,65 @@
+-- =============================================================================
+-- Target: Calamity — 003_future_federation.sql.planned
+--
+--   *** THIS IS NOT AN ACTIVE MIGRATION. DO NOT APPLY IT IN PHASE 1. ***
+--
+-- The `.planned` extension is deliberate: the migration runner MUST only pick up
+-- files matching `NNN_*.sql`. This file ends in `.sql.planned` so it is skipped.
+-- It captures the Phase-2 federation DDL from comprehensive §8 and spec.md (v3.2)
+-- §5 as a design record, so the eventual migration is reviewed, not reinvented.
+--
+-- Rename to `003_future_federation.sql` ONLY when the federated-scanner / at-cost
+-- locality-registration roadmap is actually being built. Before doing so, also
+-- relax the Phase-1 depth guard on factors.spatial_path (the
+-- `nlevel(spatial_path) <= 2 AND spatial_path <@ 'global'` CHECK in 001_init.sql),
+-- since variable-depth localities (e.g. 'global.us.or.portland') are the whole
+-- point of Phase 2 and that CHECK will reject them.
+--
+-- Requires the extensions already enabled by 001_init.sql (ltree, at minimum).
+-- =============================================================================
+
+-- -----------------------------------------------------------------------------
+-- registered_nodes — authorized federated scanners (comprehensive §8 / v3.2 §5).
+-- -----------------------------------------------------------------------------
+-- Kept close to the spec's proposed shape, with the same enforcement hardening
+-- applied to the Phase-1 tables (NOT NULL where the spec relied on DEFAULT only,
+-- explicit CHECKs for documented enumerations/ranges, an updated_at on the cursor
+-- path). These are Phase-2 decisions to confirm at build time, not adopted ADRs.
+CREATE TABLE registered_nodes (
+    id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    -- One node owns one sub-path branch, e.g. 'global.us.or.portland'. UNIQUE from
+    -- the spec. No depth CHECK here on purpose — Phase 2 is exactly where deep paths
+    -- become legal.
+    spatial_path   LTREE NOT NULL UNIQUE
+                     CHECK (spatial_path <@ 'global'::ltree),
+
+    -- Asymmetric public key used by the Central Router to verify signed payloads.
+    public_key     TEXT NOT NULL,
+
+    -- Node state lifecycle. The spec left this as bare TEXT DEFAULT 'pending'; we
+    -- pin the enumeration so an invalid state cannot enter. Adjust the allowed set
+    -- when the lifecycle is finalized.
+    status         TEXT NOT NULL DEFAULT 'pending'
+                     CHECK (status IN ('pending', 'active', 'suspended', 'revoked')),
+
+    -- At-cost infrastructure credit. Non-negative: a node cannot run into negative
+    -- balance silently. The behavior when the balance reaches zero (halt scanning,
+    -- alert, grace period) is a Phase-2 policy decision still to be specified.
+    upkeep_balance NUMERIC(14, 4) NOT NULL DEFAULT 0.0
+                     CHECK (upkeep_balance >= 0),
+
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_registered_nodes_spatial_path ON registered_nodes USING gist (spatial_path);
+CREATE INDEX idx_registered_nodes_status       ON registered_nodes (status);
+
+-- Phase-2 open questions to resolve before this becomes active (tracked here so
+-- they are not lost):
+--   * Zero-balance behavior for at-cost billing (halt / alert / grace).
+--   * Whether factors ingested by a node must carry that node's id (provenance FK)
+--     and be constrained to its designated spatial_path sub-tree by the Router.
+--   * Signature verification / trust-boundary enforcement (see the ingestion
+--     provenance concerns in the audit — provenance allowlist, quarantine table).

@@ -1,0 +1,44 @@
+# One command to a working database (ADR-22): `npm run db:up`.
+#
+# Builds a Postgres 17 image carrying vector + ltree + postgis (see db/Dockerfile).
+# On first boot with an empty data volume, every *.sql file in db/migrations is
+# executed in alphabetical order via the standard docker-entrypoint-initdb.d
+# hook, so a fresh clone comes up fully schema'd. Each migration self-registers in
+# a `schema_migrations` ledger as it runs. `npm run db:migrate` (server/db/migrate.ts)
+# reads that ledger and applies only files not yet recorded, so it is the safe,
+# idempotent re-run path for an already-initialised volume and the way later
+# migrations reach a volume that initdb only bootstrapped with the earlier ones.
+
+services:
+  db:
+    build:
+      context: ./db
+      dockerfile: Dockerfile
+    image: target-calamity-db:pg17
+    container_name: calamity-db
+    restart: unless-stopped
+    environment:
+      # Overridable via a root .env (docker compose auto-loads it). Defaults
+      # mirror .env.example so `db:up` works with zero configuration.
+      POSTGRES_USER: ${POSTGRES_USER:-calamity}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-calamity_dev_pw}
+      POSTGRES_DB: ${POSTGRES_DB:-calamity}
+      # Deterministic, UTC timestamps — the pagination cursor depends on ordering.
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # First-boot schema bootstrap. Files run once, on an empty data dir only.
+      - ./db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-calamity} -d ${POSTGRES_DB:-calamity}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  pgdata:
+    name: calamity-pgdata
