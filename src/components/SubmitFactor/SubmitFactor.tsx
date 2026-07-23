@@ -24,9 +24,9 @@ import {
   SUBMISSION_CLAIM_MAX,
   SUBMISSION_CLAIM_MIN,
   SUBMISSION_NOTE_MAX,
-} from '../../shared/schema.js';
-import type { SubmissionResponse } from '../../shared/types.js';
-import './submitFactor.css';
+} from '../../../shared/schema.js';
+import type { SubmissionResponse } from '../../../shared/types.js';
+import './SubmitFactor.css';
 
 /** localStorage key holding the persistent device id. */
 const DEVICE_ID_KEY = 'tc.deviceId';

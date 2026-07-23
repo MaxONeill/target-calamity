@@ -1,14 +1,9 @@
 /**
- * Clock explainer meta-system.
+ * Renders both the `[ i ]` trigger glyph and the modal it opens.
  *
- * Self-contained: renders BOTH the `[ i ]` trigger glyph (absolute top-right of
- * its positioned container — the Clock places it) AND the modal it opens. The
- * modal is a full-height, scannable panel over a blurred backdrop; it is
- * `aria-modal`, focus-trapped, and closes on Escape or backdrop click, restoring
- * focus to the trigger. Copy is transcribed verbatim in `explainerCopy.ts`.
- *
- * `onOpenChange` lets the parent halt the ambient tick while the modal is open
- * (spec: "halts the background ambient clock ticking sound").
+ * The modal is focus-trapped and closes on Escape or backdrop click, restoring
+ * focus to the trigger. `onOpenChange` lets the Clock halt the ambient tick
+ * while it is open.
  */
 import {
   useCallback,
@@ -20,6 +15,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { EXPLAINER_COPY } from './explainerCopy.js';
+import './ExplainerModal.css';
 
 export interface ExplainerModalProps {
   /** Notified whenever the modal opens (`true`) or closes (`false`). */

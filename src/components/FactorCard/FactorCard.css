@@ -1,0 +1,209 @@
+/*
+ * Factor card — one row of the feed. Inherits the sidebar palette variables
+ * defined in styles.css.
+ */
+.tc-card {
+  position: relative;
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--tc-panel);
+  border: 1px solid var(--tc-border);
+  border-left: 2px solid var(--tc-border-bright);
+  border-radius: var(--tc-radius);
+  padding: 11px 12px 12px;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.tc-card:hover {
+  background: var(--tc-panel-2);
+  border-color: var(--tc-border-bright);
+}
+
+.tc-card:focus-visible {
+  outline: none;
+  border-color: var(--tc-humanity);
+}
+
+.tc-card--selected {
+  background: var(--tc-panel-2);
+  border-color: var(--tc-border-bright);
+}
+
+/* Polarity accent stripe on the left edge, tinted by effect sign. */
+.tc-card--calamity {
+  border-left-color: var(--tc-calamity);
+}
+.tc-card--humanity {
+  border-left-color: var(--tc-humanity);
+}
+.tc-card--neutral {
+  border-left-color: var(--tc-equilibrium);
+}
+
+.tc-card--selected.tc-card--calamity {
+  box-shadow: inset 0 0 0 1px rgba(255, 59, 92, 0.25);
+}
+.tc-card--selected.tc-card--humanity {
+  box-shadow: inset 0 0 0 1px rgba(55, 182, 255, 0.25);
+}
+.tc-card--selected.tc-card--neutral {
+  box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.25);
+}
+
+/* ---- card header row ---- */
+.tc-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tc-card__name {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--tc-text);
+  overflow-wrap: anywhere;
+}
+
+.tc-badge {
+  display: inline-block;
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 5px;
+  border-radius: 2px;
+  border: 1px solid var(--tc-border-bright);
+  color: var(--tc-text-dim);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.tc-badge--zone {
+  color: var(--tc-text-dim);
+}
+
+.tc-badge--pending {
+  color: var(--tc-pending);
+  border-color: rgba(217, 164, 65, 0.4);
+  background: rgba(217, 164, 65, 0.08);
+}
+
+.tc-badge--verified {
+  color: var(--tc-text-faint);
+  border-color: var(--tc-border);
+}
+
+/* ---- description ---- */
+.tc-card__desc {
+  margin: 7px 0 0;
+  font-size: 12px;
+  color: var(--tc-text-dim);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---- metrics: effect diverging bar + significance bar ---- */
+.tc-metrics {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.tc-metric {
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.tc-metric__label {
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--tc-text-faint);
+}
+
+.tc-metric__value {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--tc-text-dim);
+  text-align: right;
+  min-width: 44px;
+}
+
+/* Effect: diverging bar with a centre origin. */
+.tc-effectbar {
+  position: relative;
+  height: 6px;
+  background: var(--tc-panel-3);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.tc-effectbar__center {
+  position: absolute;
+  left: 50%;
+  top: -1px;
+  bottom: -1px;
+  width: 1px;
+  background: var(--tc-border-bright);
+  transform: translateX(-0.5px);
+  z-index: 2;
+}
+
+.tc-effectbar__fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  /* width + offset set inline from |effect| */
+}
+
+.tc-effectbar__fill--neg {
+  right: 50%;
+  background: linear-gradient(90deg, var(--tc-calamity) 0%, rgba(255, 59, 92, 0.55) 100%);
+}
+
+.tc-effectbar__fill--pos {
+  left: 50%;
+  background: linear-gradient(90deg, rgba(55, 182, 255, 0.55) 0%, var(--tc-humanity) 100%);
+}
+
+.tc-metric__value--calamity {
+  color: var(--tc-calamity);
+}
+.tc-metric__value--humanity {
+  color: var(--tc-humanity);
+}
+
+/* Significance: simple left-anchored bar. */
+.tc-sigbar {
+  position: relative;
+  height: 6px;
+  background: var(--tc-panel-3);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.tc-sigbar__fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--tc-text-dim);
+  /* width set inline from significance */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tc-card {
+    transition: none;
+  }
+}

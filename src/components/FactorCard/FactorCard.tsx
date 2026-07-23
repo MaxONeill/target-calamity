@@ -1,3 +1,4 @@
+import './FactorCard.css';
 /**
  * FactorCard — one row of the linear factor feed.
  *
@@ -12,7 +13,7 @@
  * and passes the current `tabIndex` in. Selection commits via `onSelect`.
  */
 import { forwardRef } from 'react';
-import type { Factor } from '../../shared/types.js';
+import type { Factor } from '../../../shared/types.js';
 
 export interface FactorCardProps {
   factor: Factor;

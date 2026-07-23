@@ -38,11 +38,11 @@ import { PinLayer } from './globe/PinLayer.js';
 import { OrbitRig, GLOBE_RADIUS, MIN_ZOOM, MAX_ZOOM } from './camera/OrbitRig.js';
 import { OrbitAlignment } from './camera/alignment.js';
 import { attachInterrupt } from './camera/interrupt.js';
-import { Sidebar } from './ui/Sidebar.js';
-import { Clock } from './ui/Clock.js';
-import { FactorDetails } from './ui/FactorDetails.js';
-import { SubmitFactor } from './ui/SubmitFactor.js';
-import type { ClockFactorInput, TippingPoint as ClockTippingPoint } from './ui/clockModel.js';
+import { Sidebar } from './components/Sidebar/index.js';
+import { Clock } from './components/Clock/index.js';
+import { FactorDetails } from './components/FactorDetails/index.js';
+import { SubmitFactor } from './components/SubmitFactor/index.js';
+import type { ClockFactorInput, TippingPoint as ClockTippingPoint } from './lib/clock/clockModel.js';
 
 /**
  * Project a field pin onto the Clock's input shape. The zod-inferred

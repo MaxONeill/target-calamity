@@ -15,9 +15,9 @@
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
-import type { Factor, SortMode } from '../../shared/types.js';
-import { FactorCard } from './FactorCard.js';
-import './sidebar.css';
+import type { Factor, SortMode } from '../../../shared/types.js';
+import { FactorCard } from '../FactorCard/index.js';
+import './Sidebar.css';
 
 export interface SidebarProps {
   factors: Factor[];

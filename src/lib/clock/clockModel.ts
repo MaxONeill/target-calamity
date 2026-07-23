@@ -43,7 +43,7 @@
  * The view layer converts that to a wall-clock deadline (via {@link
  * targetDeadlineMs}) and counts down toward it, so this stays unit-testable.
  */
-import type { VerificationState } from '../../shared/types.js';
+import type { VerificationState } from '../../../shared/types.js';
 
 /**
  * A dated, (near-)irreversible threshold a factor represents. Optional on a

@@ -1,0 +1,164 @@
+/*
+ * Explainer trigger + modal. Shares the Clock panel's monospace instrument
+ * language; see Clock.css for the palette rationale.
+ */
+
+.tc-explainer-panel * {
+  box-sizing: border-box;
+}
+
+/* ============================ explainer trigger =========================== */
+
+.tc-explainer-trigger {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  padding: 3px 7px;
+  font-family: var(--tc-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--tc-text-dim);
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--tc-line-strong);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: color 120ms ease;
+}
+
+.tc-explainer-trigger:hover,
+.tc-explainer-trigger:focus-visible {
+  color: var(--tc-accent);
+  outline: none;
+  animation: tc-border-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes tc-border-pulse {
+  0%,
+  100% {
+    border-color: var(--tc-line-strong);
+    box-shadow: 0 0 0 0 rgba(111, 183, 201, 0);
+  }
+  50% {
+    border-color: var(--tc-accent);
+    box-shadow: 0 0 0 2px rgba(111, 183, 201, 0.22);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tc-explainer-trigger:hover,
+  .tc-explainer-trigger:focus-visible {
+    animation: none;
+    border-color: var(--tc-accent);
+  }
+}
+
+/* ============================= explainer modal ============================ */
+
+.tc-explainer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(4, 6, 9, 0.62);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.tc-explainer-panel {
+  --tc-mono: 'JetBrains Mono', 'SFMono-Regular', 'Consolas', 'Menlo',
+    'Liberation Mono', ui-monospace, monospace;
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 100%);
+  height: 100%;
+  padding: 0;
+  background: #0c0f15;
+  border-left: 1px solid #303a4a;
+  color: #c6d0dc;
+  font-family: var(--tc-mono);
+  box-shadow: -24px 0 60px rgba(0, 0, 0, 0.5);
+  outline: none;
+}
+
+.tc-explainer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px;
+  border-bottom: 1px solid #232a36;
+}
+
+.tc-explainer-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #dfe6ee;
+}
+
+.tc-explainer-close {
+  flex: none;
+  padding: 4px 8px;
+  font-family: inherit;
+  font-size: 12px;
+  color: #7c8798;
+  background: transparent;
+  border: 1px solid #303a4a;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+
+.tc-explainer-close:hover,
+.tc-explainer-close:focus-visible {
+  color: #d8465b;
+  border-color: #d8465b;
+  outline: none;
+}
+
+.tc-explainer-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 8px 24px 28px;
+}
+
+.tc-explainer-section {
+  padding: 18px 0;
+  border-bottom: 1px solid #1a212c;
+}
+
+.tc-explainer-section:last-child {
+  border-bottom: none;
+}
+
+.tc-explainer-section-heading {
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #6fb7c9;
+}
+
+.tc-explainer-section-body {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #b3bdca;
+}
+
+@media (max-width: 520px) {
+  .tc-clock {
+    padding: 16px;
+  }
+  .tc-clock-horizon-value {
+    font-size: 46px;
+  }
+  .tc-clock-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

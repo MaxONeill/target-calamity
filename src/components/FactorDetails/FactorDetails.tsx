@@ -24,8 +24,8 @@
  * panel on open (restoring nothing — the sidebar/globe keep their own focus model).
  */
 import { useEffect, useRef } from 'react';
-import type { Factor, FieldPin, TippingPoint } from '../../shared/types.js';
-import './factorDetails.css';
+import type { Factor, FieldPin, TippingPoint } from '../../../shared/types.js';
+import './FactorDetails.css';
 
 export interface FactorDetailsProps {
   /** The fully-loaded factor (carries citations). Takes priority over `pin`. */
