@@ -1,40 +1,29 @@
 /**
- * Curated seed data for "Target: Calamity" — real, sourced factors drawn from
- * the "Alchemizing Reality" research document.
+ * Curated seed factors — the no-database fallback the API serves when
+ * `DATABASE_URL` is unset.
  *
- * PROVENANCE — read this honestly. The on-disk essay (`Prompt.txt`) carries NO
- * bibliography, so the first pass of these citations was reconstructed from model
- * knowledge. They have since been reconciled against the product owner's
- * referenced bibliography, reproduced as the single source of truth in
- * `docs/seed data-bibliography.md`. Every citation here is traced back to an entry
- * in that file: publisher and `sourceUrl` are re-pointed to match the
- * bibliography, `quoteSnippet`s are typed as verbatim vs paraphrase (see below),
- * and every "correction flag" the bibliography records is carried into the data
- * rather than silently cleaned up to the more dramatic number.
+ * Every entry carries its own provenance inline: publisher, source URL, and a
+ * quote typed as verbatim or paraphrase. That inline trail is the claim these
+ * factors make; nothing here asserts more than it can show.
  *
- * Editorial rules applied here (see `docs/seed data-bibliography.md`, "Rules"):
- *   - `quoteSnippet` + `verbatim`: `verbatim: true` ONLY where the snippet is a
- *     genuine contiguous span from the cited source; `verbatim: false` where it
- *     is a paraphrase/summary or a composite no single source sentence contains.
- *     The UI renders the latter WITHOUT quotation marks (never a fake quote).
- *   - Correction flags carried, not dropped: AMOC 95% CI is 2025–2095 (not the
- *     essay's 2065); 2024 US federal lobbying is $4.4B per OpenSecrets (not
- *     $4.5B); the AI-degree "77%" overstatement is corrected to ~two-thirds
- *     master's+ per Lightcast; pollinator value is the $235–577B RANGE, not just
- *     the $577B top.
- *   - `verificationState: 'verified'` requires the citation to trace to the
- *     bibliography (rule #4). A handful of real, well-known sources (IRENA, the
- *     Global Tipping Points Report, REScoop.eu, Global Forest Watch, the PNAS
- *     breadbasket study) are NOT reproduced in the seed data bibliography, so their
- *     factors are held at `'pending'` — they stay in the feed but are kept off
- *     the verified field/Clock until added to the seed data. Their citations are
- *     retained with an analyst note stating exactly why.
- *   - `effect ∈ [-1, 1]`: negative = Calamity (systemic decay), positive =
- *     Humanity (resilient counter-measure), magnitude ~ systemic reach.
- *   - `significance ∈ [0, 1]`: confidence / weight of the evidence.
+ * Editorial rules:
+ *   - `verbatim: true` ONLY where the snippet is a genuine contiguous span from
+ *     the cited source. Paraphrases and composites are `false`, and the UI
+ *     renders those without quotation marks so a summary cannot read as a quote.
+ *   - Corrections are carried, never rounded toward the more dramatic figure:
+ *     the AMOC 95% interval is 2025–2095, 2024 US federal lobbying is $4.4B per
+ *     OpenSecrets, the AI-degree share is ~two-thirds master's+ per Lightcast,
+ *     and pollinator value is the $235–577B range rather than its top.
+ *   - `verificationState: 'verified'` marks factors whose citation was checked
+ *     against the owner's source review. Five factors cite real, well-known
+ *     publications that were never part of that review, so they are held at
+ *     `'pending'`: they appear in the feed but stay off the field bake and the
+ *     Clock aggregate. Each carries an analyst note saying so.
+ *   - `effect ∈ [-1, 1]`: negative = Calamity, positive = Humanity, magnitude
+ *     tracking systemic reach. `significance ∈ [0, 1]`: weight of the evidence.
  *
- * The identical data is mirrored in `db/seed.sql`. IDs are stable, valid v4-form
- * UUIDs so the two representations reference the same rows.
+ * Mirrored byte-for-byte by `db/seed.sql`; IDs are stable so both
+ * representations reference the same rows.
  */
 import type { Factor } from './types.js';
 
@@ -104,7 +93,7 @@ export const SEED_FACTORS: Factor[] = [
           'Northern permafrost soils hold on the order of 1,460–1,600 gigatons of organic carbon — roughly twice the carbon currently in the atmosphere.',
         verbatim: false,
         analystNotes:
-          'Re-pointed to Schuur et al. (2015), the corpus bibliography entry for the permafrost carbon stock; NOAA Arctic Report Card figures corroborate the ~1,460–1,600 GtC range (the corpus’s 1,400–1,700 Gt band additionally includes deep deposits). Abrupt-thaw acceleration and its poor representation in most Earth-system models are documented separately (Turetsky et al., 2020).',
+          'Re-pointed to Schuur et al. (2015), the source-review entry for the permafrost carbon stock; NOAA Arctic Report Card figures corroborate the ~1,460–1,600 GtC range (the essay’s 1,400–1,700 Gt band additionally includes deep deposits). Abrupt-thaw acceleration and its poor representation in most Earth-system models are documented separately (Turetsky et al., 2020).',
         retrievedAt: ts(2),
       },
     ],
@@ -173,7 +162,7 @@ export const SEED_FACTORS: Factor[] = [
           'The Atlantic Meridional Overturning Circulation is warned to be on course to collapse around mid-century, with a 95% confidence range of 2025–2095.',
         verbatim: false,
         analystNotes:
-          'Correction (corpus bibliography): the essay’s “95% CI at 2065, bounds 2037–2109” does NOT match the paper. Ditlevsen & Ditlevsen give a 95% confidence range of 2025–2095, central estimate around mid-century. The result remains contested across the field, so significance is held below the harder-observed climate factors.',
+          'Correction (source review): the essay’s “95% CI at 2065, bounds 2037–2109” does NOT match the paper. Ditlevsen & Ditlevsen give a 95% confidence range of 2025–2095, central estimate around mid-century. The result remains contested across the field, so significance is held below the harder-observed climate factors.',
         retrievedAt: ts(4),
       },
     ],
@@ -202,7 +191,7 @@ export const SEED_FACTORS: Factor[] = [
           'Over 40% of invertebrate pollinator species — particularly bees and butterflies — face extinction; US$235–577 billion of annual global food production relies on pollinators.',
         verbatim: false,
         analystNotes:
-          'Correction (bibliography flag): pollination services are valued as a $235–577 billion/yr RANGE; the corpus’s “up to $577B” top-of-range figure is carried as the full range, not just the maximum.',
+          'Correction (source review): pollination services are valued as a $235–577 billion/yr RANGE; the essay’s “up to $577B” top-of-range figure is carried as the full range, not just the maximum.',
         retrievedAt: ts(5),
       },
     ],
@@ -289,7 +278,7 @@ export const SEED_FACTORS: Factor[] = [
         quoteSnippet: 'In 2024, lobbying spending reached a record-breaking $4.4 billion.',
         verbatim: true,
         analystNotes:
-          'Correction (bibliography flag): the corpus/essay states $4.5 billion (a Bloomberg Government tally). OpenSecrets, the standard registry-based source, reports $4.4 billion for 2024; the corrected $4.4B figure is used.',
+          'Correction (source review): the essay states $4.5 billion (a Bloomberg Government tally). OpenSecrets, the standard registry-based source, reports $4.4 billion for 2024; the corrected $4.4B figure is used.',
         retrievedAt: ts(8),
       },
     ],
@@ -377,7 +366,7 @@ export const SEED_FACTORS: Factor[] = [
           'Generative AI could expose the equivalent of 300 million full-time jobs to automation worldwide.',
         verbatim: true,
         analystNotes:
-          'Counter-evidence carried deliberately: firm-level studies (PwC, Brookings) find AI adoption correlates with higher employment and wage premiums for AI-skilled workers — the effect is reallocation, not simple destruction. Correction (bibliography flag): the corpus’s "77% of new AI jobs require a master’s" is an overstatement; Lightcast data indicate roughly two-thirds of AI-engineering postings require a master’s or higher (~43% master’s + ~23% PhD/professional), and PwC’s 2025 Barometer finds degree requirements for AI-exposed jobs falling.',
+          'Counter-evidence carried deliberately: firm-level studies (PwC, Brookings) find AI adoption correlates with higher employment and wage premiums for AI-skilled workers — the effect is reallocation, not simple destruction. Correction (source review): the essay’s "77% of new AI jobs require a master’s" is an overstatement; Lightcast data indicate roughly two-thirds of AI-engineering postings require a master’s or higher (~43% master’s + ~23% PhD/professional), and PwC’s 2025 Barometer finds degree requirements for AI-exposed jobs falling.',
         retrievedAt: ts(11),
       },
     ],
@@ -435,7 +424,7 @@ export const SEED_FACTORS: Factor[] = [
           'EPA estimated that the generation of textiles in 2018 was 17 million tons, and the recycling rate for all textiles was 14.7 percent.',
         verbatim: false,
         analystNotes:
-          'The corpus’s "92 million tonnes/year" global figure is an industry estimate (aggregating UNEP / Ellen MacArthur); the EPA numbers are used as the directly verifiable US subset. Pin placed at Dhaka as a representative garment-production hub.',
+          'The essay’s "92 million tonnes/year" global figure is an industry estimate (aggregating UNEP / Ellen MacArthur); the EPA numbers are used as the directly verifiable US subset. Pin placed at Dhaka as a representative garment-production hub.',
         retrievedAt: ts(13),
       },
     ],
@@ -509,7 +498,7 @@ export const SEED_FACTORS: Factor[] = [
           'The probability of simultaneous maize production losses greater than 10% across the top exporters increases to 7% under 2 °C warming and 86% under 4 °C warming.',
         verbatim: false,
         analystNotes:
-          'Source not in docs/corpus-bibliography.md: Tigchelaar et al. (2018, PNAS) is a real, well-known primary source but is not reproduced in the corpus, so this factor is held at "pending" (kept off the verified field/Clock) until it is added. Pin placed in the US Corn Belt as a representative production region; the risk is joint across all four exporters.',
+          'Not in the source review: Tigchelaar et al. (2018, PNAS) is a real primary source but was not part of the source review, so this factor is held at "pending" and kept off the verified field and the Clock aggregate until it is reviewed. Pin placed in the US Corn Belt as a representative production region; the risk is joint across all four exporters.',
         retrievedAt: ts(16),
       },
     ],
@@ -600,7 +589,7 @@ export const SEED_FACTORS: Factor[] = [
           'New onshore wind (USD 0.034/kWh) and solar PV (USD 0.043/kWh) are the cheapest sources of new electricity; 81% of 2023 renewable additions were cheaper than the cheapest fossil option.',
         verbatim: false,
         analystNotes:
-          'Source not in docs/corpus-bibliography.md: IRENA’s cost report is real and authoritative but is not reproduced in the corpus, so this factor is held at "pending" (kept off the verified field/Clock) until it is added.',
+          'Not in the source review: IRENA’s cost report is real and authoritative but was not part of the source review, so this factor is held at "pending" and kept off the verified field and the Clock aggregate until it is reviewed.',
         retrievedAt: ts(19),
       },
     ],
@@ -631,7 +620,7 @@ export const SEED_FACTORS: Factor[] = [
           'Positive tipping points have already been crossed in the adoption of solar PV and wind power globally, with solar PV capacity doubling every 2–3 years.',
         verbatim: false,
         analystNotes:
-          'Source not in docs/corpus-bibliography.md: the Global Tipping Points Report is real and well-cited but is not reproduced in the corpus, so this factor is held at "pending" (kept off the verified field/Clock) until it is added.',
+          'Not in the source review: the Global Tipping Points Report is real and well-cited but was not part of the source review, so this factor is held at "pending" and kept off the verified field and the Clock aggregate until it is reviewed.',
         retrievedAt: ts(20),
       },
     ],
@@ -661,7 +650,7 @@ export const SEED_FACTORS: Factor[] = [
         quoteSnippet: 'REScoop.eu represents over 2,250 energy cooperatives and 1,500,000 European citizens.',
         verbatim: false,
         analystNotes:
-          'Source not in docs/corpus-bibliography.md: REScoop.eu’s report is real but not reproduced in the corpus, so this factor is held at "pending" (kept off the verified field/Clock) until it is added. Pin placed in Germany, which hosts the largest number of energy cooperatives; the movement is pan-European.',
+          'Not in the source review: REScoop.eu’s report is real but was not part of the source review, so this factor is held at "pending" and kept off the verified field and the Clock aggregate until it is reviewed. Pin placed in Germany, which hosts the largest number of energy cooperatives; the movement is pan-European.',
         retrievedAt: ts(21),
       },
     ],
@@ -692,7 +681,7 @@ export const SEED_FACTORS: Factor[] = [
           'All data, maps, and analysis tools on GFW are free and open access, providing near-real-time information on forest change.',
         verbatim: false,
         analystNotes:
-          'Source not in docs/corpus-bibliography.md: Global Forest Watch is a real, well-known platform but is not reproduced in the corpus, so this factor is held at "pending" (kept off the verified field/Clock) until it is added.',
+          'Not in the source review: Global Forest Watch is a real, well-known platform but was not part of the source review, so this factor is held at "pending" and kept off the verified field and the Clock aggregate until it is reviewed.',
         retrievedAt: ts(22),
       },
     ],
