@@ -6,9 +6,6 @@
  * for negative / Calamity, electric blue for positive / Humanity — mirroring the
  * globe ramp, v3.2 §3 / ADR-3) and a significance bar. Everything else — the
  * sources, the verification/reputability audit trail, the tipping point, the
- * Gestalt hand-off — lives in the FactorDetails panel, one click away. Keeping
- * the honesty layer in ONE place (the detail view) stops the feed becoming a wall
- * of quotes nobody reads.
  *
  * Rendered as `role="option"` inside the Sidebar's `role="listbox"`. It is not
  * a native focusable control; the Sidebar owns roving tabindex + keyboard nav

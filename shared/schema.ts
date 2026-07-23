@@ -113,8 +113,6 @@ export const FactorSchema = z.object({
   lon: z.number().gte(-180).lte(180),
   zoneLevel: ZoneLevelSchema,
   verificationState: VerificationStateSchema,
-  /** Gestalt F2F trust-graph deep-link anchor; null until assigned. */
-  gestaltChannelAddress: z.string().nullable(),
   createdAt: z.string().datetime({ offset: true }),
   updatedAt: z.string().datetime({ offset: true }),
   citations: z.array(CitationSchema),

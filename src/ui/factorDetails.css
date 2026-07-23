@@ -10,7 +10,7 @@
    It fills the shared right-edge slideout body — the slideout owns position,
    width, background and slide animation; this panel just fills it. */
 /* BUGFIX (polish pass): the shared card classes reused here — .tc-metric,
-   .tc-effectbar, .tc-sigbar, .tc-badge, .tc-cite__*, .tc-gestalt__* — are
+   .tc-effectbar, .tc-sigbar, .tc-badge, .tc-cite__* — are
    defined in sidebar.css against custom properties declared on `.tc-sidebar`.
    FactorDetails renders INSTEAD of the Sidebar (they are mutually exclusive in
    the slideout, ADR-40), so it is never a descendant of `.tc-sidebar` and every
@@ -286,11 +286,6 @@
 .tc-details__source .tc-cite__link {
   font-size: 10.5px;
   overflow-wrap: anywhere;
-}
-
-/* Gestalt hand-off (moved here from the card). */
-.tc-details .tc-gestalt {
-  margin-top: 16px;
 }
 
 .tc-details__no-sources {

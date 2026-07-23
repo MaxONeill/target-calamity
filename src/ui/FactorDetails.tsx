@@ -25,7 +25,6 @@
  */
 import { useEffect, useRef } from 'react';
 import type { Factor, FieldPin, TippingPoint } from '../../shared/types.js';
-import { GestaltButton } from './GestaltButton.js';
 import './factorDetails.css';
 
 export interface FactorDetailsProps {
@@ -347,7 +346,6 @@ export function FactorDetails({ factor, pin, onClose }: FactorDetailsProps): JSX
             </div>
           )}
 
-          <GestaltButton channelAddress={factor.gestaltChannelAddress} />
         </div>
       ) : pin ? (
         <div className="tc-details__body">

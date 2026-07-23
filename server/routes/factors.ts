@@ -115,8 +115,7 @@ const CITATIONS_LATERAL = sql`
 
 /**
  * The whole factor assembled server-side as JSON. Timestamps are formatted to
- * microsecond ISO-8601 text (confirmed defect #25); `spatial_path` is rendered
- * ::text; `gestalt_channel_address` (BYTEA) is hex-encoded or null.
+ * microsecond ISO-8601 text and `spatial_path` is rendered ::text.
  */
 const FACTOR_JSON = sql`
   json_build_object(
@@ -130,7 +129,6 @@ const FACTOR_JSON = sql`
     'lon',                   f.lon,
     'zoneLevel',             f.zone_level,
     'verificationState',     f.verification_state,
-    'gestaltChannelAddress', encode(f.gestalt_channel_address, 'hex'),
     'createdAt',             to_char(f.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
     'updatedAt',             to_char(f.updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
     'citations',             COALESCE(c.citations, '[]'::json),

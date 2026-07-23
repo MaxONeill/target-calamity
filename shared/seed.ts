@@ -32,7 +32,6 @@
  *   - `effect ∈ [-1, 1]`: negative = Calamity (systemic decay), positive =
  *     Humanity (resilient counter-measure), magnitude ~ systemic reach.
  *   - `significance ∈ [0, 1]`: confidence / weight of the evidence.
- *   - `gestaltChannelAddress` is null for all seeds — a Phase 2 concern.
  *
  * The identical data is mirrored in `db/seed.sql`. IDs are stable, valid v4-form
  * UUIDs so the two representations reference the same rows.
@@ -59,7 +58,6 @@ export const SEED_FACTORS: Factor[] = [
     lon: 0.0,
     zoneLevel: 'global',
     verificationState: 'verified',
-    gestaltChannelAddress: null,
     createdAt: ts(1),
     updatedAt: ts(1),
     tippingPoint: {
@@ -94,7 +92,6 @@ export const SEED_FACTORS: Factor[] = [
     lon: 100.0,
     zoneLevel: 'global',
     verificationState: 'verified',
-    gestaltChannelAddress: null,
     createdAt: ts(2),
     updatedAt: ts(2),
     citations: [
@@ -124,7 +121,6 @@ export const SEED_FACTORS: Factor[] = [
     lon: -62.2,
     zoneLevel: 'national',
     verificationState: 'verified',
-    gestaltChannelAddress: null,
     createdAt: ts(3),
     updatedAt: ts(3),
     tippingPoint: {
@@ -159,7 +155,6 @@ export const SEED_FACTORS: Factor[] = [
     lon: -30.0,
     zoneLevel: 'global',
     verificationState: 'verified',
-    gestaltChannelAddress: null,
     createdAt: ts(4),
     updatedAt: ts(4),
     tippingPoint: {
@@ -195,7 +190,6 @@ export const SEED_FACTORS: Factor[] = [
     lon: 0.0,
     zoneLevel: 'global',
     verificationState: 'verified',
-    gestaltChannelAddress: null,
     createdAt: ts(5),
     updatedAt: ts(5),
     citations: [
@@ -225,7 +219,6 @@ export const SEED_FACTORS: Factor[] = [
     lon: 147.7,
     zoneLevel: 'global',
     verificationState: 'verified',
-    gestaltChannelAddress: null,
     createdAt: ts(6),
     updatedAt: ts(6),
     citations: [
@@ -255,7 +248,6 @@ export const SEED_FACTORS: Factor[] = [
     lon: 0.0,
     zoneLevel: 'global',
     verificationState: 'verified',
-    gestaltChannelAddress: null,
     createdAt: ts(7),
     updatedAt: ts(7),
     citations: [
@@ -286,7 +278,6 @@ export const SEED_FACTORS: Factor[] = [
     lon: -77.0365,
     zoneLevel: 'national',
     verificationState: 'verified',
-    gestaltChannelAddress: null,
     createdAt: ts(8),
     updatedAt: ts(8),
     citations: [
@@ -315,7 +306,6 @@ export const SEED_FACTORS: Factor[] = [
     lon: -122.3321,
     zoneLevel: 'national',
     verificationState: 'verified',
-    gestaltChannelAddress: null,
     createdAt: ts(9),
     updatedAt: ts(9),
     citations: [
@@ -346,7 +336,6 @@ export const SEED_FACTORS: Factor[] = [
     lon: 9.83,
     zoneLevel: 'global',
     verificationState: 'verified',
-    gestaltChannelAddress: null,
     createdAt: ts(10),
     updatedAt: ts(10),
     citations: [
@@ -376,7 +365,6 @@ export const SEED_FACTORS: Factor[] = [
     lon: -122.4194,
     zoneLevel: 'global',
     verificationState: 'verified',
-    gestaltChannelAddress: null,
     createdAt: ts(11),
     updatedAt: ts(11),
     citations: [
@@ -406,7 +394,6 @@ export const SEED_FACTORS: Factor[] = [
     lon: 30.0,
     zoneLevel: 'global',
     verificationState: 'verified',
-    gestaltChannelAddress: null,
     createdAt: ts(12),
     updatedAt: ts(12),
     citations: [
@@ -435,7 +422,6 @@ export const SEED_FACTORS: Factor[] = [
     lon: 90.4125,
     zoneLevel: 'global',
     verificationState: 'verified',
-    gestaltChannelAddress: null,
     createdAt: ts(13),
     updatedAt: ts(13),
     citations: [
@@ -466,7 +452,6 @@ export const SEED_FACTORS: Factor[] = [
     lon: -122.009,
     zoneLevel: 'national',
     verificationState: 'verified',
-    gestaltChannelAddress: null,
     createdAt: ts(14),
     updatedAt: ts(14),
     citations: [
@@ -512,7 +497,6 @@ export const SEED_FACTORS: Factor[] = [
     // reproduced in docs/corpus-bibliography.md, so it cannot ship as 'verified'
     // (corpus rule #4). It stays in the feed but is kept off the field/Clock.
     verificationState: 'pending',
-    gestaltChannelAddress: null,
     createdAt: ts(16),
     updatedAt: ts(16),
     citations: [
@@ -542,7 +526,6 @@ export const SEED_FACTORS: Factor[] = [
     lon: 0.0,
     zoneLevel: 'global',
     verificationState: 'verified',
-    gestaltChannelAddress: null,
     createdAt: ts(17),
     updatedAt: ts(17),
     citations: [
@@ -573,7 +556,6 @@ export const SEED_FACTORS: Factor[] = [
     lon: 0.0,
     zoneLevel: 'global',
     verificationState: 'verified',
-    gestaltChannelAddress: null,
     createdAt: ts(18),
     updatedAt: ts(18),
     citations: [
@@ -605,7 +587,6 @@ export const SEED_FACTORS: Factor[] = [
     // Held at 'pending': IRENA is a real source but is NOT in the corpus
     // bibliography (rule #4). Stays in the feed, off the verified field/Clock.
     verificationState: 'pending',
-    gestaltChannelAddress: null,
     createdAt: ts(19),
     updatedAt: ts(19),
     citations: [
@@ -638,7 +619,6 @@ export const SEED_FACTORS: Factor[] = [
     // Held at 'pending': the Global Tipping Points Report is real but is NOT in
     // the corpus bibliography (rule #4). Stays in the feed, off the field/Clock.
     verificationState: 'pending',
-    gestaltChannelAddress: null,
     createdAt: ts(20),
     updatedAt: ts(20),
     citations: [
@@ -670,7 +650,6 @@ export const SEED_FACTORS: Factor[] = [
     // Held at 'pending': REScoop.eu is a real source but is NOT in the corpus
     // bibliography (rule #4). Stays in the feed, off the verified field/Clock.
     verificationState: 'pending',
-    gestaltChannelAddress: null,
     createdAt: ts(21),
     updatedAt: ts(21),
     citations: [
@@ -701,7 +680,6 @@ export const SEED_FACTORS: Factor[] = [
     // Held at 'pending': Global Forest Watch is a real source but is NOT in the
     // corpus bibliography (rule #4). Stays in the feed, off the field/Clock.
     verificationState: 'pending',
-    gestaltChannelAddress: null,
     createdAt: ts(22),
     updatedAt: ts(22),
     citations: [
@@ -731,7 +709,6 @@ export const SEED_FACTORS: Factor[] = [
     lon: -74.009,
     zoneLevel: 'national',
     verificationState: 'verified',
-    gestaltChannelAddress: null,
     createdAt: ts(23),
     updatedAt: ts(23),
     citations: [

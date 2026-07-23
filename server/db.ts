@@ -84,7 +84,6 @@ interface FactorsTable {
   /** SPEC DEVIATION (ADR-20): ingested factors land `pending`; the field bake takes only `verified`. */
   verification_state: Generated<VerificationState>;
 
-  gestalt_channel_address: ColumnType<Buffer | null, Buffer | null, Buffer | null>;
 
   created_at: Timestamptz; // NOT NULL (ADR-11).
   updated_at: Timestamptz; // NOT NULL (ADR-11); mutated by Phase D — NOT a cursor key.

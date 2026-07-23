@@ -464,57 +464,6 @@
 }
 
 /* -------------------------------------------------------------------------- */
-/* Gestalt button (Phase 2 — disabled)                                        */
-/* -------------------------------------------------------------------------- */
-
-.tc-gestalt {
-  margin-top: 11px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.tc-gestalt__btn {
-  appearance: none;
-  flex: 1 1 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  font-family: inherit;
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 7px 10px;
-  border: 1px dashed var(--tc-border-bright);
-  border-radius: var(--tc-radius);
-  background: repeating-linear-gradient(
-    45deg,
-    var(--tc-panel) 0,
-    var(--tc-panel) 6px,
-    var(--tc-panel-2) 6px,
-    var(--tc-panel-2) 12px
-  );
-  color: var(--tc-text-faint);
-  cursor: not-allowed;
-}
-
-.tc-gestalt__btn:disabled {
-  cursor: not-allowed;
-}
-
-.tc-gestalt__tag {
-  font-size: 9px;
-  letter-spacing: 0.12em;
-  padding: 2px 5px;
-  border-radius: 2px;
-  border: 1px solid var(--tc-border-bright);
-  color: var(--tc-text-faint);
-  white-space: nowrap;
-  flex: 0 0 auto;
-}
-
-/* -------------------------------------------------------------------------- */
 /* Reduced motion                                                             */
 /* -------------------------------------------------------------------------- */
 
