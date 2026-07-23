@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm install
 npm run dev            # Vite client on :5173, proxies /api → :3001 (no CORS surface)
 npm run server         # Fastify API on :3001 (tsx watch)
-npm run typecheck      # tsc --noEmit — the strict gate, run this before claiming done
+npm run typecheck      # tsc --noEmit — the strict gate, run before claiming done
 npm run build          # typecheck + vite production build
 npm test               # vitest run (fully offline; never makes a live provider call)
 npx vitest run src/lib/geo.test.ts          # a single suite
@@ -18,8 +18,12 @@ npm run db:migrate     # apply db/migrations/*.sql via the schema_migrations led
 npm run ingest:once    # one bounded ingestion cycle, then exit
 ```
 
-There is no linter and no vitest config file — vitest picks up `**/*.test.ts` and
-`tsconfig.json` supplies `vitest/globals`.
+There is no linter and no vitest config file — vitest picks up `**/*.test.ts`
+and `tsconfig.json` supplies `vitest/globals`.
+
+`npm run ingest:once` with no credentials runs a fully offline cycle against an
+in-memory repository and exits 0, which makes it a good end-to-end smoke test
+for server changes.
 
 ## Two run modes
 
@@ -35,110 +39,77 @@ There is no linter and no vitest config file — vitest picks up `**/*.test.ts` 
 
 Live ingestion additionally needs `FIREWORKS_API_KEY` (LLM turns + embeddings)
 and `FIRECRAWL_API_KEY` (retrieval). Missing either → the worker logs and no-ops;
-it never fabricates findings. Offline stubs exist for every network dependency
-and are credential-gated and loudly labelled.
+it never fabricates findings. Every network dependency has a credential-gated,
+loudly-labelled offline stub.
 
 ## Architecture
 
-### The ADR system — read this before changing behaviour
+`docs/ARCHITECTURE.md` records why the non-obvious decisions are what they are.
+Read the relevant section before changing behaviour in that area, and update it
+when the reasoning changes. The rules below are the ones most easily broken by a
+plausible-looking edit.
 
-`docs/ARCHITECTURE.md` is the governing document: ADR-1 … ADR-45 (ADR-4 folded
-into ADR-3; ADR-28/29 unassigned). Code that **contradicts explicit text** in
-`docs/spec-comprehensive.md` / `docs/spec.md` carries a `SPEC DEVIATION (ADR-n)`
-comment at the site; ADRs that only *add* capability carry a plain ADR reference.
-Only ADR-1…30 have deviation tags — 31–45 build on ground the specs left blank.
-When you change something governed by an ADR, update the ADR — don't silently
-diverge.
+### Layout
 
-Later ADRs supersede earlier ones without the earlier text being rewritten. The
-live ones to know: **ADR-44** replaced Anthropic + OpenAI with Fireworks +
-Firecrawl (so ADR-31's two-turn `web_search` mechanism and ADR-33/38's
-`messages.parse` are gone — the *contracts* survive), **ADR-34** replaced the
-arbitrary Clock window with tipping-point anchoring, and **ADR-37** superseded
-ADR-33's "persistence is follow-up" note. Read the newest ADR touching an area
-before trusting an older one.
+- `src/components/<Name>/` — one folder per component, with structure, logic and
+  styling in their own files plus a barrel `index.ts`. Follow this when adding a
+  component; merge structure and logic only when the component is trivial.
+- `src/hooks/` — one hook per stateful concern.
+- `src/scene/` — the imperative three.js layer, kept out of React.
+- `src/lib/` — domain logic with no React or DOM dependency.
+- `server/ingestion/` — `types.ts` and `ports.ts` define the shapes and the
+  injected interfaces; `pipeline.ts` orchestrates; `dedupe.ts` holds the pure
+  decision math. Ports have both a Postgres and an in-memory implementation.
 
-### Client (`src/`)
+### The two data paths — load-bearing
 
-- `lib/geo.ts` — the **only** sanctioned lat/lon ⇄ `Vector3` conversion (ADR-25).
-  Every call site routes through it; hand-written trig on a lat/lon identifier is
-  how the heatmap ends up mirrored relative to the pins.
-- `globe/field.ts` — the CPU reference kernel and the unit-test target. The
-  accumulation runs **once per data change** on the CPU and is baked to an
-  equirectangular texture (`bakeField.ts`) the shader samples in O(1) (ADR-1);
-  the GLSL never loops over factors. Two fields (evidence density `W`, net
-  polarity `P`) so "no data" (grey) is distinguishable from "contested
-  equilibrium" (purple) — conflating them was a confirmed blocker (ADR-3).
-- `camera/` — `OrbitRig`, `alignment.ts` (interpolates **position**, not
-  orientation, so there is no roll — ADR-27), `interrupt.ts` (capture-phase guard
-  that drops the camera lock on any manual input).
-- `App.tsx` — composition root. **Render-on-demand** (ADR-7): no unconditional
-  rAF; a single coalesced `requestRender()` is called only on actual change.
+1. **Feed** — `GET /api/factors`, cursor-paginated. Drives the sidebar and
+   **nothing on the GPU**.
+2. **Field** — `GET /api/field`, fetched once and again *only* when SSE signals a
+   change. Never re-fetched on camera move, scroll, sort or selection.
 
-### The two data paths (ADR-26) — load-bearing
+Keeping these separate is what makes two clients on the same `fieldEpoch` render
+the same planet. Do not merge the call sites, and never write shader input from a
+camera or pagination path.
 
-1. **Feed** — `GET /api/factors`, cursor-paginated, sort-toggled. Drives the
-   sidebar and badges and **nothing on the GPU**.
-2. **Field** — `GET /api/field`, fetched once and again *only* when SSE
-   (`GET /api/stream`) signals a factor changed. Never re-fetched on camera move,
-   scroll, sort, or selection. This is what makes two clients on the same
-   `fieldEpoch` render the same planet.
+### Invariants worth knowing before you edit
 
-Keeping these separate is not incidental; do not merge the call sites.
+- `src/lib/geo.ts` is the **only** place lat/lon becomes a vector. Hand-written
+  trig on a coordinate is how the heatmap ends up mirrored relative to the pins,
+  and it passes a `|v| = R` check.
+- Render-on-demand: no unconditional rAF. `requestRender()` is called on actual
+  change only.
+- Grey/untinted geography means *no data* and must stay distinguishable from
+  purple, which means *documented opposing forces*.
+- Ingested factors land `pending` and stay out of the field bake and the Clock
+  aggregate until the reputability gate promotes them.
+- The submission schema is `.strict()` on purpose: `effect`, `significance`,
+  `verificationState`, `lat`, `lon` and `tippingPoint` are system-assigned, and
+  accepting them would let anyone steer the Clock.
+- Shadow-banned submitters must receive the byte-identical success response. Any
+  later divergence — including a rate-limit error a normal user would get —
+  reveals the ban.
+- Pagination keys on the immutable `seq`, never on a column ingestion mutates.
 
-### Contract (`shared/`)
+### Honesty constraints
 
-`schema.ts` holds the zod schemas; `types.ts` derives TS types via `z.infer`
-(ADR-23). Never hand-write a type that duplicates a schema. Numeric domains
-mirror the DB CHECK constraints (`effect ∈ [-1,1]`, `significance ∈ [0,1]`).
-Both sides validate at the boundary — the server re-validates its own responses.
+These are product requirements, not preferences:
 
-### Server (`server/`)
+- **Never fabricate to fill a gap.** No tipping-point factors means
+  `hasBaseline: false` and a suppressed countdown, not a default target.
+- `maxShiftYears` (via `VITE_CLOCK_MAX_SHIFT_YEARS`) is an **operator estimate**,
+  not a figure from any source. Do not present it as one.
+- Paraphrased citations must never render as quotes; `verbatim` defaults to
+  `false` so unknown provenance is treated as paraphrase.
+- Known gaps are documented rather than papered over — `verbatim` is the model's
+  self-report and is not machine-checked against the source text, and anonymous
+  submissions raise the cost of abuse without eliminating it. Keep such
+  limitations stated.
 
-Fastify + Kysely (ADR-24). `routes/{factors,field,stream,submit}.ts`,
-`pagination.ts` (mode-tagged cursors — `recent` keysets on immutable `seq`,
-`magnitude` is a bounded snapshot; ADR-15/15a), `db.ts`.
+### TypeScript
 
-`ingestion/` is the Phase A→D reconciliation loop; **read
-`server/ingestion/README.md` before touching it.** Shape: retrieve (Firecrawl) →
-extract (typed, JSON-schema-constrained Fireworks turn, re-validated by zod) →
-reputability gate → embed (batched, 512-dim) → dedupe (`ORDER BY <=> LIMIT k`, so
-HNSW is actually used — ADR-30) → resolve → write under a per-bucket advisory
-lock. The LLM *classifies*; the server *computes* every stored number
-(`recalculateOnEscalation`). Everything outside the loop is an injected port with
-both a `pgRepository` and a `memoryRepository` implementation.
-
-`submissions/` — anonymous `POST /api/factors/submit` (ADR-45). The request
-schema is `.strict()` on purpose: `effect`, `significance`, `verificationState`,
-`lat`, `lon`, `tippingPoint` are system-assigned, and accepting them would let
-anyone steer the Clock. Checks run cheapest-first (schema → ban → rate limit →
-duplicate → one classifier call → pipeline). Identities are `sha256(salt‖ip)` /
-`sha256(salt‖deviceId)`; no raw IP is ever stored. Shadow-banned submitters get
-the byte-identical success payload.
-
-### Database (`db/`)
-
-Migrations are numbered and applied through the ledger; `003_future_federation.sql.planned`
-is deliberately not a `.sql` file. Event-sourced: `factor_revisions` plus
-genesis/projection triggers, so a factor's state is a left-fold over its citation
-history (ADR-13). Viewport queries use PostGIS spherical predicates, not
-`lat/lon BETWEEN` (antimeridian — ADR-8).
-
-## Project constraints
-
-- **Verifiability is the product.** Every factor is backed by citations; the
-  field is a function of the data alone, never of camera state. Ingested factors
-  land `pending` and are excluded from the field bake and the Clock aggregate
-  until `verified` (ADR-20).
-- **Never overclaim provenance.** The Clock (ADR-34) anchors to the corpus's own
-  dated tipping points; the amount net polarity may shift that baseline
-  (`maxShiftYears`, default 5, via `VITE_CLOCK_MAX_SHIFT_YEARS`) is an **operator
-  estimate**, not a corpus figure — do not present it as one. With no
-  tipping-point factors, `deriveClock` returns `hasBaseline: false` and the UI
-  suppresses the countdown rather than inventing an instant; keep it that way.
-  Real sources live in `docs/corpus-bibliography.md`; the specs carry no
-  bibliography.
-- **TypeScript is strict** with `noUncheckedIndexedAccess` and
-  `exactOptionalPropertyTypes`. The latter makes zod's `.optional()` (`T | undefined`)
-  nominally distinct from `?: T` — rebuild the object explicitly rather than
-  casting (see `toClockFactor` in `App.tsx`).
+Strict, with `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`. The
+latter makes zod's `.optional()` (`T | undefined`) nominally distinct from
+`?: T` — rebuild the object explicitly rather than casting (see
+`src/lib/clock/toClockFactor.ts`). Read paths strip SQL `null` before
+re-validating, because the schemas are `.optional()` and never `.nullable()`.

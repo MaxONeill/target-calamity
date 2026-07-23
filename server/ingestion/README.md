@@ -1,38 +1,38 @@
 # Ingestion — the Reconciliation Loop + Live Research Engine
 
-Implements comprehensive spec §3 (Phase A → D) under **ADR-18 through ADR-21**
-and **ADR-31/-32/-33** (plus ADR-12/-13 and audit findings 27–31). Phase A is now
+Implements the original brief (Phase A → D) under ** through **
+and the adopted decisions (plus /-13 and audit findings 27–31). Phase A is now
 a **live research engine**: on a schedule it pulls information from the web,
 verifies each source, assigns a signed direction + magnitude, and lands
 deduplicated, cited rows in `factors` — `verified` (in the Clock aggregate) or
 `pending` (in the feed, off the aggregate).
 
-## Live research engine (ADR-31/-32/-33)
+## Live research engine
 
 ```
 INGEST_TOPICS (or a built-in Calamity+Humanity set)
    │  scheduled worker, every INGEST_INTERVAL_HOURS (default 6), bounded batch
    ▼
-Phase A  researchFactors(topic) ................... ADR-31/-44 (Firecrawl+Fireworks)
+Phase A  researchFactors(topic) ................... /-44 (Firecrawl+Fireworks)
          · Stage 1 RETRIEVAL  — Firecrawl /v2/search: ranked hits + scraped markdown
          · Stage 2 EXTRACTION — typed candidates via one JSON-schema-constrained
                                 Fireworks (DeepSeek V4 Flash) turn, validated by zod
    ▼
-reputability gate: scoreSource per source ......... ADR-33
+reputability gate: scoreSource per source .........
          · verified if max source score >= REPUTABILITY_VERIFY_THRESHOLD (0.7)
          · else pending (stays in feed, off the aggregate)
-         · deciding score + reasoning PERSISTED on the factor (ADR-37, mig 004)
+         · deciding score + reasoning PERSISTED on the factor (, mig 004)
    ▼
-Phase B/C/D  embed → dedupe → resolve → write ..... unchanged (ADR-12/-18/-19)
+Phase B/C/D  embed → dedupe → resolve → write ..... unchanged
          · idempotency is PER-FINDING (source URL), so re-running a topic each
-           cycle ingests only genuinely new sources (ADR-31)
+           cycle ingests only genuinely new sources
    ▼
-pg_notify('factor_updates', …) → SSE → browsers ... ADR-17 (pgRepository)
+pg_notify('factor_updates', …) → SSE → browsers ...  (pgRepository)
 ```
 
 **Live ingestion CANNOT run without BOTH provider keys + network.** With
 `FIREWORKS_API_KEY` or `FIRECRAWL_API_KEY` missing (or no `DATABASE_URL`) the
-scheduled worker logs and NO-OPS — it never fabricates findings (ADR-32). The
+scheduled worker logs and NO-OPS — it never fabricates findings. The
 offline stubs (`researchFactorsOffline`, `scoreSourceOffline`) exist only for
 tests / offline development and are clearly labelled; their placeholder sources
 stay `pending`.
@@ -66,16 +66,16 @@ decisions and exiting 0 (never hanging, never erroring on missing creds).
 
 ```
 InboundIntelItem[]
-   │  content-hash / URL idempotency gate ......... ADR-21   (before any API call)
+   │  content-hash / URL idempotency gate .........    (before any API call)
    ▼
 Phase A  extract → validate VALUES → quarantine ... finding 27
    ▼
-Phase B  ONE batched embedding call, 512-dim ...... ADR-21 / ADR-12
+Phase B  ONE batched embedding call, 512-dim ......  /
    ▼
-Phase C  top-k nearest as CANDIDATES .............. ADR-18 / ADR-30
+Phase C  top-k nearest as CANDIDATES ..............  /
    ▼
 Phase D  resolver classifies → server recalculates
-         → single-target write (insert | escalate)  ADR-19 / finding 29
+         → single-target write (insert | escalate)   / finding 29
          under a per-bucket advisory lock .......... finding 29
 ```
 
@@ -83,24 +83,24 @@ Phase D  resolver classifies → server recalculates
 
 | File                  | Responsibility                                                        |
 | --------------------- | --------------------------------------------------------------------- |
-| `llmClient.ts`        | Shared Fireworks (OpenAI-protocol) client + `hasLiveCredentials()` + `INGEST_MODEL` + `structuredCompletion()` (ADR-31/-44). |
+| `llmClient.ts`        | Shared Fireworks (OpenAI-protocol) client + `hasLiveCredentials()` + `INGEST_MODEL` + `structuredCompletion()`. |
 | `llmClient.test.ts`   | Offline tests: provider pinning, credential gate, model selection, zod→JSON-Schema derivation. |
-| `firecrawlClient.ts`  | Firecrawl `/v2/search` retrieval + `hasRetrievalCredentials()` + publisher derivation and cost caps (ADR-44). |
+| `firecrawlClient.ts`  | Firecrawl `/v2/search` retrieval + `hasRetrievalCredentials()` + publisher derivation and cost caps. |
 | `firecrawlClient.test.ts` | Offline tests (injected `fetch`): request body contract, response normalisation, provenance, caps. |
 | `websearch.ts`        | Phase A live research (`researchFactors`): Firecrawl retrieval + typed extraction turn. Deterministic offline stub. |
-| `reputability.ts`     | Source-credibility gate (`scoreSource`) + `REPUTABILITY_VERIFY_THRESHOLD`. LLM judge + offline heuristic (ADR-33). |
-| `noiseFilter.ts`      | Cheap triage in FRONT of the loop for anonymous submissions (`classifySubmission`, ADR-45): one constrained call → `plausible`/`spam`/`abuse`/`nonsense`. Injection-hardened; deterministic offline stub. |
+| `reputability.ts`     | Source-credibility gate (`scoreSource`) + `REPUTABILITY_VERIFY_THRESHOLD`. LLM judge + offline heuristic. |
+| `noiseFilter.ts`      | Cheap triage in FRONT of the loop for anonymous submissions (`classifySubmission`, ): one constrained call → `plausible`/`spam`/`abuse`/`nonsense`. Injection-hardened; deterministic offline stub. |
 | `noiseFilter.test.ts` | Offline-stub tests: verdicts, injection markers, `shouldAutoBan` thresholds, no live call. |
 | `embeddings.ts`       | Phase B client. Fireworks embeddings (OpenAI-compatible) + deterministic offline stub. |
 | `dedupe.ts`           | Pure Phase C query contract + Phase D decision/escalation math.        |
 | `dedupe.test.ts`      | Unit tests for the pure math (`recalculateOnEscalation`, `compareCandidates`, `resolveOutcome`, …). |
-| `resolver.ts`         | Phase D LIVE LLM entity resolver (`createLlmResolver`) — proposes relation + metrics; deterministic layer clamps/validates (ADR-18/-38). |
+| `resolver.ts`         | Phase D LIVE LLM entity resolver (`createLlmResolver`) — proposes relation + metrics; deterministic layer clamps/validates. |
 | `resolver.test.ts`    | Offline tests: `verdictFromProposal`, clamping/directionality, deterministic stub fallback (no live call). |
 | `memoryRepository.ts` | In-memory `IngestionRepository`/`IngestionTx` — the offline counterpart to `pgRepository.ts` (offline `--once` cycle + `pipeline.test.ts`). |
 | `pipeline.test.ts`    | End-to-end OFFLINE integration test: research → embed → dedupe → gate → resolve → persist, plus idempotency + collision→escalation. |
 | `websearch.test.ts`   | Offline-stub tests: deterministic candidates, in-domain values, no-cred fallback. |
 | `reputability.test.ts`| Offline-stub tests: domain heuristic, `[0,1]` bound, verified/pending threshold gating. |
-| `pipeline.ts`         | Impure A→D orchestration: idempotency, batching, quarantine, tx locks. Phase A wired to `researchFactors` via `createResearchExtractor` (ADR-31). |
+| `pipeline.ts`         | Impure A→D orchestration: idempotency, batching, quarantine, tx locks. Phase A wired to `researchFactors` via `createResearchExtractor`. |
 | `pgRepository.ts`     | The CONCRETE Kysely/Postgres adapter for the ports (write-path contract + `pg_notify`). |
 | `worker.ts`           | Scheduled worker (`npm run ingest`): cadence, bounded batch, reputability gate wiring, `runIngestOnce()`. |
 
@@ -122,15 +122,15 @@ Built and wired to a live database:
   inside the transaction, so the SSE route (`server/routes/stream.ts`) fans deltas
   to browsers — this module is the emitter that route documents.
 - **Worker entrypoint** (`worker.ts`, `npm run ingest`) running `processBatch`.
-- **Idempotency, batching, value-validation, quarantine, the ADR-30 dedup query
-  shape, the ADR-19 escalation math, and advisory-lock concurrency** — all
+- **Idempotency, batching, value-validation, quarantine, the  dedup query
+  shape, the  escalation math, and advisory-lock concurrency** — all
   production paths, covered by `dedupe.test.ts` for the pure half.
 
-Now **built and live** (ADR-31/-32/-33), superseding the earlier Phase-1 scope note:
+Now **built and live**, superseding the earlier Phase-1 scope note:
 
 - **Phase A is a live research engine.** `researchFactors` (`websearch.ts`) runs
   Firecrawl `/v2/search` (retrieval + scrape in one call) then a typed extraction
-  turn on the Fireworks model with JSON-schema constrained decoding (ADR-44). It is
+  turn on the Fireworks model with JSON-schema constrained decoding. It is
   wired into the pipeline as the `FactorExtractor` via `createResearchExtractor`.
 - **A scheduled worker with cadence.** `worker.ts` runs a bounded batch every
   `INGEST_INTERVAL_HOURS`, no longer a one-shot file/stdin batch.
@@ -139,13 +139,13 @@ Now **built and live** (ADR-31/-32/-33), superseding the earlier Phase-1 scope n
 
 Now **built** (superseding the earlier out-of-scope notes):
 
-- **Phase D entity resolution has a live LLM implementation** (ADR-38).
+- **Phase D entity resolution has a live LLM implementation**.
   `createLlmResolver` (`resolver.ts`) proposes `relation` + recalculated metrics +
   rationale; the deterministic layer (`resolveOutcome`/`recalculateOnEscalation`,
-  ADR-19) still computes and bounds the stored numbers. The worker selects it when
+  ) still computes and bounds the stored numbers. The worker selects it when
   `hasLiveCredentials()`, else keeps `createStubResolver` (offline path, never
   deleted). Failures degrade to `independent`.
-- **The reputability score + reasoning are persisted** (ADR-37, migration 004).
+- **The reputability score + reasoning are persisted** (, migration 004).
   The gate returns the deciding source's score + reasoning; they land on
   `factors.reputability_score` / `reputability_reasoning`, are read back by the
   feed route, and surface in `FactorDetails`. No longer log-only.
@@ -160,7 +160,7 @@ Now **built** (superseding the earlier out-of-scope notes):
 `dedupe.ts`
 - `SIMILARITY_QUERY_SHAPE`, `CANDIDATE_TOP_K`, `COLLISION_DISTANCE_THRESHOLD`, `CANDIDATE_DISTANCE_CEILING`
 - `FactorCandidate`, `filterCandidates`, `compareCandidates`, `selectParent`
-- `escalationLambda`, `recalculateOnEscalation` — the ADR-19 formula (pure)
+- `escalationLambda`, `recalculateOnEscalation` — the  formula (pure)
 - `ResolverVerdict`, `ResolutionOutcome`, `resolveOutcome`
 
 `llmClient.ts`
@@ -191,17 +191,17 @@ Now **built** (superseding the earlier out-of-scope notes):
 `worker.ts`
 - `runIngestOnce(logger?)` — one guarded LIVE cycle (no-op without DB + creds)
 - `runIngestOnceOffline(logger?)` — one fully-offline cycle vs an in-memory repo (the `--once` fallback with no creds)
-- `buildReputabilityGate(logger, opts)` — the source gate (deciding score + reasoning → `GateResult`, ADR-37)
+- `buildReputabilityGate(logger, opts)` — the source gate (deciding score + reasoning → `GateResult`, )
 
 `resolver.ts`
-- `createLlmResolver(client?)` — live Phase D resolver (ADR-38); `verdictFromProposal`, `deriveDirectionality`, `clampTo` (pure, tested)
+- `createLlmResolver(client?)` — live Phase D resolver; `verdictFromProposal`, `deriveDirectionality`, `clampTo` (pure, tested)
 
 `memoryRepository.ts`
 - `createMemoryIngestionRepository()` — offline `IngestionRepository` with `.factors()` / `.quarantined()` inspection
 
 ## Decisions
 
-### ADR-21 — idempotency, batching, structured extraction
+### idempotency, batching, structured extraction
 - **Idempotency runs first.** `contentHash(item)` (SHA-256 of the canonical URL,
   or publisher + normalized text when there is no URL) is checked against the
   repository **before** extraction or embedding, so re-ingesting the same article
@@ -213,34 +213,31 @@ Now **built** (superseding the earlier out-of-scope notes):
   drafts (a JSON-schema-constrained LLM in production). Shape is not enough —
   see finding 27.
 
-### ADR-12 — 512-dim Matryoshka embeddings
+### 512-dim Matryoshka embeddings
 `createOpenAIEmbeddingClient` requests `dimensions: 512` from the API so the
 provider truncates server-side (the prefix is Matryoshka-valid only when the
 model emits it — we never slice a 1536-vector ourselves). Matches the
-`halfvec(512)` column. **SPEC DEVIATION:** the specs store `VECTOR(1536)`; ADR-12
-adopts `halfvec(512)`.
+`halfvec(512)` column.
 
-### ADR-18 — similarity threshold is a candidate filter, not a decision
+### Similarity threshold is a candidate filter, not a decision
 Phase C retrieves `CANDIDATE_TOP_K` (20) nearest within `CANDIDATE_DISTANCE_CEILING`
-(0.30). The spec's `0.15` survives as `COLLISION_DISTANCE_THRESHOLD`, documented
+(0.30). `0.15` survives as `COLLISION_DISTANCE_THRESHOLD`, documented
 with its failure modes in both directions (too tight → duplicate events; too
 loose → merged distinct events). The **entity-resolution prompt** makes the
 escalate/independent call over the candidate set; a fixed scalar on cosine
 distance cannot.
 
-### ADR-30 / finding 30 — correct query shape
+### The k-NN query shape
 `SIMILARITY_QUERY_SHAPE` is `ORDER BY embedding <=> :q LIMIT :k`, **not** a
-`WHERE embedding <=> :q < 0.15` predicate. **SPEC DEVIATION:** the spec's
-predicate phrasing would force a sequential scan (pgvector only uses HNSW for the
-order-by-limit shape). The order-by form is index-served and returns rows in
+`WHERE embedding <=> :q < 0.15` predicate, which would force a sequential scan
+(pgvector only uses HNSW for the order-by-limit shape). The order-by form is index-served and returns rows in
 *exact* distance order, so `candidates[0]` is the true nearest and `distance` is
 exact. The repository is expected to raise `hnsw.ef_search` above the default 40
 for this dedup workload (a miss = a false "no collision" = a duplicate insert).
 
-### ADR-19 — explicit escalation recalculation
-**SPEC DEVIATION:** §3 Phase D says effect/significance are "dynamically
-recalculated" with no formula. `recalculateOnEscalation` pins it to a
-citation-count-weighted convex blend:
+### Explicit escalation recalculation
+`recalculateOnEscalation` pins the recalculation to a citation-count-weighted
+convex blend:
 
 ```
 λ            = 1 / (parent.citationCount + 1)
@@ -256,14 +253,14 @@ significance = clamp((1-λ)·sig_parent    + λ·sig_new,     0,  1)
 - **The LLM classifies, the server computes** (finding 28). The resolver emits
   only a directionality label; it never produces the stored numbers. `effect_new`
   / `sig_new` are the incoming report's own Phase-A estimates.
-- **Replayable** (ADR-13): each escalation writes a `factor_revisions` row with
+- **Replayable**: each escalation writes a `factor_revisions` row with
   the classified inbound `(effect, significance, directionality)`, so a factor's
   current state is a pure left-fold over its citation history and can be
   recomputed if the formula changes.
 
-### ADR-20 — verification state
+### verification state
 New factors are inserted with `verificationState: 'pending'`. Machine-extracted
-content is marked unreviewed and (per ADR-26/finding 27) excluded from the field
+content is marked unreviewed and (per /finding 27) excluded from the field
 bake and headline visuals until promoted to `verified`.
 
 ### finding 29 — multi-collision + concurrency
@@ -303,7 +300,7 @@ bake and headline visuals until promoted to `verified`.
   instructions.
 - Out of this module's scope (tracked to other ADRs / DB layer): global cost
   ceilings and kill-switch, a full reviewer-identity lifecycle, and the schema
-  CHECK constraints themselves (ADR-11/-11a).
+  CHECK constraints themselves.
 
 ## Offline / testability
 
@@ -321,9 +318,9 @@ on credentials, so nothing fakes live data silently:
 - **Noise filter** — no `FIREWORKS_API_KEY` → `classifySubmissionOffline`
   heuristic. Tested in `noiseFilter.test.ts`.
 - **Scheduled worker** — no `DATABASE_URL` **or** either provider key missing →
-  logs and no-ops; it never arms a timer or fabricates findings (ADR-32).
+  logs and no-ops; it never arms a timer or fabricates findings.
 
-## The submission entry point (ADR-45)
+## The submission entry point
 
 `POST /api/factors/submit` (`server/routes/submit.ts`) is a SECOND producer for
 this loop, alongside the scheduled worker. It does **not** re-implement any of
@@ -331,7 +328,7 @@ the vetting: `server/submissions/vetting.ts` builds the same
 `createPipelineFromEnv` the worker builds, with the submitted claim as the Phase A
 research topic and the cited URL appended, and feeds it exactly one item. Effect,
 significance, lat/lon and the verified/pending decision therefore come from the
-same Phase A extraction and the same ADR-33 gate — a submitter supplies only a
+same Phase A extraction and the same  gate — a submitter supplies only a
 claim and a source (the request schema is `.strict()` precisely so that stays
 true).
 
