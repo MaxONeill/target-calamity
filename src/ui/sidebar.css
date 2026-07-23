@@ -4,7 +4,7 @@
  * Design intent: this reads as a diagnostic console, not doomer theatre. The
  * palette is sober; the only saturated colour is the effect polarity itself
  * (crimson = Calamity / negative, electric blue = Humanity / positive), which
- * mirrors the globe's chromatic ramp (v3.2 §3 / ADR-3). Everything else is
+ * mirrors the globe's chromatic ramp. Everything else is
  * greyscale so the data carries the signal.
  *
  * All tokens are scoped to `.tc-sidebar` so this file adds no global styles and
@@ -29,7 +29,7 @@
   --tc-equilibrium: #8b5cf6; /* purple, contested/near-zero */
 
   /* status */
-  --tc-pending: #d9a441; /* amber — unreviewed / machine-extracted (ADR-20) */
+  --tc-pending: #d9a441; /* amber — unreviewed / machine-extracted */
   --tc-warn: #d9a441;
 
   /* ---- metrics -------------------------------------------------------- */

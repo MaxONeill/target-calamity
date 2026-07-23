@@ -1,28 +1,28 @@
 /**
- * The wireframe globe (ADR-5, ADR-6, ADR-1/-3, ADR-7). Owns the icosphere
+ * The wireframe globe. Owns the icosphere
  * geometry, the field `ShaderMaterial`, and the `FieldBaker`, and exposes a
  * render-on-demand signal so the app can avoid an unconditional rAF loop.
  *
- * SPEC DEVIATION (ADR-5): `IcosahedronGeometry(R, detail)`, not `SphereGeometry`.
+ * `IcosahedronGeometry(R, detail)`, not `SphereGeometry`.
  * A UV sphere crowds vertices at the poles — uneven wireframe density and
  * non-uniform field sampling. The icosphere distributes near-uniformly.
  *
- * SPEC DEVIATION (ADR-1/-3): the material samples a baked two-field texture
+ * the material samples a baked two-field texture
  * instead of looping over factors per fragment. `update()` rebakes that texture;
  * the fragment shader stays O(1) with no MAX_FACTORS cap.
  *
- * SPEC DEVIATION (ADR-7): the globe reports when it actually needs a redraw
+ * the globe reports when it actually needs a redraw
  * (`onNeedsRender`) rather than assuming the app repaints every frame. Between
  * data changes the field is static, so nothing here forces a repaint.
  *
- * SPEC DEVIATION (ADR-26): `update()` takes the `/api/field` pin set only. It
+ * `update()` takes the `/api/field` pin set only. It
  * must be called on receipt of a new field response, never on camera motion or
  * feed pagination — the field is camera-invariant by construction.
  *
- * ADR-41: the fragment shader now renders a geographic base (ocean/land) from a
+ * : the fragment shader now renders a geographic base (ocean/land) from a
  * land-mask texture and blends the field on top; GlobeMesh wires the mask.
  *
- * ADR-42: the icosphere is DISPLACED on the CPU by real elevation. Each vertex
+ * : the icosphere is DISPLACED on the CPU by real elevation. Each vertex
  * is offset outward along its unit normal by `max(0, meters)/EARTH_RADIUS ·
  * exaggeration · radius` — ocean/bathymetry (meters ≤ 0) stays FLAT at the base
  * radius, only land rises. Displacement can be (re)applied after construction
@@ -46,14 +46,14 @@ import {
 /** Mean Earth radius in meters — the denominator for the meters→radius fraction. */
 export const EARTH_RADIUS_M = 6_371_000;
 /**
- * Default vertical exaggeration (ADR-42). Real relief is ~0.1% of Earth's radius,
+ * Default vertical exaggeration. Real relief is ~0.1% of Earth's radius,
  * invisible on a globe — at 30× a 6 km peak rose only ~2.3% of the radius (barely
  * readable). 120× lifts the highest terrain ~11% so continents show clear relief.
  * Tunable knob: raise for more dramatic mountains, lower for a subtler surface.
  */
 export const DEFAULT_EXAGGERATION = 120;
 
-/** An elevation source for the mesh displacement (ADR-42). */
+/** An elevation source for the mesh displacement. */
 export interface GlobeElevation {
   /**
    * Elevation in METERS at a geographic point. May return negative
@@ -68,15 +68,15 @@ export interface GlobeElevation {
 }
 
 export interface GlobeMeshOptions {
-  /** Globe radius R. ADR-27 ties the orbit rig's MIN_ZOOM = 1.15·R to this. */
+  /** Globe radius R.  ties the orbit rig's MIN_ZOOM = 1.15·R to this. */
   radius?: number;
-  /** Icosphere subdivision level (ADR-5). Higher = finer wireframe. */
+  /** Icosphere subdivision level. Higher = finer wireframe. */
   detail?: number;
-  /** Kernel parameters for the bake (ADR-3). */
+  /** Kernel parameters for the bake. */
   fieldParams?: FieldParams;
-  /** Land-mask texture for the ADR-41 geographic base coloring. */
+  /** Land-mask texture for the  geographic base coloring. */
   landMaskTexture?: THREE.Texture;
-  /** Elevation source for the ADR-42 displacement (optional; land-relief fallback otherwise). */
+  /** Elevation source for the  displacement (optional; land-relief fallback otherwise). */
   elevation?: GlobeElevation;
 }
 
@@ -104,7 +104,7 @@ export class GlobeMesh {
     this.baker = new FieldBaker(params);
     this.uniforms = createGlobeUniforms();
     this.uniforms.uField.value = this.baker.texture;
-    // ADR-43: the base radius is the denominator of the vertex shader's
+    // : the base radius is the denominator of the vertex shader's
     // elevation fraction `(|position| − R) / R`, which drives the land ramp.
     this.uniforms.uRadius.value = this.radius;
     if (options.landMaskTexture) this.uniforms.uLandMask.value = options.landMaskTexture;
@@ -115,15 +115,15 @@ export class GlobeMesh {
     this.basePositions = new Float32Array(posAttr.array as ArrayLike<number>);
 
     this.material = new THREE.ShaderMaterial({
-      // GLSL3/WebGL2 (ADR-6): dynamic-bound-free, and gives us `texture()` +
+      // GLSL3/WebGL2: dynamic-bound-free, and gives us `texture()` +
       // explicit fragment output.
       glslVersion: THREE.GLSL3,
       uniforms: this.uniforms as unknown as Record<string, THREE.IUniform>,
       vertexShader,
       fragmentShader,
-      // Shade the FACES with the geographic base + chromatic field (ADR-41). A
+      // Shade the FACES with the geographic base + chromatic field. A
       // solid surface also writes continuous depth, which cleanly occludes the
-      // far-side coastlines (ADR-39).
+      // far-side coastlines.
       wireframe: false,
       transparent: false,
       depthWrite: true,
@@ -132,7 +132,7 @@ export class GlobeMesh {
     this.mesh = new THREE.Mesh(this.geometry, this.material);
     this.mesh.name = 'globe-field';
 
-    // Wireframe overlay (ADR-41): the etch reuses the SAME geo+field color as the
+    // Wireframe overlay: the etch reuses the SAME geo+field color as the
     // faces (shared uniform objects, so field/mask/camera updates propagate) via
     // a ShaderMaterial, boosted by LINE_BOOST so the structure reads as a BOLDER
     // version of the underlying surface — blue lines over ocean, green over land,
@@ -170,7 +170,7 @@ export class GlobeMesh {
   }
 
   /**
-   * Rebake the chromatic field from a new `/api/field` pin set (ADR-26) and
+   * Rebake the chromatic field from a new `/api/field` pin set and
    * request a redraw. This is the ONLY method that mutates shader field input.
    */
   update(pins: readonly FieldInputPin[]): void {
@@ -180,7 +180,7 @@ export class GlobeMesh {
   }
 
   /**
-   * (Re)displace the icosphere from an elevation source (ADR-42). Called at
+   * (Re)displace the icosphere from an elevation source. Called at
    * construction with the land-relief fallback, then again once the real grid
    * loads. Rebuilds the wireframe overlay + vertex normals and requests a redraw.
    */
@@ -234,7 +234,7 @@ export class GlobeMesh {
   }
 
   /**
-   * Subscribe to redraw requests (ADR-7 render-on-demand). Returns an
+   * Subscribe to redraw requests ( render-on-demand). Returns an
    * unsubscribe function. The globe fires this when its field is rebaked.
    */
   onNeedsRender(callback: () => void): () => void {

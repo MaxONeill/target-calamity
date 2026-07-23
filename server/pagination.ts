@@ -1,5 +1,5 @@
 /**
- * Opaque, mode-tagged keyset cursors (ADR-15).
+ * Opaque, mode-tagged keyset cursors.
  *
  * A cursor is an internal, server-owned token: the client never inspects or
  * constructs one, it only echoes back the `nextCursor` string it was handed.
@@ -8,8 +8,8 @@
  * 400 a cursor that disagrees with the request (a sort toggle or viewport
  * change invalidates the cursor and the feed restarts from page one).
  *
- * SPEC DEVIATION (ADR-15a / confirmed defects #13 & #21): the spec paginates
- * `recent` on `updated_at`. Phase D (ADR-19) rewrites `updated_at = NOW()` on
+ * the spec paginates
+ * `recent` on `updated_at`. Phase D rewrites `updated_at = NOW()` on
  * escalation, so keying pagination on it silently SKIPS escalating rows for the
  * rest of a scroll session. The shared `CursorSchema` (which this module now
  * imports as its single source of truth) therefore keys `recent` on the
@@ -19,7 +19,7 @@
  * shared schema used to contradict this by keying on `updatedAt`; it no longer
  * exists as a separate declaration — server and contract share one schema.
  *
- * SPEC DEVIATION (ADR-15 / task): `magnitude` mode is NOT deep-keyset-paginated.
+ * `magnitude` mode is NOT deep-keyset-paginated.
  * `abs(effect)` is also mutated by Phase D, so it is not a safe stable key. The
  * feed serves magnitude as a single bounded top-N snapshot (nextCursor = null);
  * there is therefore never a magnitude cursor to resume from.
@@ -36,7 +36,7 @@ import type { Cursor, SortMode, Viewport } from '../shared/types.js';
  * magnitude → bounded `absEffect` snapshot). Importing it — rather than
  * redeclaring a parallel schema — is what stops the shared contract and the
  * server's real cursor from drifting again (they contradicted each other before:
- * the shared schema keyed `recent` on `updatedAt`, which ADR-15a forbids).
+ * the shared schema keyed `recent` on `updatedAt`, which  forbids).
  */
 const CursorPayloadSchema = CursorSchema;
 
@@ -119,7 +119,7 @@ export function factorInViewport(lat: number, lon: number, vp: Viewport): boolea
  * sort-mode mismatch, or a viewport mismatch — the caller returns 400 and the
  * client restarts from page one.
  *
- * Never emits a predicate over a NULL cursor (confirmed defect #26): a `null`
+ * Never emits a predicate over a NULL cursor: a `null`
  * return tells the query builder to omit the keyset predicate entirely.
  */
 export function resolveCursor(

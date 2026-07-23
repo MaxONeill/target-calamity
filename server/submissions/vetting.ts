@@ -1,5 +1,5 @@
 /**
- * Handing an ACCEPTED submission to the EXISTING vetting pipeline (ADR-45).
+ * Handing an ACCEPTED submission to the EXISTING vetting pipeline.
  *
  * This module deliberately contains no vetting logic of its own. Everything a
  * submitted claim must go through — retrieve the cited source, extract a typed
@@ -14,7 +14,7 @@
  *
  * WHAT THE SUBMITTER DOES NOT GET TO DECIDE (the anti-manipulation rule): every
  * stored number — `effect`, `significance`, `lat`, `lon`, `verificationState`,
- * `tippingPoint` — is produced downstream by Phase A extraction and the ADR-33
+ * `tippingPoint` — is produced downstream by Phase A extraction and the
  * reputability gate. The submission contributes a claim and a URL and nothing
  * else, which is why the request schema is `.strict()`.
  *
@@ -89,7 +89,7 @@ export async function vetSubmission(
     externalId: 'submission',
     // Trusted-as-a-TOPIC only: `researchFactors` treats this as a search string,
     // and the extraction turn that consumes the retrieved documents already
-    // treats their content as untrusted data (ADR-21/finding 27). The claim has
+    // treats their content as untrusted data (/finding 27). The claim has
     // additionally cleared the noise filter before reaching here.
     rawText: `${submission.claim} (source: ${submission.sourceUrl})`,
     sourceUrl: null,

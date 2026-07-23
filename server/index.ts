@@ -2,7 +2,7 @@
  * Fastify bootstrap for Target: Calamity.
  *
  * Reads `DATABASE_URL`. When it is present the API runs against Postgres
- * (pgvector + ltree + PostGIS, ADR-22). When it is ABSENT the server MUST still
+ * (pgvector + ltree + PostGIS). When it is ABSENT the server MUST still
  * run: it falls back to serving `SEED_FACTORS` from `shared/seed.ts` and logs
  * loudly that it is in seed mode, so the whole app is demonstrable without a
  * database. Every route branches on `appCtx.mode` and runs the in-memory
@@ -48,7 +48,7 @@ if (DATABASE_URL && DATABASE_URL.trim() !== '') {
 app.decorate<AppContext>('appCtx', ctx);
 
 /* -------------------------------------------------------------------------- */
-/* Submission salt (ADR-45)                                                   */
+/* Submission salt                                                   */
 /* -------------------------------------------------------------------------- */
 
 /**

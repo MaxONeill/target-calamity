@@ -1,5 +1,5 @@
 /**
- * Explainer copy for the Clock meta-system modal (spec.md v3.2 §4 / comprehensive
+ * Explainer copy for the Clock meta-system modal (spec.md  / comprehensive
  * §7). The prose below is transcribed VERBATIM from docs/spec.md §4 — character
  * for character, including the "aims to" in "How It Matters", which is the
  * product owner's deliberate, final wording. Do not edit, hedge, or restore any

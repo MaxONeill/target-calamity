@@ -1,5 +1,5 @@
 /**
- * Phase D — LLM entity resolver (comprehensive §3, ADR-18/-38).
+ * Phase D — LLM entity resolver.
  *
  * On an embedding collision (Phase C surfaced candidates), the resolver decides
  * whether the incoming factor is an INDEPENDENT context or an ONGOING ESCALATION
@@ -7,7 +7,7 @@
  * `EntityResolver` port `pipeline.ts` already consumes; the deterministic
  * `createStubResolver` there remains the OFFLINE fallback (never deleted).
  *
- * Division of labour (finding 28 / ADR-19): the LLM only PROPOSES — a relation,
+ * Division of labour (finding 28 / ): the LLM only PROPOSES — a relation,
  * and (for an escalation) its own recalculated effect/significance and a
  * rationale. It never writes the stored numbers. This module maps that proposal
  * onto a `ResolverVerdict` (`independent` | `escalation` + directionality), and
@@ -16,15 +16,15 @@
  * INCOMING report's Phase-A metrics. So the LLM proposes; the server clamps,
  * bounds, and validates.
  *
- * Parent selection stays deterministic (finding 29): an escalation attaches to
+ * Parent selection stays deterministic: an escalation attaches to
  * the NEAREST candidate (`request.candidates[0]`, already exact-distance-sorted by
  * `filterCandidates`), never to a hallucinated id — the LLM's job is the RELATION,
  * not which row. Directionality is derived from the LLM's proposed significance
  * relative to that parent (higher → intensifying, lower → de-escalating, ~equal or
  * unstated → corroborating), and every proposed number is clamped to its domain
- * (ADR-11a) before use.
+ * before use.
  *
- * LIVE via one JSON-schema-constrained Fireworks turn (ADR-44), exactly the shape
+ * LIVE via one JSON-schema-constrained Fireworks turn, exactly the shape
  * `websearch.ts` / `reputability.ts` use. Any failure (throw, unparseable output)
  * degrades to `independent` — the conservative "do not merge" default, matching
  * `resolveOutcome`'s own fallback — rather than crashing a cycle.
@@ -62,7 +62,7 @@ export const ResolutionSchema = z.object({
 export type ResolutionProposal = z.infer<typeof ResolutionSchema>;
 
 /* -------------------------------------------------------------------------- */
-/* Domain clamps (ADR-11a)                                                    */
+/* Domain clamps                                                    */
 /* -------------------------------------------------------------------------- */
 
 /** Clamp to `[lo, hi]`; a non-finite input collapses to `lo` (defensive). */
@@ -79,7 +79,7 @@ export function clampTo(x: number, lo: number, hi: number): number {
  * Derive escalation directionality from the LLM's proposed significance relative
  * to the parent's current significance. Higher (beyond ε) → `intensifying`;
  * lower → `de-escalating`; within ε or unstated → `corroborating`. The proposed
- * value is clamped to `[0, 1]` first (ADR-11a).
+ * value is clamped to `[0, 1]` first.
  */
 export function deriveDirectionality(
   proposedSignificance: number | undefined,
@@ -98,8 +98,8 @@ export function deriveDirectionality(
  * Pure and deterministic given its inputs, so the clamping/validation logic is
  * unit-testable without any network call. An `escalation` with no candidates
  * degrades to `independent` (nothing to attach to); otherwise it attaches to the
- * NEAREST candidate (finding 29) with LLM-derived directionality. Proposed
- * effect/significance are clamped (ADR-11a) even though the deterministic recalc
+ * NEAREST candidate with LLM-derived directionality. Proposed
+ * effect/significance are clamped even though the deterministic recalc
  * downstream re-derives the stored numbers — the clamp keeps a poisoned proposal
  * from ever influencing directionality out of domain.
  */

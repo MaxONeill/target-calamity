@@ -136,7 +136,7 @@ describe('full offline A→D cycle', () => {
     expect(repo.factors()).toHaveLength(2);
 
     const second = await pipeline.processBatch(items);
-    // Both findings' source URLs were already ingested → skipped per-finding (ADR-31).
+    // Both findings' source URLs were already ingested → skipped per-finding.
     expect(second.skippedDuplicateFactors).toBe(2);
     expect(second.inserted).toBe(0);
     expect(second.escalated).toBe(0);

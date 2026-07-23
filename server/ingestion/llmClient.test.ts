@@ -1,5 +1,5 @@
 /**
- * Offline tests for the Fireworks LLM client seam (ADR-44).
+ * Offline tests for the Fireworks LLM client seam.
  *
  * No network and no client construction with a real key: these cover the pure
  * credential gate, model selection, and the zod → JSON-Schema derivation that

@@ -76,7 +76,7 @@ describe('deriveClock — the no-data vs. balance distinction', () => {
 
 describe('deriveClock — tipping-point baseline', () => {
   it('baseline is the significance-weighted mean of central tipping years', () => {
-    // In-domain weights (significance is clamped to [0,1], ADR-11a):
+    // In-domain weights (significance is clamped to [0,1]):
     // 0.25 @ 2040 and 0.75 @ 2060 → (0.25·2040 + 0.75·2060)/1.0 = 2055
     const m = deriveClock([
       { effect: 0, significance: 0.25, tippingPoint: { centralYear: 2040 } },

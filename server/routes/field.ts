@@ -1,5 +1,5 @@
 /**
- * GET /api/field — the shader's input set (ADR-26).
+ * GET /api/field — the shader's input set.
  *
  * Deliberately has NO camera and NO cursor parameters. The field is a function
  * of the data alone, so two clients holding the same `fieldEpoch` are provably
@@ -20,7 +20,7 @@ import type { FieldPin, FieldResponse } from '../../shared/types.js';
 import type { Database } from '../db.js';
 import { SEED_FACTORS } from '../../shared/seed.js';
 
-/** Rendering-budget constant (ADR-26), independent of feed state. */
+/** Rendering-budget constant, independent of feed state. */
 const FIELD_CAPACITY = 2048;
 
 /**
@@ -38,7 +38,7 @@ interface FieldQueryRow {
 /**
  * Drop a null `tippingPoint` so the property is simply absent — `TippingPointSchema`
  * is `.optional()` (not `.nullable()`), so a literal `null` from the JSON assembly
- * would be rejected. The pin must CARRY its tipping point (ADR-35) so the Clock,
+ * would be rejected. The pin must CARRY its tipping point so the Clock,
  * which reads the FIELD set, gets it in DB mode too.
  */
 function stripNullTippingPoint(pin: FieldPin): FieldPin {
@@ -93,7 +93,7 @@ function fieldSeed(): FieldResponse {
     .slice(0, FIELD_CAPACITY);
 
   // Copy tippingPoint through so the Clock (which reads the field set) anchors to
-  // it in seed mode too (ADR-35). Spread it only when present, to keep the key
+  // it in seed mode too. Spread it only when present, to keep the key
   // absent (not null) under exactOptionalPropertyTypes / the `.optional()` schema.
   const pins: FieldPin[] = picked.map((f) => ({
     id: f.id,
@@ -117,7 +117,7 @@ export default async function fieldRoutes(fastify: FastifyInstance): Promise<voi
   fastify.get('/api/field', async (_req: FastifyRequest, _reply: FastifyReply): Promise<FieldResponse> => {
     const ctx = fastify.appCtx;
     const response = ctx.mode === 'db' ? await fieldDb(ctx.db) : fieldSeed();
-    // Re-validate our own response against the shared contract (ADR-23).
+    // Re-validate our own response against the shared contract.
     return FieldResponseSchema.parse(response);
   });
 }

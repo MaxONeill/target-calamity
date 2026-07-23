@@ -1,7 +1,7 @@
 /**
- * interrupt.ts — the "drop lock" handler (ADR-27 Step Four).
+ * interrupt.ts — the "drop lock" handler ( Step Four).
  *
- * Spec §5 Step Four / v3.2 §1.3: "During manual user manipulation
+ *  Step Four / : "During manual user manipulation
  * (WASDQE/Pointer Drag), all active automated camera animations must immediately
  * drop lock via an explicit interrupt handler to prevent viewport fighting."
  *

@@ -1,6 +1,6 @@
 /**
  * TypeScript types for the shared contract, DERIVED from the zod schemas in
- * `shared/schema.ts` via `z.infer` (ADR-23). Do not hand-write or edit these to
+ * `shared/schema.ts` via `z.infer`. Do not hand-write or edit these to
  * diverge from the schemas — change the schema and the type follows. Importing
  * from here keeps callers off the zod runtime when they only need the types.
  */
@@ -38,7 +38,7 @@ export type FieldResponse = z.infer<typeof FieldResponseSchema>;
 export type Viewport = z.infer<typeof ViewportSchema>;
 
 /**
- * Decoded cursor payload. Carries its own sort mode (ADR-15), so a value of this
+ * Decoded cursor payload. Carries its own sort mode, so a value of this
  * type is self-describing: the `mode` discriminant tells you which keyset tuple
  * is present.
  */
@@ -48,7 +48,7 @@ export type FeedRequest = z.infer<typeof FeedRequestSchema>;
 export type FeedResponse = z.infer<typeof FeedResponseSchema>;
 
 /**
- * The ONLY fields an anonymous submitter may send (ADR-45). Note what is absent:
+ * The ONLY fields an anonymous submitter may send. Note what is absent:
  * effect, significance, verificationState, lat, lon, tippingPoint — all
  * system-assigned. The schema is `.strict()`, so supplying one is a hard error.
  */

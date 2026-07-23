@@ -1,5 +1,5 @@
 /**
- * The Reconciliation Loop (comprehensive §3) — Phase A → D orchestration.
+ * The Reconciliation Loop — Phase A → D orchestration.
  *
  * This module wires the four phases together and owns the *impure* concerns:
  * idempotency, batching, value validation, quarantine, and the transactional
@@ -7,19 +7,19 @@
  * vectorization in `embeddings.ts`; this file coordinates them.
  *
  *   Phase A — Extraction    : `FactorExtractor` turns one untrusted intel item
- *                             into structured factor drafts (ADR-21: JSON-schema
+ *                             into structured factor drafts (: JSON-schema
  *                             constrained, NOT free-text parsing). We then
- *                             validate every VALUE (finding 27) and quarantine
+ *                             validate every VALUE and quarantine
  *                             anything out of domain.
  *   Phase B — Vectorization : one BATCHED embedding call for the whole page of
- *                             surviving drafts (ADR-21), 512-dim (ADR-12).
- *   Phase C — Similarity    : top-k nearest as CANDIDATES (ADR-18), never a
- *                             distance predicate (ADR-30).
+ *                             surviving drafts, 512-dim.
+ *   Phase C — Similarity    : top-k nearest as CANDIDATES, never a
+ *                             distance predicate.
  *   Phase D — Resolution    : the resolver classifies; the server computes the
- *                             new metrics (ADR-19) and writes exactly one target
- *                             (finding 29), landing new factors as `pending`
- *                             (ADR-20) and appending a `factor_revisions` row
- *                             (ADR-13) for audit/replay.
+ *                             new metrics and writes exactly one target
+ *, landing new factors as `pending`
+ * and appending a `factor_revisions` row
+ * for audit/replay.
  *
  * Everything the loop touches outside itself is an injected PORT (repository,
  * embedding client, extractor, resolver). The ingestion module owns none of the
@@ -53,7 +53,7 @@ import {
 /* -------------------------------------------------------------------------- */
 
 /**
- * One raw item off the inbound intel stream (comprehensive §3 Phase A). `rawText`
+ * One raw item off the inbound intel stream. `rawText`
  * is UNTRUSTED third-party content — the extractor prompt must treat it as data,
  * never as instructions (finding 27, prompt-injection boundary).
  */
@@ -70,7 +70,7 @@ export interface InboundIntelItem {
 /**
  * A structured factor as returned by the Phase A extractor, before value
  * validation. `zone_level` is intentionally absent — it is a generated column
- * derived from `spatial_path` (ADR-10), so the pipeline never sets it.
+ * derived from `spatial_path`, so the pipeline never sets it.
  */
 export interface ExtractedFactorDraft {
   name: string;
@@ -81,14 +81,14 @@ export interface ExtractedFactorDraft {
   lon: number;
   spatialPath: string;
   /**
-   * The verification state Phase A already resolved for this draft (ADR-33): the
+   * The verification state Phase A already resolved for this draft: the
    * live path sets `verified`/`pending` from the reputability gate; the offline
    * stubs omit it and it defaults to `pending`. Escalations never change an
    * existing parent's state — this only seeds a NEW factor's insert.
    */
   verificationState?: VerificationState;
   /**
-   * A dated tipping-point threshold (ADR-34), present only when Phase A extracted
+   * A dated tipping-point threshold, present only when Phase A extracted
    * a concrete dated/near-dated one. Persisted to `factors.tipping_point` on insert
    * so the Clock countdown baseline can anchor to it. Escalations never touch it.
    * Explicit `| undefined` (not a bare optional) so a zod-parsed draft and the
@@ -96,7 +96,7 @@ export interface ExtractedFactorDraft {
    */
   tippingPoint?: TippingPoint | undefined;
   /**
-   * The reputability gate's audit trail (ADR-33/-37): the DECIDING (max-scoring)
+   * The reputability gate's audit trail: the DECIDING (max-scoring)
    * source's credibility score `∈ [0, 1]` and its reasoning, carried onto the
    * persisted factor so the verified/pending decision is auditable. The live gate
    * sets both; the offline stubs omit them. Explicit `| undefined` for clean
@@ -114,9 +114,9 @@ export interface ExtractedFactorDraft {
 
 /**
  * Value-level validation of a Phase A draft (finding 27: JSON-schema constrains
- * SHAPE, not VALUES). Ranges mirror the DB CHECK constraints (ADR-11/-11a) and
+ * SHAPE, not VALUES). Ranges mirror the DB CHECK constraints and
  * the shared contract; `spatialPath` is enforced rooted-at-`global` with depth
- * ≤ 2 (ADR-11: `<@ 'global'` and `nlevel <= 2`). `.finite()` on the numbers
+ * ≤ 2 (: `<@ 'global'` and `nlevel <= 2`). `.finite()` on the numbers
  * rejects `NaN`/`±Infinity` before they can poison the field or the feed.
  */
 export const ExtractedFactorSchema = z.object({
@@ -131,12 +131,12 @@ export const ExtractedFactorSchema = z.object({
     message: "spatialPath must be 'global' or 'global.<code>' (depth <= 2)",
   }),
   // Defaults to 'pending' so any draft of unknown provenance stays off the
-  // Clock aggregate until the reputability gate (ADR-33) says otherwise.
+  // Clock aggregate until the reputability gate says otherwise.
   verificationState: VerificationStateSchema.default('pending'),
-  // Optional dated threshold (ADR-34); most drafts have none. `.optional()` (not
+  // Optional dated threshold; most drafts have none. `.optional()` (not
   // `.nullable()`) mirrors the shared contract and satisfies exactOptionalPropertyTypes.
   tippingPoint: TippingPointSchema.optional(),
-  // Reputability audit trail (ADR-33/-37): deciding source's score + reasoning.
+  // Reputability audit trail: deciding source's score + reasoning.
   // Optional — present only when the live gate ran; the offline stubs omit it.
   reputabilityScore: z.number().finite().gte(0).lte(1).optional(),
   reputabilityReasoning: z.string().optional(),
@@ -151,12 +151,12 @@ export const ExtractedFactorSchema = z.object({
 /* Phase A / D LLM ports                                                      */
 /* -------------------------------------------------------------------------- */
 
-/** Phase A. Structured extraction over one untrusted intel item (ADR-21). */
+/** Phase A. Structured extraction over one untrusted intel item. */
 export interface FactorExtractor {
   extract(item: InboundIntelItem): Promise<ExtractedFactorDraft[]>;
 }
 
-/** What the entity-resolution prompt is shown about one candidate (ADR-18). */
+/** What the entity-resolution prompt is shown about one candidate. */
 export interface ResolutionCandidateView {
   id: string;
   name: string;
@@ -179,9 +179,9 @@ export interface ResolutionRequest {
 }
 
 /**
- * Phase D. The resolver ONLY classifies (ADR-18/finding 28): independent event
+ * Phase D. The resolver ONLY classifies (/finding 28): independent event
  * vs escalation of a named candidate + directionality. It never computes stored
- * numbers — that is the server's deterministic job (ADR-19, in `dedupe.ts`).
+ * numbers — that is the server's deterministic job (, in `dedupe.ts`).
  */
 export interface EntityResolver {
   resolve(request: ResolutionRequest): Promise<ResolverVerdict>;
@@ -200,7 +200,7 @@ export interface CitationWriteInput {
   contentHash: string;
 }
 
-/** The classified inbound metrics persisted for replay (ADR-13/-19). */
+/** The classified inbound metrics persisted for replay. */
 export interface RevisionInput {
   effect: number;
   significance: number;
@@ -218,14 +218,14 @@ export interface NewFactorInput {
   lat: number;
   lon: number;
   spatialPath: string;
-  /** 512-dim vector (ADR-12), stored as `halfvec(512)` by the repository. */
+  /** 512-dim vector, stored as `halfvec(512)` by the repository. */
   embedding: number[];
-  /** LLM-ingested factors land unreviewed (ADR-20). */
+  /** LLM-ingested factors land unreviewed. */
   verificationState: VerificationState;
-  /** Dated tipping-point threshold (ADR-34), when the draft carried one. */
+  /** Dated tipping-point threshold, when the draft carried one. */
   tippingPoint?: TippingPoint | undefined;
   /**
-   * The reputability gate's audit trail (ADR-33/-37): the deciding source's
+   * The reputability gate's audit trail: the deciding source's
    * score + reasoning. Persisted to `factors.reputability_score` /
    * `reputability_reasoning` (migration 004) so the verified/pending decision is
    * auditable. Absent for offline/ungated inserts.
@@ -233,14 +233,14 @@ export interface NewFactorInput {
   reputabilityScore?: number | undefined;
   reputabilityReasoning?: string | undefined;
   citation: CitationWriteInput;
-  /** Seeds the first `factor_revisions` row (ADR-13). */
+  /** Seeds the first `factor_revisions` row. */
   revision: RevisionInput;
 }
 
 /** Everything needed to escalate an existing parent (the "Collision" branch). */
 export interface EscalationWriteInput {
   parentId: string;
-  /** New stored metrics from the ADR-19 recalculation. */
+  /** New stored metrics from the  recalculation. */
   effect: number;
   significance: number;
   citation: CitationWriteInput;
@@ -251,7 +251,7 @@ export interface EscalationWriteInput {
 /**
  * The transactional handle passed to {@link IngestionRepository.withBucketLock}.
  * Every Phase C read and Phase D write for one inbound item happens through it,
- * inside the same advisory-locked transaction (finding 29).
+ * inside the same advisory-locked transaction.
  */
 export interface IngestionTx {
   /**
@@ -265,7 +265,7 @@ export interface IngestionTx {
   escalateFactor(input: EscalationWriteInput): Promise<void>;
 }
 
-/** A rejected item routed away from `factors` with a reason (finding 27). */
+/** A rejected item routed away from `factors` with a reason. */
 export interface QuarantineEntry {
   reason: string;
   publisher: string;
@@ -281,15 +281,15 @@ export interface QuarantineEntry {
  * decoupled from it and testable offline via an in-memory fake.
  */
 export interface IngestionRepository {
-  /** ADR-21 idempotency: has an item with this content hash already been ingested? */
+  /**  idempotency: has an item with this content hash already been ingested? */
   existsByContentHash(hash: string): Promise<boolean>;
-  /** ADR-21 idempotency: has this exact source URL already been ingested? */
+  /**  idempotency: has this exact source URL already been ingested? */
   existsBySourceUrl(url: string): Promise<boolean>;
   /**
    * Run `fn` inside a READ COMMITTED transaction holding
    * `pg_advisory_xact_lock(hashtext(bucketKey))`, so concurrent inbound items in
    * the same spatial/temporal bucket serialize through the Phase C→D critical
-   * section (finding 29). The advisory lock — not the isolation level — provides
+   * section. The advisory lock — not the isolation level — provides
    * mutual exclusion.
    */
   withBucketLock<T>(
@@ -301,7 +301,7 @@ export interface IngestionRepository {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Optional source-trust gate (finding 27)                                    */
+/* Optional source-trust gate                                    */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -330,16 +330,16 @@ export interface PipelineDeps {
 
 /** Per-batch outcome counts. Every inbound factor lands in exactly one bucket. */
 export interface BatchResult {
-  /** Inbound items skipped by content-hash/URL idempotency (ADR-21). */
+  /** Inbound items skipped by content-hash/URL idempotency. */
   skippedDuplicateItems: number;
   /**
-   * Extracted factors skipped because their SOURCE was already ingested (ADR-31).
+   * Extracted factors skipped because their SOURCE was already ingested.
    * The live research path re-runs the same topics every cycle on purpose, so
    * idempotency for it is per-FINDING (source URL / content hash), applied after
    * extraction — not per-topic, which would wrongly skip re-research entirely.
    */
   skippedDuplicateFactors: number;
-  /** Drafts rejected by value validation or the allowlist (finding 27). */
+  /** Drafts rejected by value validation or the allowlist. */
   quarantined: number;
   /** New factors inserted (No Collision branch). */
   inserted: number;
@@ -350,12 +350,12 @@ export interface BatchResult {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Content hashing (ADR-21)                                                   */
+/* Content hashing                                                   */
 /* -------------------------------------------------------------------------- */
 
 /**
  * Idempotency key for an inbound item, computed BEFORE embedding so a re-ingest
- * of the same article never costs an API call (ADR-21). Prefers the canonical
+ * of the same article never costs an API call. Prefers the canonical
  * source URL; falls back to a hash of publisher + normalized text when the item
  * has no URL.
  */
@@ -371,7 +371,7 @@ function normalizeText(s: string): string {
 }
 
 /**
- * Idempotency key for one EXTRACTED factor (ADR-31). The live research engine
+ * Idempotency key for one EXTRACTED factor. The live research engine
  * re-researches topics every cycle, so the meaningful dedupe unit is the finding,
  * not the topic: key on the citation's canonical source URL, falling back to
  * publisher + normalized name/description when a finding has no URL. Re-surfacing
@@ -390,7 +390,7 @@ export function draftContentHash(draft: ExtractedFactorDraft): string {
 }
 
 /**
- * The serialization bucket for the Phase C→D critical section (finding 29):
+ * The serialization bucket for the Phase C→D critical section:
  * spatial path + a coarse 1° geographic cell. Two inbound reports of the same
  * event fall in the same bucket and therefore serialize, closing the
  * check-then-insert race that content-hash dedupe (different sources, different
@@ -426,8 +426,8 @@ export function createPipeline(deps: PipelineDeps) {
 
     /**
      * Process one batch of inbound intel items through Phases A–D. Idempotent at
-     * the item level (ADR-21), batched at the embedding level (ADR-21), and
-     * serialized per spatial bucket at the write level (finding 29).
+     * the item level, batched at the embedding level, and
+     * serialized per spatial bucket at the write level.
      */
     async processBatch(items: readonly InboundIntelItem[]): Promise<BatchResult> {
       const result: BatchResult = {
@@ -439,11 +439,11 @@ export function createPipeline(deps: PipelineDeps) {
         processedFactors: 0,
       };
 
-      // --- Item-level idempotency (ADR-21) — BEFORE extraction, but ONLY for
+      // --- Item-level idempotency — BEFORE extraction, but ONLY for
       // items that carry a source URL (real articles: a re-ingest is a cheap
       // pre-skip). Live research TOPICS have no URL and MUST be re-run each cycle,
       // so they are never pre-skipped here; their idempotency is per-finding,
-      // applied after extraction below (ADR-31). ---
+      // applied after extraction below. ---
       const freshItems: InboundIntelItem[] = [];
       for (const item of items) {
         if (item.sourceUrl) {
@@ -462,7 +462,7 @@ export function createPipeline(deps: PipelineDeps) {
       // (the DB checks below only see committed rows, not siblings in flight).
       const seenInBatch = new Set<string>();
 
-      // --- Phase A: extraction + value validation (finding 27). ---
+      // --- Phase A: extraction + value validation. ---
       const prepared: PreparedFactor[] = [];
       for (const item of freshItems) {
         let drafts: ExtractedFactorDraft[];
@@ -502,7 +502,7 @@ export function createPipeline(deps: PipelineDeps) {
             continue;
           }
 
-          // Per-finding idempotency (ADR-31): skip a finding whose source was
+          // Per-finding idempotency: skip a finding whose source was
           // already ingested (a prior cycle) or already seen earlier this batch.
           const hash = draftContentHash(draft);
           const alreadySeen =
@@ -528,7 +528,7 @@ export function createPipeline(deps: PipelineDeps) {
 
       if (prepared.length === 0) return result;
 
-      // --- Phase B: ONE batched embedding call for the whole page (ADR-21). ---
+      // --- Phase B: ONE batched embedding call for the whole page. ---
       const vectors = await deps.embeddings.embed(prepared.map((p) => p.embeddingText));
       if (vectors.length !== prepared.length) {
         throw new Error(
@@ -536,7 +536,7 @@ export function createPipeline(deps: PipelineDeps) {
         );
       }
 
-      // --- Phases C + D, serialized per spatial bucket (finding 29). ---
+      // --- Phases C + D, serialized per spatial bucket. ---
       for (let i = 0; i < prepared.length; i++) {
         const p = prepared[i]!;
         const embedding = vectors[i]!;
@@ -565,7 +565,7 @@ export function createPipeline(deps: PipelineDeps) {
       embedding: number[],
       resolver: EntityResolver,
     ): Promise<ResolutionOutcome> {
-      // Phase C — candidates, not a decision (ADR-18/-30).
+      // Phase C — candidates, not a decision.
       const raw = await tx.findNearestFactors(embedding, CANDIDATE_TOP_K);
       const candidates = filterCandidates(raw);
 
@@ -600,8 +600,8 @@ export function createPipeline(deps: PipelineDeps) {
 
       if (outcome.kind === 'insert') {
         // No Collision — a distinct event. Its verification state comes from the
-        // reputability gate (ADR-33): `verified` when a reputable source cleared
-        // the threshold, else `pending` (ADR-20 default for machine-extracted
+        // reputability gate: `verified` when a reputable source cleared
+        // the threshold, else `pending` ( default for machine-extracted
         // rows, still excluded from the field bake until verified).
         await tx.insertFactor({
           name: p.draft.name,
@@ -613,9 +613,9 @@ export function createPipeline(deps: PipelineDeps) {
           spatialPath: p.draft.spatialPath,
           embedding,
           verificationState: p.draft.verificationState ?? 'pending',
-          // Carried through when the draft had a dated threshold (ADR-34); else undefined.
+          // Carried through when the draft had a dated threshold; else undefined.
           tippingPoint: p.draft.tippingPoint,
-          // Reputability audit trail (ADR-33/-37): carry the deciding source's
+          // Reputability audit trail: carry the deciding source's
           // score + reasoning onto the persisted factor. Undefined offline/ungated.
           reputabilityScore: p.draft.reputabilityScore,
           reputabilityReasoning: p.draft.reputabilityReasoning,
@@ -629,7 +629,7 @@ export function createPipeline(deps: PipelineDeps) {
         });
       } else {
         // Collision — escalate exactly one parent with recalculated metrics
-        // (ADR-19), appending a citation + revision (finding 29 one-target write).
+        //, appending a citation + revision (finding 29 one-target write).
         await tx.escalateFactor({
           parentId: outcome.parent.id,
           effect: outcome.recalculated.effect,
@@ -690,7 +690,7 @@ export function createPipelineFromEnv(
 }
 
 /* -------------------------------------------------------------------------- */
-/* Live Phase A adapter — web-search research as the extractor (ADR-31)        */
+/* Live Phase A adapter — web-search research as the extractor        */
 /* -------------------------------------------------------------------------- */
 
 /** Phase A research function: a topic in, candidate factors out (websearch.ts). */
@@ -701,7 +701,7 @@ export interface GateResult {
   verificationState: VerificationState;
   citation: { publisher: string; sourceUrl: string | null; quoteSnippet: string };
   /**
-   * The reputability audit trail (ADR-33/-37): the DECIDING (max-scoring)
+   * The reputability audit trail: the DECIDING (max-scoring)
    * source's score `∈ [0, 1]` and its reasoning, threaded onto the draft so the
    * verified/pending decision is persisted and auditable. Absent from the ungated
    * `defaultGate` fallback.
@@ -711,7 +711,7 @@ export interface GateResult {
 }
 
 /**
- * The reputability gate (ADR-33), injected by the worker. Given a candidate and
+ * The reputability gate, injected by the worker. Given a candidate and
  * its sources, it scores them and returns the verification state + the primary
  * citation to persist. Kept as an injected port so `pipeline.ts` stays free of
  * the reputability/LLM code (that wiring lives in `worker.ts`).
@@ -742,12 +742,12 @@ function defaultGate(candidate: CandidateFactor): GateResult {
 }
 
 /**
- * Wire Phase A (extraction) to the live web-search research engine (ADR-31). The
+ * Wire Phase A (extraction) to the live web-search research engine. The
  * inbound item's `rawText` is interpreted as a research TOPIC (trusted config, not
  * untrusted article text); `research` runs the retrieval + typed-extraction stages
- * and returns candidates; the optional `gate` (ADR-33) resolves each candidate's
+ * and returns candidates; the optional `gate` resolves each candidate's
  * verification state and primary citation. The rest of the loop (validate → embed
- * → dedupe → resolve → write) is unchanged, so ADR-18/-19/-20/-21 all still hold.
+ * → dedupe → resolve → write) is unchanged, so /-19/-20/-21 all still hold.
  */
 export function createResearchExtractor(
   research: ResearchFn,
@@ -768,9 +768,9 @@ export function createResearchExtractor(
           lon: c.lon,
           spatialPath: c.spatialPath,
           verificationState: g.verificationState,
-          // Carry a dated threshold through when Phase A found one (ADR-34); else undefined.
+          // Carry a dated threshold through when Phase A found one; else undefined.
           tippingPoint: c.tippingPoint,
-          // Carry the reputability audit trail (ADR-33/-37) from the gate.
+          // Carry the reputability audit trail from the gate.
           reputabilityScore: g.reputabilityScore,
           reputabilityReasoning: g.reputabilityReasoning,
           citation: g.citation,
@@ -789,7 +789,7 @@ export function createResearchExtractor(
  * A trivial deterministic extractor: one factor per item, coordinates and
  * metrics carried on the item via a JSON `rawText` payload when present, else a
  * neutral default. Real Phase A is an LLM with a JSON-schema-constrained,
- * untrusted-text-delimited prompt (ADR-21 / finding 27); this stub only exists
+ * untrusted-text-delimited prompt ( / finding 27); this stub only exists
  * so the loop runs offline.
  */
 export function createStubExtractor(): FactorExtractor {
@@ -831,7 +831,7 @@ export function createStubExtractor(): FactorExtractor {
  * the hard collision threshold and classifies it `corroborating`, otherwise
  * declares the inbound independent. This mirrors the spec's original `< 0.15`
  * rule but as one specific *policy* over the candidate set — real Phase D is an
- * LLM (ADR-18). Useful as a baseline and for offline tests.
+ * LLM. Useful as a baseline and for offline tests.
  */
 export function createStubResolver(threshold = 0.15): EntityResolver {
   return {

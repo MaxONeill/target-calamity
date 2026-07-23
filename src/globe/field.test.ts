@@ -1,6 +1,6 @@
 /**
- * Unit tests for the CPU field kernel (field.ts is the ADR-1 test target). These
- * assert the two-field, three-state model (ADR-3) and the ADR-25 baker↔pin
+ * Unit tests for the CPU field kernel (field.ts is the  test target). These
+ * assert the two-field, three-state model and the  baker↔pin
  * inverse — including the acceptance test that a single Calamity factor paints a
  * red patch with grey everywhere else and ZERO purple.
  */

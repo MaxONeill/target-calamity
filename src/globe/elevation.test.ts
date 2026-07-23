@@ -1,5 +1,5 @@
 /**
- * Unit tests for the pure elevation helpers (ADR-42). Offline and deterministic
+ * Unit tests for the pure elevation helpers. Offline and deterministic
  * — no network, no WebGL: exercises the base64 Int16 decode, the lat/lon → grid
  * mapping, and the bilinear sampler against a tiny hand-built grid.
  */

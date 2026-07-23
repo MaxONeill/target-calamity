@@ -1,8 +1,8 @@
 /**
- * Kysely (ADR-24) over a node-postgres `Pool`, plus the hand-written `DB`
+ * Kysely over a node-postgres `Pool`, plus the hand-written `DB`
  * interface mirroring `db/migrations/001_init.sql`.
  *
- * ADR-24: keyset pagination is the code most likely to break silently, so the
+ * : keyset pagination is the code most likely to break silently, so the
  * SQL that drives it is typed. The complex projections (json_agg / LATERAL /
  * PostGIS) are written as raw `sql` templates — still Kysely, still typed via
  * `sql<Row>` and still auto-parameterized, but without fighting the query
@@ -40,8 +40,8 @@ interface FactorsTable {
   id: Generated<UUID>;
 
   /**
-   * SPEC DEVIATION (ADR-15a / defects #13 & #21): the spec paginates on
-   * `updated_at`, which Phase D (ADR-19) rewrites to NOW() on every escalation.
+   * the spec paginates on
+   * `updated_at`, which Phase D rewrites to NOW() on every escalation.
    * A row below the live cursor that escalates jumps above it and is skipped
    * for the rest of the scroll session — biased toward the most active factors.
    * `seq` is an insert-only monotonic identity assigned once and NEVER bumped;
@@ -54,23 +54,23 @@ interface FactorsTable {
   description: string;
 
   /**
-   * SPEC DEVIATION (ADR-12): `VECTOR(1536)` becomes `halfvec(512)` (Matryoshka
+   * `VECTOR(1536)` becomes `halfvec(512)` (Matryoshka
    * truncation). Server-side only — never selected onto the wire (FactorSchema
    * has no embedding field). Typed permissively as its text representation.
    */
   embedding: ColumnType<string | null, string | null, string | null>;
 
-  /** SPEC DEVIATION (ADR-9): `NUMERIC` → `REAL`. CHECK [-1,1] (ADR-11a). */
+  /** `NUMERIC` → `REAL`. CHECK [-1,1]. */
   effect: number;
-  /** SPEC DEVIATION (ADR-9): `NUMERIC` → `REAL`. CHECK [0,1] (ADR-11). */
+  /** `NUMERIC` → `REAL`. CHECK [0,1]. */
   significance: number;
-  /** SPEC DEVIATION (ADR-9): `NUMERIC(8,6)` → `DOUBLE PRECISION`. Degrees, CHECK [-90,90]. */
+  /** `NUMERIC(8,6)` → `DOUBLE PRECISION`. Degrees, CHECK [-90,90]. */
   lat: number;
-  /** SPEC DEVIATION (ADR-9): `NUMERIC(9,6)` → `DOUBLE PRECISION`. Degrees, CHECK [-180,180]. */
+  /** `NUMERIC(9,6)` → `DOUBLE PRECISION`. Degrees, CHECK [-180,180]. */
   lon: number;
 
   /**
-   * SPEC DEVIATION (ADR-8): the lat/lon BETWEEN viewport filter is replaced by
+   * the lat/lon BETWEEN viewport filter is replaced by
    * PostGIS. `geog geography(Point,4326)` is derived from (lon,lat) and carries
    * a GiST index; the feed query intersects it with the viewport envelope,
    * which fixes the antimeridian and near-pole failure modes structurally.
@@ -78,10 +78,10 @@ interface FactorsTable {
    */
   geog: ColumnType<string, string, string>;
 
-  /** SPEC DEVIATION (ADR-10): generated from `nlevel(spatial_path)`, not stored free-text. */
+  /** generated from `nlevel(spatial_path)`, not stored free-text. */
   zone_level: GeneratedAlways<ZoneLevel>;
 
-  /** SPEC DEVIATION (ADR-20): ingested factors land `pending`; the field bake takes only `verified`. */
+  /** ingested factors land `pending`; the field bake takes only `verified`. */
   verification_state: Generated<VerificationState>;
 
 
@@ -91,19 +91,19 @@ interface FactorsTable {
 
 interface CitationsTable {
   id: Generated<UUID>;
-  /** SPEC DEVIATION (ADR-11): NOT NULL — the header claims "one-to-many strict". */
+  /** NOT NULL — the header claims "one-to-many strict". */
   factor_id: UUID;
   source_url: string | null;
   publisher: string;
   quote_snippet: string;
   analyst_notes: string | null;
-  /** ADR-21 ingest idempotency key (002_ingestion.sql). NULL for seed/curated rows. */
+  /**  ingest idempotency key (002_ingestion.sql). NULL for seed/curated rows. */
   content_hash: ColumnType<string | null, string | null, string | null>;
   retrieved_at: Timestamptz;
 }
 
 /**
- * SPEC DEVIATION (ADR-13): the spec calls the store "event-sourced" but keeps a
+ * the spec calls the store "event-sourced" but keeps a
  * single mutable table and overwrites `effect`/`significance` in place. This
  * append-only revision log makes the claim true and gives Phase D an audit
  * trail. `factors` is the current-state projection of the newest revision.
@@ -119,7 +119,7 @@ interface FactorRevisionsTable {
 }
 
 /**
- * Anonymous Phase-1 submissions (ADR-45, migration 005). Note what is NOT here:
+ * Anonymous Phase-1 submissions (, migration 005). Note what is NOT here:
  * effect, significance, verification_state, lat, lon, tipping_point. A submitter
  * supplies a claim and a source and nothing else — every stored number is
  * assigned downstream by the vetting pipeline.
@@ -143,7 +143,7 @@ interface SubmissionsTable {
 }
 
 /**
- * The shadow-ban list (ADR-45). A hit means the submitter keeps receiving the
+ * The shadow-ban list. A hit means the submitter keeps receiving the
  * ordinary success response while their submissions land `quarantined` and never
  * reach the pipeline. Either half may be NULL (CHECK: not both).
  */
@@ -173,7 +173,7 @@ export type Database = Kysely<DB>;
 /**
  * Build a Kysely instance and its underlying pool from a connection string.
  * The pool is returned alongside so the SSE route can check out a dedicated
- * `LISTEN` client (ADR-17) and the bootstrap can drain it on shutdown.
+ * `LISTEN` client and the bootstrap can drain it on shutdown.
  */
 export function createDatabase(connectionString: string): { db: Database; pool: PgPool } {
   const pool = new Pool({ connectionString });

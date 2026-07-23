@@ -1,5 +1,5 @@
 /**
- * GET /api/stream — Server-Sent Events for live factor updates (ADR-17).
+ * GET /api/stream — Server-Sent Events for live factor updates.
  *
  * The spec describes a continuous feed but no delivery mechanism; polling is the
  * wrong shape. In DB mode a single dedicated client holds a Postgres `LISTEN` on
@@ -16,7 +16,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Notification, PoolClient } from 'pg';
 import type { ServerResponse } from 'node:http';
 
-/** Postgres NOTIFY channel the ingestion worker signals on (ADR-17). */
+/** Postgres NOTIFY channel the ingestion worker signals on. */
 const NOTIFY_CHANNEL = 'factor_updates';
 
 /** Heartbeat interval — keeps proxies from closing an idle SSE connection. */

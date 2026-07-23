@@ -1,15 +1,15 @@
 /**
- * Phase B — Vectorization (comprehensive §3).
+ * Phase B — Vectorization.
  *
  * The embedding client for the Reconciliation Loop. Two implementations behind
  * one interface:
  *
- *   1. `createRemoteEmbeddingClient` — the real provider. As of ADR-44 this is
+ *   1. `createRemoteEmbeddingClient` — the real provider. As of  this is
  *      **Fireworks AI** (`nomic-ai/nomic-embed-text-v1.5`) over its
  *      OpenAI-COMPATIBLE `/v1/embeddings` endpoint — a wire protocol, not OpenAI
- *      the company; no request goes to `api.openai.com`. Batched (ADR-21: the
+ *      the company; no request goes to `api.openai.com`. Batched (: the
  *      endpoint takes arrays) and Matryoshka-truncated to 512 dimensions via the
- *      `dimensions` parameter (ADR-12: matches the `halfvec(512)` column, so NO
+ *      `dimensions` parameter (: matches the `halfvec(512)` column, so NO
  *      migration was needed — nomic-embed-text-v1.5 is Matryoshka-trained with a
  *      native width of 768 and officially supports truncation to 512/256/128).
  *
@@ -23,32 +23,32 @@
  * no key set and `NODE_ENV === 'production'` it throws rather than returning the
  * stub.
  *
- * SPEC DEVIATION (ADR-12): the specs store `embedding VECTOR(1536)`. We request
+ * the specs store `embedding VECTOR(1536)`. We request
  * 512 dims via the API's `dimensions` parameter (Matryoshka truncation) to match
- * the `halfvec(512)` column ADR-12 adopts. Every vector this module emits has
- * length `EMBEDDING_DIMENSIONS`, and the provider swap in ADR-44 deliberately
+ * the `halfvec(512)` column  adopts. Every vector this module emits has
+ * length `EMBEDDING_DIMENSIONS`, and the provider swap in  deliberately
  * chose a model that supports that width so the DB column is unchanged.
  */
 import { FIREWORKS_BASE_URL } from './llmClient.js';
 
-/** The single sanctioned embedding width (ADR-12). Every vector is this long. */
+/** The single sanctioned embedding width. Every vector is this long. */
 export const EMBEDDING_DIMENSIONS = 512;
 
 /**
- * Default provider model (ADR-44). Matryoshka-capable, so `dimensions: 512`
+ * Default provider model. Matryoshka-capable, so `dimensions: 512`
  * yields a valid prefix rather than a naive slice. Overridable via
  * `EMBEDDING_MODEL` — but a replacement MUST support 512 dims or the
  * `halfvec(512)` column and dedupe break.
  */
 export const DEFAULT_EMBEDDING_MODEL = 'nomic-ai/nomic-embed-text-v1.5';
 
-/** Fireworks' OpenAI-compatible embeddings endpoint (ADR-44). */
+/** Fireworks' OpenAI-compatible embeddings endpoint. */
 const EMBEDDINGS_URL = `${FIREWORKS_BASE_URL}/embeddings`;
 
 /**
  * The provider-agnostic contract the rest of the pipeline depends on. Always
  * batched: callers hand it every text at once so a page of extracted factors
- * costs a single request (ADR-21), never one call per factor.
+ * costs a single request, never one call per factor.
  */
 export interface EmbeddingClient {
   /**
@@ -96,7 +96,7 @@ export interface RemoteEmbeddingConfig {
 
 /**
  * The real, network-backed client. Requests `dimensions` explicitly so the
- * provider truncates server-side (ADR-12) rather than us slicing a full-width vector
+ * provider truncates server-side rather than us slicing a full-width vector
  * — the truncated prefix is the Matryoshka-valid one only when the model
  * produces it. Preserves input order by sorting the response on `index`, which
  * the API does not guarantee to return sorted.

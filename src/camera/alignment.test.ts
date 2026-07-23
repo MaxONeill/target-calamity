@@ -1,5 +1,5 @@
 /**
- * Regression tests for orbital alignment roll (ADR-27).
+ * Regression tests for orbital alignment roll.
  *
  * The load-bearing guarantee: aligning the camera by interpolating POSITION on
  * the orbit sphere (and re-levelling with `lookAt` + world-up every frame) keeps
@@ -129,7 +129,7 @@ describe('mid-flight camera roll (ADR-27 regression)', () => {
   });
 
   it('DISCRIMINATES: a quaternion slerp of the same endpoints DOES roll mid-flight', () => {
-    // This is precisely the artifact ADR-27 rejects. If the zero-roll assertions
+    // This is precisely the artifact  rejects. If the zero-roll assertions
     // above ever pass because lookAt is trivially level, this proves they are not
     // vacuous: the naive orientation-slerp produces a clearly tilted horizon.
     const camA = new THREE.PerspectiveCamera();

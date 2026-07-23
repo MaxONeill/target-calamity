@@ -1,6 +1,6 @@
 -- =============================================================================
 -- Target: Calamity — 003_tipping_points.sql
--- Adds the dated tipping-point threshold a factor may carry (ADR-34/-35).
+-- Adds the dated tipping-point threshold a factor may carry.
 --
 -- The Clock's countdown is anchored to the polycrisis's own TIPPING POINTS: a
 -- significance-weighted baseline of dated thresholds (AMOC collapse, an ice-free
@@ -13,7 +13,7 @@
 -- (shared/schema.ts) field-for-field:
 --   { centralYear: number, earliestYear?: number, latestYear?: number, label?: string }
 -- node-postgres returns a jsonb column already-parsed, so the server maps it
--- straight to `tippingPoint` and re-validates through zod (ADR-23).
+-- straight to `tippingPoint` and re-validates through zod.
 --
 -- Applied after 002 by both bootstrap paths (docker initdb runs *.sql in order;
 -- `npm run db:migrate` applies files not yet in schema_migrations). Idempotent

@@ -1,5 +1,5 @@
 /**
- * Firecrawl retrieval client (ADR-44) — the replacement for Anthropic's
+ * Firecrawl retrieval client — the replacement for Anthropic's
  * `web_search` server tool.
  *
  * Firecrawl's `/v2/search` endpoint does BOTH jobs in one request: it runs a web
@@ -72,7 +72,7 @@ const CREDENTIAL_ENV_VAR = 'FIRECRAWL_API_KEY';
 /**
  * True iff a Firecrawl credential is present. Phase A needs BOTH this and the
  * Fireworks credential to run live; missing either, it serves the deterministic
- * offline stub (ADR-32/-44) rather than fabricating findings.
+ * offline stub rather than fabricating findings.
  */
 export function hasRetrievalCredentials(
   env: NodeJS.ProcessEnv = process.env,

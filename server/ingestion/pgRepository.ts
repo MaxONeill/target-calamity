@@ -20,7 +20,7 @@
  * receives the delta ONLY if the write commits (NOTIFY is transactional). This is
  * the emitter that stream.ts documents "the ingestion worker" as providing.
  *
- * Phase C (`findNearestFactors`) uses the ADR-30 index-served query shape
+ * Phase C (`findNearestFactors`) uses the  index-served query shape
  * (`ORDER BY embedding <=> :q LIMIT :k`), and raises `hnsw.ef_search` for the
  * dedup workload (a missed neighbour = a false "no collision" = a duplicate).
  */
@@ -35,7 +35,7 @@ import type {
 } from './pipeline.js';
 import type { EscalationDirectionality, FactorCandidate } from './dedupe.js';
 
-/** The Postgres NOTIFY channel the SSE route LISTENs on (ADR-17). */
+/** The Postgres NOTIFY channel the SSE route LISTENs on. */
 const NOTIFY_CHANNEL = 'factor_updates';
 
 /**
@@ -102,9 +102,9 @@ async function insertFactor(
   input: NewFactorInput,
 ): Promise<string> {
   const vec = vectorLiteral(input.embedding);
-  // Dated tipping point (ADR-34) persisted as JSONB; NULL when the draft had none.
+  // Dated tipping point persisted as JSONB; NULL when the draft had none.
   const tippingPointJson = input.tippingPoint ? JSON.stringify(input.tippingPoint) : null;
-  // Reputability audit trail (ADR-33/-37); NULL when the gate did not run (offline/ungated).
+  // Reputability audit trail; NULL when the gate did not run (offline/ungated).
   const reputabilityScore = input.reputabilityScore ?? null;
   const reputabilityReasoning = input.reputabilityReasoning ?? null;
   const { rows } = await sql<{ id: string }>`
@@ -123,7 +123,7 @@ async function insertFactor(
   const id = rows[0]?.id;
   if (!id) throw new Error('insertFactor: INSERT ... RETURNING id produced no row');
 
-  // First citation — carries the ADR-21 content hash so a re-ingest is caught.
+  // First citation — carries the  content hash so a re-ingest is caught.
   await sql`
     INSERT INTO citations (factor_id, source_url, publisher, quote_snippet, content_hash)
     VALUES (${id}::uuid, ${input.citation.sourceUrl}, ${input.citation.publisher},
@@ -194,7 +194,7 @@ async function notifyFactorDelta(
 /**
  * Build the concrete repository over a Kysely instance. The advisory lock in
  * `withBucketLock` — not the isolation level — provides the Phase C→D mutual
- * exclusion (finding 29); the resolver call happens inside it, so the lock is
+ * exclusion; the resolver call happens inside it, so the lock is
  * held across a network round trip (acceptable for this workload; see the
  * ingestion README tradeoff note).
  */

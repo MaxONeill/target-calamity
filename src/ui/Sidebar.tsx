@@ -3,7 +3,7 @@
  *
  * A scrollable `role="listbox"` of {@link FactorCard}s with:
  *  - a sort toggle ('recent' = updated_at desc / 'magnitude' = |effect| desc),
- *    matching spec §4's "Sorting Override" (ADR-15: mode-tagged pagination);
+ *    matching 's "Sorting Override" (: mode-tagged pagination);
  *  - infinite scroll via IntersectionObserver, calling `onLoadMore` when the
  *    bottom sentinel enters view and there is more to fetch;
  *  - full keyboard accessibility: roving tabindex, Up/Down/Home/End to move,

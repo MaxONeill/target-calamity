@@ -1,5 +1,5 @@
 /**
- * The Clock — main display (comprehensive §7 / v3.2 §4).
+ * The Clock — main display.
  *
  * Renders {@link deriveClock} over the current factor set. Design mandates:
  *
@@ -13,7 +13,7 @@
  *      an invented instant.
  *
  * It also owns the ambient tick lifecycle: created lazily on a user gesture, and
- * halted while the explainer modal is open (spec §7).
+ * halted while the explainer modal is open.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -37,7 +37,7 @@ export interface ClockProps {
   /**
    * How far net direction may shift the tipping-point baseline, in years. An
    * operator-set estimate — defaults to the env-configured value (see
-   * {@link resolveHorizon}), never a hardcoded corpus figure.
+   * {@link resolveHorizon}), never a hardcoded seed data figure.
    */
   horizon?: ClockHorizonConfig;
   /** Optional extra class on the root container. */
@@ -142,7 +142,7 @@ export function Clock({ factors, horizon, className }: ClockProps): JSX.Element 
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
-    // Dispose the audio graph on unmount — the page sits open for hours (ADR-7).
+    // Dispose the audio graph on unmount — the page sits open for hours.
     return () => {
       engineRef.current?.dispose();
       engineRef.current = null;

@@ -1,5 +1,5 @@
 /**
- * Offline tests for the submission noise filter (ADR-45).
+ * Offline tests for the submission noise filter.
  *
  * Only the deterministic stub path is exercised — there is no credential in the
  * test environment, so `classifySubmission` routes to the heuristic and no

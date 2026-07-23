@@ -1,7 +1,7 @@
 /**
- * alignment.ts — automated orbital alignment (ADR-27).
+ * alignment.ts — automated orbital alignment.
  *
- * SPEC DEVIATION (ADR-27): spec §5 Step Three / v3.2 §1.3 instruct "Execute a
+ *  Step Three /  instruct "Execute a
  * Spherical Linear Interpolation (Slerp) on the camera's quaternion orientation."
  * We do NOT slerp orientation. Slerping between two look-at quaternions takes the
  * shortest arc in SO(3), which mixes TWIST about the view axis into the path: the
@@ -24,9 +24,9 @@
  *     quaternion slerp, which is why we interpolate position, not orientation.
  *
  * The orbit pivot stays (0,0,0) and is never reassigned. lat/lon → vector goes
- * exclusively through src/lib/geo.ts (ADR-25); no trig on geography here.
+ * exclusively through src/lib/geo.ts; no trig on geography here.
  *
- * Pole handling (ADR-27): three.js already guards NaN in lookAt/Spherical, so no
+ * Pole handling: three.js already guards NaN in lookAt/Spherical, so no
  * extra clamp is needed for the math to stay finite. The one thing the library
  * cannot decide is the destination AZIMUTH when the pin sits on the pole axis
  * (n ≈ ±Y) — it is degenerate there. We hold the camera's PRE-ANIMATION azimuth
@@ -37,7 +37,7 @@ import * as THREE from 'three';
 import { latLonToVector3 } from '../lib/geo';
 import { OrbitRig, POLAR_LIMIT } from './OrbitRig';
 
-/** Alignment flight duration, milliseconds (spec §5 Step Three / v3.2 §1.3). */
+/** Alignment flight duration, milliseconds. */
 export const ALIGN_DURATION_MS = 750;
 
 /**
@@ -59,7 +59,7 @@ export type AlignmentOutcome = 'completed' | 'interrupted';
 export interface AlignmentOptions {
   /**
    * Called each animated frame (and once on settle) so the host can render on
-   * demand (ADR-7). Defaults to the rig's own change notification if omitted.
+   * demand. Defaults to the rig's own change notification if omitted.
    */
   onFrame?: () => void;
   /** Flight duration override, milliseconds. Defaults to {@link ALIGN_DURATION_MS}. */
@@ -73,7 +73,7 @@ export function easeInOutCubic(t: number): number {
 
 /**
  * Geodesic (great-circle) interpolation of two UNIT direction vectors — the
- * position-space slerp that replaces the spec's orientation slerp (ADR-27).
+ * position-space slerp that replaces the spec's orientation slerp.
  * `a` and `b` must be normalized; `out` receives a normalized result.
  */
 export function slerpDirection(
@@ -166,7 +166,7 @@ export class OrbitAlignment {
 
   /**
    * Align the camera to a factor's geographic coordinates. lat/lon → surface
-   * vector routes through src/lib/geo.ts (ADR-25) at the rig's globe radius.
+   * vector routes through src/lib/geo.ts at the rig's globe radius.
    */
   alignToLatLon(latDeg: number, lonDeg: number, options: AlignmentOptions = {}): Promise<AlignmentOutcome> {
     const pinPos = latLonToVector3(latDeg, lonDeg, this.#rig.radius);
@@ -191,14 +191,14 @@ export class OrbitAlignment {
     this.#dir0.copy(this.#camera.position).normalize();
     this.#radius0 = this.#camera.position.length();
     // D = clamp(current distance, MIN_ZOOM, MAX_ZOOM) — preserves user zoom,
-    // shares the rig's range so manual and automated framing agree (ADR-27).
+    // shares the rig's range so manual and automated framing agree.
     this.#radius1 = THREE.MathUtils.clamp(
       this.#radius0,
       this.#rig.minDistance,
       this.#rig.maxDistance,
     );
 
-    // Degenerate destination azimuth (ADR-27): when the pin is on the pole axis
+    // Degenerate destination azimuth: when the pin is on the pole axis
     // (n within POLAR_LIMIT of ±Y), the great circle's endpoint azimuth is
     // undefined. Rebuild dir1 holding the PRE-ANIMATION azimuth and nudging the
     // polar angle just off the pole, so the path is deterministic, not arbitrary.
@@ -213,7 +213,7 @@ export class OrbitAlignment {
   }
 
   /**
-   * Drop lock immediately (ADR-27 Step Four). Race-safe: bumps the generation so
+   * Drop lock immediately ( Step Four). Race-safe: bumps the generation so
    * any already-scheduled frame from the running flight no-ops, cancels the rAF,
    * syncs the rig to the camera's current pose so manual control resumes cleanly,
    * and resolves the in-flight promise 'interrupted'. Safe to call when idle.

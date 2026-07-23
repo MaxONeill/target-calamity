@@ -1,5 +1,5 @@
 /**
- * The source-reputability gate (ADR-33) — the verified/pending decision input.
+ * The source-reputability gate — the verified/pending decision input.
  *
  * `scoreSource(...)` rates one source's credibility as it backs a specific claim,
  * returning a score in [0, 1] AND a reasoning string. The worker scores every
@@ -10,7 +10,7 @@
  * that the gate is never a black box.
  *
  * LIVE: an LLM judges credibility (one JSON-schema-constrained Fireworks turn,
- * ADR-44). OFFLINE (no credentials): a deterministic, clearly-labelled heuristic
+ * ). OFFLINE (no credentials): a deterministic, clearly-labelled heuristic
  * over the source's domain — enough to exercise threshold gating in tests without
  * a network call, and honest about being a heuristic, not a verdict.
  */
@@ -55,7 +55,7 @@ export type ScoreProvenance = 'live' | 'offline-stub';
 export interface ReputabilityScore {
   /** Credibility in [0, 1]. */
   score: number;
-  /** Human-readable justification — stored/logged for auditability (ADR-33). */
+  /** Human-readable justification — stored/logged for auditability. */
   reasoning: string;
   provenance: ScoreProvenance;
 }
@@ -116,7 +116,7 @@ function hostOf(url: string | null): string | null {
 }
 
 /**
- * Domains the corpus bibliography treats as reputable (primary journals, official
+ * Domains the seed data bibliography treats as reputable (primary journals, official
  * agencies, established outlets). Not exhaustive — a curated allow-ish set so the
  * OFFLINE heuristic is deterministic and defensible, not a real credibility model.
  */

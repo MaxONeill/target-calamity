@@ -1,5 +1,5 @@
 /**
- * Privacy-preserving submitter identity (ADR-45).
+ * Privacy-preserving submitter identity.
  *
  * Phase-1 submissions are ANONYMOUS — there is no account to attribute them to.
  * Rate limiting and shadow-banning still need a stable-ish handle on "the same
@@ -28,7 +28,7 @@ import { createHash } from 'node:crypto';
 export const SUBMISSION_SALT_ENV = 'SUBMISSION_SALT';
 
 /**
- * One submission per identity per 24 hours (ADR-45). A sliding window, not a
+ * One submission per identity per 24 hours. A sliding window, not a
  * calendar day: a calendar-day bucket lets a submitter post twice in two minutes
  * across midnight, which is precisely the burst the limit exists to stop.
  */
@@ -209,8 +209,8 @@ export interface NormalizedSubmission {
  * Normalize claim + URL for duplicate detection: collapse whitespace, lowercase,
  * and drop a trailing slash from the URL. Deliberately conservative — it catches
  * "the same thing pasted twice" (including trivial re-casing/re-spacing), not
- * semantic near-duplicates. Semantic dedupe against the FACTOR corpus is the
- * ingestion pipeline's job (Phase C embeddings, ADR-18), and it happens after
+ * semantic near-duplicates. Semantic dedupe against the FACTOR seed data is the
+ * ingestion pipeline's job (Phase C embeddings), and it happens after
  * acceptance rather than here, where an embedding call would defeat the whole
  * point of a cheapest-checks-first ordering.
  */

@@ -1,5 +1,5 @@
 /**
- * fetch-elevation.mjs — bake a coarse equirectangular ELEVATION grid (ADR-42).
+ * fetch-elevation.mjs — bake a coarse equirectangular ELEVATION grid.
  *
  * NO API KEY REQUIRED. Uses a FAILOVER POOL of three independent, keyless
  * elevation APIs, all normalized to METRES (each source has a `unitToMeters`):
@@ -9,7 +9,7 @@
  * When one source hits its burst/daily quota (429) the pool fails over to the
  * next, so the bake finishes without manual intervention. Ocean values differ by
  * source (0 vs bathymetry) but all get floored to sea level at displacement time
- * (ADR-42), so mixing sources is safe.
+ *, so mixing sources is safe.
  *
  * Samples a W×H grid (default 240×120), lon −180..180 → x, lat 90..−90 → y (row 0
  * = north pole), row-major, matching src/globe/elevation.ts exactly. Batches 100
@@ -154,7 +154,7 @@ function retryAfterMs(res) {
  * Fetch one batch from ONE source. Light retry (429/5xx/network) with short
  * escalating backoff, then throws so the pool fails over to the next source
  * rather than waiting minutes on a depleted quota. Returns elevations in METERS
- * (raw · unitToMeters), non-finite → 0 (sea level; ADR-42 floors anyway).
+ * (raw · unitToMeters), non-finite → 0 (sea level;  floors anyway).
  */
 async function fetchFromSource(src, lats, lons) {
   const url = src.url(lats, lons);

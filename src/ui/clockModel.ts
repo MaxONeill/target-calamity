@@ -1,7 +1,7 @@
 /**
- * The Clock — derivation model (comprehensive §7 / v3.2 §4).
+ * The Clock — derivation model.
  *
- * SPEC DEVIATION (no governing ADR; confirmed spec defect): NEITHER spec defines
+ * NEITHER spec defines
  * what the Clock counts down TO, nor how the factor set produces a time value.
  * They call it "a data-driven model tracking humanity's window of viable
  * course-correction" with "ticking countdown values", but give no target, no
@@ -25,7 +25,7 @@
  *      net Calamity (P < 0) pulls the target date SOONER, net Humanity (P > 0)
  *      pushes it LATER, bounded by an operator-set {@link ClockHorizonConfig}
  *      (`maxShiftYears`). That bound is an estimate the operator configures — it
- *      is NOT a corpus figure and is NOT hardcoded as the answer.
+ *      is NOT a seed data figure and is NOT hardcoded as the answer.
  *
  * What this model deliberately does NOT claim:
  *   - The baseline is a weighted aggregate of published tipping-point estimates,
@@ -64,7 +64,7 @@ export interface TippingPoint {
 /**
  * How far net sentiment (direction) may move the physical tipping-point baseline,
  * in years. An operator-set ESTIMATE, configurable (env-driven in the app), NOT a
- * corpus fact and NOT baked in as the answer. {@link DEFAULT_CLOCK_HORIZON} is
+ * seed data fact and NOT baked in as the answer. {@link DEFAULT_CLOCK_HORIZON} is
  * only the fallback when the app supplies nothing.
  */
 export interface ClockHorizonConfig {
@@ -91,7 +91,7 @@ export type ClockConfidence =
  * Minimal input shape the model needs from a factor. `Factor` and `FieldPin`
  * from the shared contract satisfy it structurally, so callers pass the feed set
  * directly. `verificationState` optional: absent → contributes; `'pending'` →
- * excluded (ADR-20). `tippingPoint` optional: present → informs the baseline.
+ * excluded. `tippingPoint` optional: present → informs the baseline.
  */
 export interface ClockFactorInput {
   readonly effect: number;
@@ -104,7 +104,7 @@ export interface ClockFactorInput {
 export interface ClockModel {
   /** Factors that actually drove the model (finite, non-pending). */
   readonly contributingCount: number;
-  /** Factors excluded because they are `pending` (ADR-20). */
+  /** Factors excluded because they are `pending`. */
   readonly pendingCount: number;
   /** Factors excluded because effect/significance was non-finite. */
   readonly rejectedCount: number;

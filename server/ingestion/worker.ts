@@ -1,21 +1,21 @@
 /**
- * Scheduled live-research ingestion worker (ADR-31/-32/-33) — `npm run ingest`.
+ * Scheduled live-research ingestion worker — `npm run ingest`.
  *
  * On a cadence (`INGEST_INTERVAL_HOURS`, default 6) it runs one bounded cycle:
  *
  *   for each topic in the batch:
- *     researchFactors(topic)                       ← Phase A, Firecrawl (ADR-31/-44)
- *       → for each candidate: score its sources    ← reputability gate  (ADR-33)
+ *     researchFactors(topic)                       ← Phase A, Firecrawl
+ *       → for each candidate: score its sources    ← reputability gate
  *         → verified if max score ≥ threshold, else pending
  *     → pipeline.processBatch(...)                 ← Phase B/C/D + write (unchanged)
  *       → pg_notify('factor_updates', …)           ← SSE fan-out (pgRepository)
  *
  * The pipeline's Phase A is wired to `researchFactors` via `createResearchExtractor`
- * (ADR-31); Phase B (embed), C (similarity), D (resolve/escalate) and the ADR-19
+ *; Phase B (embed), C (similarity), D (resolve/escalate) and the 
  * recalculation are untouched. Idempotency is per-finding (source URL), so
  * re-running the same topics each cycle only ingests genuinely new findings.
  *
- * SEED-MODE / NO-CREDS GUARD (ADR-32): the scheduler will NOT run unattended
+ * SEED-MODE / NO-CREDS GUARD: the scheduler will NOT run unattended
  * without BOTH live ingestion credentials (`FIREWORKS_API_KEY` for the LLM +
  * embeddings, `FIRECRAWL_API_KEY` for retrieval) AND a `DATABASE_URL`. Missing any, it
  * logs clearly and no-ops (it never fabricates live findings, and there is nothing
@@ -59,7 +59,7 @@ import { hasRetrievalCredentials } from './firecrawlClient.js';
 /**
  * Live ingestion needs BOTH providers: Fireworks (reasoning + embeddings) and
  * Firecrawl (retrieval). With either missing there is no honest live cycle to
- * run, so the worker no-ops rather than half-running on stubs (ADR-32/-44).
+ * run, so the worker no-ops rather than half-running on stubs.
  */
 function hasIngestionCredentials(env: NodeJS.ProcessEnv): boolean {
   return hasLiveCredentials(env) && hasRetrievalCredentials(env);
@@ -126,18 +126,18 @@ function boundedBatch(topics: string[], size: number): string[] {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Reputability gate (ADR-33)                                                 */
+/* Reputability gate                                                 */
 /* -------------------------------------------------------------------------- */
 
 /**
  * Build the source gate the research extractor calls per candidate. It scores
  * EVERY source, keeps the MAX, and gates on the threshold. The winning source
  * becomes the primary citation; the score + reasoning are logged for
- * auditability (ADR-33: the gate is never a black box).
+ * auditability (: the gate is never a black box).
  *
  * The DECIDING (max-scoring) source's score + reasoning are BOTH returned on the
  * `GateResult` so the pipeline persists them to `factors.reputability_score` /
- * `reputability_reasoning` (migration 004, ADR-37) — the gate is now auditable
+ * `reputability_reasoning` (migration 004) — the gate is now auditable
  * end-to-end, not merely logged. The reasoning is still logged too, per source.
  */
 export function buildReputabilityGate(
@@ -182,7 +182,7 @@ export function buildReputabilityGate(
           sourceUrl: best.url,
           quoteSnippet: best.quoteSnippet,
         },
-        // Persist the deciding source's audit trail (ADR-37).
+        // Persist the deciding source's audit trail.
         reputabilityScore: bestScore,
         reputabilityReasoning: bestReasoning,
       };
@@ -246,10 +246,10 @@ export async function runIngestOnce(
   const pipeline = createPipelineFromEnv(env, {
     repository: createPgIngestionRepository(db),
     extractor: createResearchExtractor(research, gate),
-    // Phase D entity-resolution (ADR-18/-38): the LLM resolver when live, else the
+    // Phase D entity-resolution: the LLM resolver when live, else the
     // deterministic stub. Either way the escalation MATH stays deterministic — the
     // resolver only classifies; `resolveOutcome`/`recalculateOnEscalation` compute
-    // the stored numbers (finding 28 / ADR-19). This branch is reached only with
+    // the stored numbers (finding 28 / ). This branch is reached only with
     // live credentials (the guard above), so the LLM resolver is the live default.
     resolver: hasIngestionCredentials(env) ? createLlmResolver() : createStubResolver(),
     logger,

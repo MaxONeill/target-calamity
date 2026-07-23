@@ -8,12 +8,12 @@
  *   - WASDQE keys   → orbit (A/D azimuth, W/S polar) + zoom (Q out / E in)
  *
  * Design notes:
- *   - The orbit pivot is the origin and is NEVER reassigned (ADR-27): the globe
+ *   - The orbit pivot is the origin and is NEVER reassigned: the globe
  *     center stays the look-at target, so drag behavior is identical before and
  *     after an automated alignment.
  *   - `phi` (polar angle from +Y) is clamped away from the poles by POLAR_LIMIT
  *     so the look-at basis (up × forward) never collapses.
- *   - Render-on-demand (ADR-7): the rig does not run an unconditional rAF loop.
+ *   - Render-on-demand: the rig does not run an unconditional rAF loop.
  *     It fires `onChange` only when state actually changes, and it spins an
  *     internal rAF ONLY while a movement key is held (continuous keyboard orbit).
  *   - Every manipulation begins with `syncFromCamera()`, so if an automated
@@ -23,31 +23,31 @@
  *
  * This module uses THREE.Spherical for the spherical↔Cartesian mapping and does
  * NOT touch geography; lat/lon → vector conversion lives solely in
- * src/lib/geo.ts (ADR-25). No trig on any lat/lon identifier appears here.
+ * src/lib/geo.ts. No trig on any lat/lon identifier appears here.
  */
 import * as THREE from 'three';
 
 /**
  * Globe render radius (R). Must match the `IcosahedronGeometry(R, detail)` used
- * by the globe module (ADR-5). The geo helper defaults to R = 1 and the globe is
+ * by the globe module. The geo helper defaults to R = 1 and the globe is
  * rendered on the unit sphere, so R = 1 here.
  */
 export const GLOBE_RADIUS = 1;
 
 /**
- * Near plane bound (ADR-27): `camera.near ≤ 0.05·R`, paired with MIN_ZOOM so the
+ * Near plane bound: `camera.near ≤ 0.05·R`, paired with MIN_ZOOM so the
  * near plane can never enter the mesh. The rig sets this on the camera it drives.
  */
 export const CAMERA_NEAR = 0.05 * GLOBE_RADIUS;
 
 /**
- * Minimum orbit distance (ADR-27): `MIN_ZOOM = 1.15·R`, strictly greater than R
+ * Minimum orbit distance: `MIN_ZOOM = 1.15·R`, strictly greater than R
  * with margin so the camera cannot reach the globe skin. Automated framing
  * (alignment.ts) and manual zoom share this exact range.
  */
 export const MIN_ZOOM = 1.15 * GLOBE_RADIUS;
 
-/** Maximum orbit distance. Shared with automated framing (ADR-27). */
+/** Maximum orbit distance. Shared with automated framing. */
 export const MAX_ZOOM = 8 * GLOBE_RADIUS;
 
 /**
@@ -55,11 +55,11 @@ export const MAX_ZOOM = 8 * GLOBE_RADIUS;
  * so the pole axis is never exactly parallel to the view direction. This is the
  * single place up-vector degeneracy is resolved for manual control; the
  * alignment module reuses the same limit to hold pre-animation azimuth when a
- * destination lands within POLAR_LIMIT of a pole (ADR-27).
+ * destination lands within POLAR_LIMIT of a pole.
  */
 export const POLAR_LIMIT = 1e-3;
 
-/** Immutable orbit pivot — the globe center. Never reassigned (ADR-27). */
+/** Immutable orbit pivot — the globe center. Never reassigned. */
 const ORBIT_TARGET = new THREE.Vector3(0, 0, 0);
 
 /** Physical key codes for WASDQE camera control. */
@@ -98,7 +98,7 @@ export interface OrbitRigOptions {
   keyZoomSpeed?: number;
   /** Wheel zoom sensitivity, fraction per wheel-delta unit. */
   wheelZoomSpeed?: number;
-  /** Called after any state change so the host can render on demand (ADR-7). */
+  /** Called after any state change so the host can render on demand. */
   onChange?: () => void;
   /**
    * Called at the very start of a manual manipulation (pointer down / wheel /
@@ -160,7 +160,7 @@ export class OrbitRig {
     this.#onChange = options.onChange;
     this.#onUserInput = options.onUserInput;
 
-    // ADR-27: pin the near plane so the mesh can never clip when fully zoomed.
+    // : pin the near plane so the mesh can never clip when fully zoomed.
     if (this.camera.near > CAMERA_NEAR) {
       this.camera.near = CAMERA_NEAR;
       this.camera.updateProjectionMatrix();
@@ -221,7 +221,7 @@ export class OrbitRig {
 
   /**
    * Write the current spherical state onto the camera. Always keeps world-up
-   * vertical and looks at the origin, so the horizon never rolls (ADR-27).
+   * vertical and looks at the origin, so the horizon never rolls.
    */
   apply(): void {
     this.camera.position.setFromSpherical(this.#spherical);

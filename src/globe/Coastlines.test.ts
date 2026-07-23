@@ -1,5 +1,5 @@
 /**
- * Unit tests for the pure coastline geometry builder (ADR-39). Offline and
+ * Unit tests for the pure coastline geometry builder. Offline and
  * deterministic — no WebGL, no JSON load; it exercises only the projection +
  * great-circle subdivision math against `buildCoastlineSegments`.
  */

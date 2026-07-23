@@ -3,7 +3,7 @@
  * deterministic fallback (`createStubResolver` in pipeline.ts).
  *
  * The live LLM is NEVER called here. We test the pure proposal→verdict mapping,
- * the domain clamping (ADR-11a), the directionality derivation, and the
+ * the domain clamping, the directionality derivation, and the
  * deterministic stub resolver that is the offline path.
  */
 import { describe, it, expect } from 'vitest';

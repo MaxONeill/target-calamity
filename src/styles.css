@@ -24,7 +24,7 @@
   --tc-ink-dim: #8b8f9e;
   --tc-ink-faint: #5b5f6e;
 
-  /* Semantic accents — shared with the field ramp (ADR-3). */
+  /* Semantic accents — shared with the field ramp. */
   --tc-calamity: #d92947; /* crimson  — negative effect */
   --tc-humanity: #2e9ef7; /* electric blue — positive effect */
   --tc-equilibrium: #6b2c8c; /* contested purple */
@@ -178,7 +178,7 @@ body {
 .tc-status-label--follow {
   color: var(--tc-humanity);
 }
-/* Coastline overlay toggle (ADR-39) — reads as a status label, acts as a button. */
+/* Coastline overlay toggle — reads as a status label, acts as a button. */
 .tc-status-toggle {
   font: inherit;
   font-size: 10.5px;

@@ -1,5 +1,5 @@
 /**
- * Land mask raster (ADR-41). Rasterizes the `world-atlas` 110m LAND polygons
+ * Land mask raster. Rasterizes the `world-atlas` 110m LAND polygons
  * onto an offscreen equirectangular canvas (land = white, ocean = black) and
  * wraps it as a `THREE.CanvasTexture` for the globe fragment shader's geographic
  * base coloring. The SAME 110m source feeds `Coastlines.ts`, so the green land
@@ -16,10 +16,10 @@
  * This module touches the DOM (`document.createElement('canvas')`) and so is not
  * unit-tested; it is constructed only inside the browser scene. It also exposes a
  * CPU `sampleLand(lat, lon)` (reads the raster back via `getImageData`) so the
- * land-relief displacement FALLBACK (ADR-42) can raise continents without a GPU
+ * land-relief displacement FALLBACK can raise continents without a GPU
  * readback.
  *
- * ADR-25: no lat/lon trig happens here — equirectangular rasterization is linear
+ * : no lat/lon trig happens here — equirectangular rasterization is linear
  * in lon/lat, not trigonometric, so it does not fall under the trig ban.
  */
 import * as THREE from 'three';
@@ -163,7 +163,7 @@ export function createLandMask(options: LandMaskOptions = {}): LandMask {
   }
   void traceRing; // retained for future stroked-outline debugging; not on the hot path.
 
-  // Snapshot the raster ONCE for CPU land sampling (fallback relief, ADR-42).
+  // Snapshot the raster ONCE for CPU land sampling (fallback relief).
   let image: ImageData | null = ctx.getImageData(0, 0, width, height);
 
   const texture = new THREE.CanvasTexture(canvas);

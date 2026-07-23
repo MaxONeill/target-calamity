@@ -1,6 +1,6 @@
 -- =============================================================================
 -- Target: Calamity — 005_submissions.sql
--- Anonymous Phase-1 factor submissions (ADR-45).
+-- Anonymous Phase-1 factor submissions.
 --
 -- Phase 1 has NO accounts. Anyone may propose ONE factor per day, and the system
 -- must still be able to (a) rate-limit, (b) shadow-ban an abusive submitter, and
@@ -14,7 +14,7 @@
 --                        while its submissions land as `quarantined` and never
 --                        reach the vetting pipeline. The ban is NEVER disclosed.
 --
--- IDENTITY IS HASHED, NOT STORED (ADR-45):
+-- IDENTITY IS HASHED, NOT STORED:
 --   ip_hash     = sha256(SUBMISSION_SALT || client_ip)
 --   device_hash = sha256(SUBMISSION_SALT || client_deviceId)
 -- The salt lives only in the environment (`SUBMISSION_SALT`), so a database dump
@@ -42,14 +42,14 @@
 CREATE TABLE IF NOT EXISTS submissions (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
-    -- Salted SHA-256 hex digests. NEVER a raw IP or a raw device id (ADR-45).
+    -- Salted SHA-256 hex digests. NEVER a raw IP or a raw device id.
     ip_hash     TEXT        NOT NULL,
     device_hash TEXT        NOT NULL,
 
     -- What the submitter actually supplied. NOTE the absence of effect,
     -- significance, verification_state, lat, lon and tipping_point: those are
     -- SYSTEM-ASSIGNED by the vetting pipeline and a submitter may never set them
-    -- (ADR-45, the anti-manipulation rule). The request schema is `.strict()`, so
+    -- (, the anti-manipulation rule). The request schema is `.strict()`, so
     -- an attempt to supply one is a hard 400 before it ever reaches this table.
     claim       TEXT        NOT NULL,
     source_url  TEXT        NOT NULL,

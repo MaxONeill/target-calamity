@@ -4,7 +4,7 @@
  *
  * The live LLM judge is never called here — we test the deterministic domain
  * heuristic and the no-credential fallback, plus the verified/pending gating that
- * the worker derives from the score and REPUTABILITY_VERIFY_THRESHOLD (ADR-33).
+ * the worker derives from the score and REPUTABILITY_VERIFY_THRESHOLD.
  */
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import {

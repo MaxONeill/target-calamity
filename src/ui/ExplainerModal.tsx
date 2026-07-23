@@ -1,5 +1,5 @@
 /**
- * Clock explainer meta-system (comprehensive §7 / v3.2 §4).
+ * Clock explainer meta-system.
  *
  * Self-contained: renders BOTH the `[ i ]` trigger glyph (absolute top-right of
  * its positioned container — the Clock places it) AND the modal it opens. The

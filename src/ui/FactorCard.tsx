@@ -4,7 +4,7 @@
  * DELIBERATELY MINIMAL: the card is a scannable index entry, not a dossier. It
  * renders only the name, the description, a diverging effect indicator (crimson
  * for negative / Calamity, electric blue for positive / Humanity — mirroring the
- * globe ramp, v3.2 §3 / ADR-3) and a significance bar. Everything else — the
+ * globe ramp,  / ) and a significance bar. Everything else — the
  * sources, the verification/reputability audit trail, the tipping point, the
  *
  * Rendered as `role="option"` inside the Sidebar's `role="listbox"`. It is not

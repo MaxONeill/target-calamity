@@ -1,8 +1,8 @@
 /**
  * CPU accumulation field — the reference implementation of the chromatic
- * shading model AND the unit-test target (ADR-1, ADR-3).
+ * shading model AND the unit-test target.
  *
- * SPEC DEVIATION (ADR-1): the spec (comprehensive §6 / v3.2 §3) has the fragment
+ * the spec has the fragment
  * shader loop over every active factor per fragment, accumulating
  * `C(p) = Σ Eᵢ·Sᵢ / max(d, ε)^k`. That is O(N) per pixel per frame, needs a
  * compile-time MAX_FACTORS cap, and recompiles when the count changes. Instead
@@ -10,7 +10,7 @@
  * into an equirectangular texture (see bakeField.ts) that the shader samples in
  * O(1). This module is the single reference kernel; the GLSL never accumulates.
  *
- * SPEC DEVIATION (ADR-3): the spec's single scalar `C(p)` conflates "no data"
+ * the spec's single scalar `C(p)` conflates "no data"
  * with "contested equilibrium" — both render purple. We compute TWO fields with
  * a compact-support kernel and gate color on evidence:
  *
@@ -22,13 +22,13 @@
  * `d_max` derives from an angular cutoff θ_max (default 15°). `eps` cancels
  * between P's numerator and denominator, so P → Eᵢ as p → x_i regardless of eps.
  *
- * SPEC DEVIATION (ADR-2): distance is measured as ANGULAR separation via the dot
+ * distance is measured as ANGULAR separation via the dot
  * product of unit vectors, not the Euclidean chord the spec names. The cutoff
  * test is a single `dot >= cos(θ_max)`; the falloff magnitude uses the chord
  * `d = sqrt(2 − 2·dot)` on the unit sphere (a monotone function of the angle),
- * which keeps ADR-3's chord-kernel form while avoiding `acos`/`length()`.
+ * which keeps 's chord-kernel form while avoiding `acos`/`length()`.
  *
- * SPEC DEVIATION (ADR-25): every texel→direction mapping is derived by CALLING
+ * every texel→direction mapping is derived by CALLING
  * `latLonToVector3` (via {@link getDirectionGrid}) — never by hand-writing trig
  * on a lat/lon identifier. This guarantees the baked field is the exact inverse
  * of the pin placement, so the heatmap can never end up rotated or mirrored
@@ -45,19 +45,19 @@ import { latLonToVector3 } from '../lib/geo.js';
 /* Constants                                                                  */
 /* -------------------------------------------------------------------------- */
 
-/** Equirectangular bake width (ADR-1). */
+/** Equirectangular bake width. */
 export const FIELD_WIDTH = 2048;
-/** Equirectangular bake height (ADR-1). */
+/** Equirectangular bake height. */
 export const FIELD_HEIGHT = 1024;
 
 /**
- * Kernel parameters. `k = 2.0` and the ε clamp are fixed by v3.2 §3; θ_max is
- * ADR-3's compact-support cutoff (15° default). `eps` is a chord-distance clamp
+ * Kernel parameters. `k = 2.0` and the ε clamp are fixed by; θ_max is
+ * 's compact-support cutoff (15° default). `eps` is a chord-distance clamp
  * on the unit sphere (chord ∈ [0, 2]); at eps = 0.05 a single factor's peak
  * density is S/eps² = 400·S, matching the audit's worked example.
  */
 export interface FieldParams {
-  /** Angular support radius in degrees (ADR-3, default 15). */
+  /** Angular support radius in degrees (, default 15). */
   thetaMaxDeg: number;
   /** Chord-distance clamp on the unit sphere (v3.2 ε, default 0.05). */
   eps: number;
@@ -66,7 +66,7 @@ export interface FieldParams {
 }
 
 /**
- * PIN COLOR ATTENUATION (ADR-41 tuning): the chromatic Calamity/Humanity signal
+ * PIN COLOR ATTENUATION ( tuning): the chromatic Calamity/Humanity signal
  * is deliberately CONTAINED to a tight halo around each factor so the new
  * green-land / blue-ocean geography reads as the base and the pin color is a
  * localized signal rather than a broad wash bleeding across the globe.
@@ -135,7 +135,7 @@ export function texelToLatLon(
 
 /**
  * Direction-grid cache. The texel→unit-vector map depends only on resolution
- * (never on the pins), so it is computed once via `latLonToVector3` (ADR-25) and
+ * (never on the pins), so it is computed once via `latLonToVector3` and
  * reused across every bake. Stored as flat XYZ triples in row-major order.
  */
 interface DirectionGrid {
@@ -149,7 +149,7 @@ let directionGridCache: DirectionGrid | null = null;
 
 /**
  * Memoized grid of texel unit-direction vectors, derived by calling
- * `latLonToVector3` on each texel center (ADR-25 — no hand-written trig). The
+ * `latLonToVector3` on each texel center ( — no hand-written trig). The
  * result is the exact inverse of the pin placement, so W's argmax texel always
  * decodes back to the injected pin's lat/lon.
  */
@@ -182,7 +182,7 @@ export function getDirectionGrid(
 /* Kernel — reference (per-point) form                                        */
 /* -------------------------------------------------------------------------- */
 
-/** Resolve raw input pins to unit-vector form (ADR-25 conversion). */
+/** Resolve raw input pins to unit-vector form ( conversion). */
 export function toPinVecs(pins: readonly FieldInputPin[]): FieldPinVec[] {
   return pins.map((p) => ({
     unit: latLonToVector3(p.lat, p.lon, 1),
@@ -215,7 +215,7 @@ export function accumulateAt(
     const u = pin.unit;
     const dot = dir.x * u.x + dir.y * u.y + dir.z * u.z;
     if (dot < cosThetaMax) continue;
-    // Chord on the unit sphere: d² = 2 − 2·dot (ADR-2/-3). Clamp ≥ 0 for FP noise.
+    // Chord on the unit sphere: d² = 2 − 2·dot. Clamp ≥ 0 for FP noise.
     const chord = Math.sqrt(Math.max(0, 2 - 2 * dot));
     const dEff = Math.max(chord, eps);
     const w = pin.significance / Math.pow(dEff, k);

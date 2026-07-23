@@ -1,5 +1,5 @@
 /**
- * Offline tests for the Firecrawl retrieval client (ADR-44).
+ * Offline tests for the Firecrawl retrieval client.
  *
  * No network is touched: `firecrawlSearch` is exercised through an injected
  * `fetchImpl`, and the parsing/derivation helpers are pure. What these lock down

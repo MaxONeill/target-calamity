@@ -1,5 +1,5 @@
 /**
- * Runtime elevation grid (ADR-42). Loads the coarse equirectangular elevation
+ * Runtime elevation grid. Loads the coarse equirectangular elevation
  * grid baked by `scripts/fetch-elevation.mjs` (Open-Meteo, meters) from
  * `/elevation-grid.json`, decodes its base64 Int16 payload back to a typed
  * array, and bilinearly samples it at any lat/lon so GlobeMesh can displace the

@@ -74,7 +74,7 @@ describe('researchFactors — no-credential fallback', () => {
 });
 
 /* -------------------------------------------------------------------------- */
-/* ADR-44 — provenance assembly from Firecrawl results                        */
+/*  — provenance assembly from Firecrawl results                        */
 /* -------------------------------------------------------------------------- */
 
 describe('normalizeCandidate — citations resolve to REAL retrieved sources', () => {

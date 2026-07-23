@@ -1,20 +1,20 @@
 -- db/seed.sql — Curated seed data for "Target: Calamity".
--- GENERATED from shared/seed.ts to guarantee parity with the TS corpus.
--- Do not hand-edit; regenerate from shared/seed.ts if the corpus changes.
+-- GENERATED from shared/seed.ts to guarantee parity with the TS seed data.
+-- Do not hand-edit; regenerate from shared/seed.ts if the seed data changes.
 --
--- Schema alignment (ADR-amended, supersedes spec §2 literal DDL):
---   * effect/significance are REAL, lat/lon DOUBLE PRECISION (ADR-9).
---   * zone_level is a GENERATED column derived from nlevel(spatial_path) (ADR-10) — NOT inserted.
---   * geog geography(Point,4326) is derived from lat/lon (ADR-8) — NOT inserted.
---   * embedding is left NULL here (populated by the Phase B vectorizer, ADR-21).
---   * verification_state is 'verified' for corpus-traceable factors; 'pending' for
---     factors whose source is real but not reproduced in docs/corpus-bibliography.md
+-- Schema alignment (ADR-amended, supersedes  literal DDL):
+--   * effect/significance are REAL, lat/lon DOUBLE PRECISION.
+--   * zone_level is a GENERATED column derived from nlevel(spatial_path) — NOT inserted.
+--   * geog geography(Point,4326) is derived from lat/lon — NOT inserted.
+--   * embedding is left NULL here (populated by the Phase B vectorizer).
+--   * verification_state is 'verified' for seed data-traceable factors; 'pending' for
+--     factors whose source is real but not reproduced in docs/seed data-bibliography.md
 --     (rule #4) — kept in the feed, off the verified field/Clock.
 --   * The shared CitationSchema's `verbatim` flag is NOT a column here; in DB mode it
 --     defaults to false (paraphrase styling), so nothing renders as a verbatim quote
 --     unless authored as such in shared/seed.ts (seed mode). Add a `verbatim BOOLEAN`
 --     column here if full-mode needs to carry the distinction.
---   * tipping_point JSONB (migration 003, ADR-34/-35) is set below for exactly the
+--   * tipping_point JSONB (migration 003) is set below for exactly the
 --     three factors that carry a dated threshold (Arctic sea ice, AMOC, Amazon);
 --     it is left NULL for every other factor (most have no dated tipping point).
 -- Idempotent: safe to re-run (ON CONFLICT DO NOTHING on the stable UUID PKs; the
@@ -79,10 +79,10 @@ VALUES
   ('c0000000-0000-4000-8000-000000000023', 'f0000000-0000-4000-8000-000000000023', 'https://www.sec.gov/files/staff-report-equity-options-market-struction-conditions-early-2021.pdf', 'U.S. Securities and Exchange Commission (Staff Report, 2021)', 'GameStop’s share price rose from a January 4 close of $17.25 to over $500 in pre-market trading on January 28, 2021, driven by retail investors coordinating on social media.', 'Source re-pointed to the SEC staff report (the bibliography entry) for the price move; Melvin Capital’s ~53% / $6.8B January loss (CNBC) and the $2.75B Citadel/Point72 injection (Bloomberg) are the corroborating figures. Cited as an example of rapid decentralised coordination, not an investment endorsement; brokerage trading restrictions (e.g. Robinhood) followed.', '2026-06-23T12:00:00.000Z'::timestamptz)
 ON CONFLICT (id) DO NOTHING;
 
--- ── tipping points (migration 003, ADR-34/-35) ──────────────────────────────
+-- ── tipping points (migration 003) ──────────────────────────────
 -- Only the three factors that represent a dated, (near-)irreversible threshold
 -- carry one; every other factor's tipping_point stays NULL. Values mirror
--- shared/seed.ts exactly (which mirror docs/corpus-bibliography.md).
+-- shared/seed.ts exactly (which mirror docs/seed data-bibliography.md).
 UPDATE factors SET tipping_point =
   '{"centralYear":2030,"earliestYear":2027,"latestYear":2035,"label":"Ice-free Arctic ''Blue Ocean Event'' (NSIDC projections)"}'::jsonb
   WHERE id = 'f0000000-0000-4000-8000-000000000001';

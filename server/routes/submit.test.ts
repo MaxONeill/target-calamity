@@ -1,5 +1,5 @@
 /**
- * Offline tests for the submission decision core + the request contract (ADR-45).
+ * Offline tests for the submission decision core + the request contract.
  *
  * The load-bearing assertions here are:
  *   1. `.strict()` rejects every system-assigned field (the anti-manipulation

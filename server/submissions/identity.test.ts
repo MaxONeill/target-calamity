@@ -1,5 +1,5 @@
 /**
- * Offline tests for the submitter-identity helpers (ADR-45). No network, no DB.
+ * Offline tests for the submitter-identity helpers. No network, no DB.
  *
  * These cover the parts whose failure modes are silent: a hash that is not
  * deterministic makes bans and rate limits useless; a window boundary that is

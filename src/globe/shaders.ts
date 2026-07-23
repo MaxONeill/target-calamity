@@ -1,16 +1,16 @@
 /**
  * GLSL ES 3.00 shaders for the wireframe globe, plus the shared color model
- * (ADR-3, ADR-6). Written for WebGL2 via a three.js `ShaderMaterial` with
+ *. Written for WebGL2 via a three.js `ShaderMaterial` with
  * `glslVersion: THREE.GLSL3`, which prepends `#version 300 es` and the standard
  * three.js uniforms/attributes; we declare our own varyings and fragment output.
  *
- * SPEC DEVIATION (ADR-1/ADR-3): the spec's fragment shader loops over every
+ * the spec's fragment shader loops over every
  * factor and sums `C(p)`. This shader does NOT loop — it samples the pre-baked
  * two-channel field texture (R = net polarity P, G = evidence density W) and
  * applies the three-state color model. No factor loop, no MAX_FACTORS cap, no
  * recompile on count change.
  *
- * SPEC DEVIATION (ADR-3): a single scalar C(p) makes "no data" (C→0 far from all
+ * a single scalar C(p) makes "no data" (C→0 far from all
  * pins) indistinguishable from "contested equilibrium" (C≈0 from balanced pins)
  * — both would render purple. We gate on W:
  *   W < W_min            → INERT GREY  (off-ramp unlit baseline ~#3A3A42)
@@ -34,7 +34,7 @@ export const COLOR_BLUE: [number, number, number] = [0.18, 0.62, 0.98];
 export const COLOR_INERT_GREY: [number, number, number] = [0.227, 0.227, 0.259];
 
 /**
- * ADR-41 geographic base colors. Ocean is a deep, desaturated blue (#123a63) —
+ *  geographic base colors. Ocean is a deep, desaturated blue (#123a63) —
  * deliberately darker/greyer than the field's Humanity blue (#2e9ef7) so a blue
  * ocean can never be mistaken for a strong-Humanity reading. Land is a muted
  * green (#2f6b3a) that reads as terrain under the cyan coastline lines.
@@ -43,14 +43,14 @@ export const COLOR_OCEAN: [number, number, number] = [0.071, 0.227, 0.388];
 export const COLOR_LAND: [number, number, number] = [0.184, 0.42, 0.227];
 
 /**
- * ADR-43 elevation ramp — high ground. A muted, desaturated brown for exposed
+ *  elevation ramp — high ground. A muted, desaturated brown for exposed
  * rock/soil above the vegetated lowlands, sitting between {@link COLOR_LAND} and
  * {@link COLOR_ICE} on the green→brown→white climb.
  */
 export const COLOR_MOUNTAIN: [number, number, number] = [0.42, 0.33, 0.22];
 
 /**
- * ADR-43 elevation-ramp thresholds, in units of the ELEVATION FRACTION
+ *  elevation-ramp thresholds, in units of the ELEVATION FRACTION
  * `e = (|position| − R) / R` — i.e. how far a displaced vertex sits above the
  * base sphere, as a fraction of the globe radius. Land is shaded
  * green → brown over [BROWN_START, BROWN_FULL] and then brown → ice over
@@ -69,7 +69,7 @@ export const ELEV_SNOW_START = 0.032;
 export const ELEV_SNOW_FULL = 0.07;
 
 /**
- * ADR-41 polar ice. Land fades to near-white toward the poles over a snow line
+ *  polar ice. Land fades to near-white toward the poles over a snow line
  * (|sin lat| from SNOW_START → SNOW_FULL ≈ lat 55° → 68°), so polar landmasses —
  * Antarctica, Greenland, the Arctic fringe — read as ice/snow rather than green.
  * Tunable: lower SNOW_START to push the snow line toward the equator.
@@ -79,7 +79,7 @@ export const SNOW_START = 0.82; // |sin lat| ≈ 55°
 export const SNOW_FULL = 0.93; // |sin lat| ≈ 68°
 
 /**
- * ADR-41 cap on how far the field can tint over the geographic base (0..1).
+ *  cap on how far the field can tint over the geographic base (0..1).
  * Lowered 0.85 → 0.6 as part of the pin-color attenuation: even where coverage
  * W is high, the pin color only TINTS the geography rather than fully replacing
  * it, so a green/blue Earth stays visible under a contained pin halo. The W gate
@@ -88,7 +88,7 @@ export const SNOW_FULL = 0.93; // |sin lat| ≈ 68°
 export const FIELD_STRENGTH_CAP = 0.6;
 
 /**
- * Radial attenuation window (ADR-41). The field kernel `W ∝ 1/dᵏ` (k=2.5, eps=0.05)
+ * Radial attenuation window. The field kernel `W ∝ 1/dᵏ` (k=2.5, eps=0.05)
  * has a huge dynamic range — across one 8° halo `W` runs ~120 at the rim to ~1600
  * at the pin — so a `smoothstep(W_MIN, W_FULL, W)` saturates and the halo reads as
  * a flat disc. Instead the tint is mapped in LOG space between these two densities
@@ -102,7 +102,7 @@ export const HALO_RIM = 100;
 export const HALO_PEAK = 1200;
 
 /**
- * Evidence-gate uniforms (ADR-3). Units of Σ S/d²; re-tune if the effect or
+ * Evidence-gate uniforms. Units of Σ S/d²; re-tune if the effect or
  * significance domains change. `W_MIN` is the grey↔colored threshold; `W_FULL`
  * the density at which saturation reaches 1.
  */
@@ -110,7 +110,7 @@ export const W_MIN = 0.05;
 export const W_FULL = 1.0;
 
 /**
- * The ±0.5 ramp thresholds from v3.2 §3: |P| ≥ RAMP_EDGE saturates to a pure
+ * The ±0.5 ramp thresholds from : |P| ≥ RAMP_EDGE saturates to a pure
  * endpoint; between 0 and RAMP_EDGE it blends from purple.
  */
 export const RAMP_EDGE = 0.5;
@@ -130,7 +130,7 @@ export const COLORS = {
 /**
  * CPU-side twin of the GLSL `ramp()` — crimson(−1)–purple(0)–blue(+1) with the
  * ±0.5 saturation edge. Used to color pins by their own `effect` so a pin and
- * the field it sits in read as the same hue (ADR-7 pins share ADR-3's ramp).
+ * the field it sits in read as the same hue ( pins share 's ramp).
  */
 export function rampColor(p: number, out: THREE.Color = new THREE.Color()): THREE.Color {
   const purple = COLOR_PURPLE;
@@ -162,9 +162,9 @@ function lerp(a: number, b: number, t: number): number {
  * Vertex shader. Passes the object-space unit direction (the globe is centered
  * at the origin, so `normalize(position)` IS the surface direction) and the
  * world-space position (for the view-facing depth cue). No lat/lon ever enters
- * GLSL (ADR-25): the field is sampled by direction, not by geographic angle.
+ * GLSL: the field is sampled by direction, not by geographic angle.
  *
- * ADR-43: the globe's vertices are CPU-displaced by elevation, so a vertex's
+ * : the globe's vertices are CPU-displaced by elevation, so a vertex's
  * RADIAL LENGTH already encodes its height. `vElev = (|position| − R) / R` hands
  * that to the fragment stage as the elevation fraction driving the
  * green→brown→white land ramp — no extra attribute or texture needed. This same
@@ -188,7 +188,7 @@ void main() {
 `;
 
 /**
- * Emphasis boost for the wireframe overlay (ADR-41). The wire lines reuse the
+ * Emphasis boost for the wireframe overlay. The wire lines reuse the
  * SAME geo+field color as the faces, multiplied by this so they read as a bolder
  * version of whatever the underlying face shows (blue over ocean, green over
  * land, tinting toward the field color where there is coverage). Tunable knob.
@@ -196,7 +196,7 @@ void main() {
 export const LINE_BOOST = 1.45;
 
 /**
- * Shared GLSL chunk (ADR-41). Holds the uniform block, the crimson–purple–blue
+ * Shared GLSL chunk. Holds the uniform block, the crimson–purple–blue
  * `ramp()`, the geographic-base + field BLEND `geoFieldColor(dir)`, and the
  * view-facing `depthCue()`. Both the FACE fragment shader and the WIREFRAME line
  * fragment shader `#include` this so they compute the exact same color from the
@@ -230,7 +230,7 @@ vec3 ramp(float p) {
   return mix(uPurple, uBlue, clamp(p / uRampEdge, 0.0, 1.0));
 }
 
-// ADR-41 geographic base + chromatic field blend at a surface direction (before
+//  geographic base + chromatic field blend at a surface direction (before
 // the depth cue). Direction → equirectangular (u, v): inverse of field.ts
 // texelToLatLon / geo.ts vector3ToLatLon (lon = atan2(-z, x), lat = asin(y)),
 // then u = (lon+π)/2π, v = (lat+π/2)/π — the baker's row-0-is-south layout, and
@@ -246,7 +246,7 @@ vec3 geoFieldColor(vec3 dir, float e) {
 
   float landFrac = texture(uLandMask, uv).r;
 
-  // ADR-43 ELEVATION RAMP: e is the displaced vertex's height above the base
+  //  ELEVATION RAMP: e is the displaced vertex's height above the base
   // sphere as a fraction of the radius. Low land is green, mid elevations fade to
   // muted brown, peaks go to snow/ice — so relief reads as terrain rather than a
   // uniformly green shell. Thresholds are calibrated against DEFAULT_EXAGGERATION.
@@ -261,7 +261,7 @@ vec3 geoFieldColor(vec3 dir, float e) {
     smoothstep(${ELEV_SNOW_START.toFixed(4)}, ${ELEV_SNOW_FULL.toFixed(4)}, e)
   );
 
-  // Polar ice (ADR-41), applied AFTER the elevation ramp: land fades to WHITE
+  // Polar ice, applied AFTER the elevation ramp: land fades to WHITE
   // toward the poles over a snow line, so polar landmasses (Antarctica,
   // Greenland, the Arctic fringe) read as ice regardless of how low they sit.
   float snow = smoothstep(${SNOW_START.toFixed(3)}, ${SNOW_FULL.toFixed(3)}, abs(dir.y));
@@ -278,7 +278,7 @@ vec3 geoFieldColor(vec3 dir, float e) {
   geoBase = mix(geoBase, dir.y > 0.0 ? uOceanColor : ICE, polar);
 
   vec3 fieldColor = ramp(P);
-  // Radial attenuation (ADR-41): W ∝ 1/dᵏ spans ~120 (rim) to ~1600 (pin) across
+  // Radial attenuation: W ∝ 1/dᵏ spans ~120 (rim) to ~1600 (pin) across
   // one halo, so a plain smoothstep(W) saturates into a flat disc. Map W in LOG
   // space between the rim and peak densities so the tint fades smoothly from the
   // pin centre outward — it attenuates as it expands. Below uWMin there is no
@@ -299,7 +299,7 @@ float depthCue(vec3 dir, vec3 worldPos) {
 `;
 
 /**
- * FACE fragment shader (ADR-3, ADR-41). Renders the geographic base with the
+ * FACE fragment shader. Renders the geographic base with the
  * chromatic field blended on top, then applies the depth cue. Opaque.
  */
 export const fragmentShader = /* glsl */ `
@@ -320,7 +320,7 @@ void main() {
 `;
 
 /**
- * WIREFRAME line fragment shader (ADR-41). Same geo+field color as the faces,
+ * WIREFRAME line fragment shader. Same geo+field color as the faces,
  * multiplied by uLineBoost and clamped so the mesh etch is a BOLDER version of
  * the underlying surface color (blue over ocean, green over land, field-tinted
  * where covered). Depth-cued the same way so it dims on the far side.
@@ -362,12 +362,12 @@ export interface GlobeUniforms {
   uOceanColor: { value: THREE.Vector3 };
   uLandColor: { value: THREE.Vector3 };
   uMountainColor: { value: THREE.Vector3 };
-  /** Base globe radius R — denominator of the ADR-43 elevation fraction. */
+  /** Base globe radius R — denominator of the  elevation fraction. */
   uRadius: { value: number };
   uCameraPos: { value: THREE.Vector3 };
 }
 
-/** Build the default uniform block for the globe material (ADR-3, ADR-41). */
+/** Build the default uniform block for the globe material. */
 export function createGlobeUniforms(): GlobeUniforms {
   return {
     uField: { value: null },

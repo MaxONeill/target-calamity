@@ -1,15 +1,15 @@
 /**
  * Shared geographic ⇄ geometric math for the globe AND the camera rig.
  *
- * SPEC DEVIATION (ADR-25): spec §5 Step One / v3.2 §1 write `cos(lat)`,
+ *  Step One /  write `cos(lat)`,
  * `sin(lon)` etc. with no stated units. lat/lon are stored in DEGREES (WGS84),
  * but JS `Math.cos/sin` and GLSL `cos/sin` take RADIANS. Passing degrees in
  * produces coordinates that still satisfy |v| = R — so the bug is invisible to
  * an on-sphere sanity check — while placing every pin in the wrong place
  * (London lands ~19.5° of arc from truth). This module is the ONE sanctioned
  * place trig touches geography: it converts degrees → radians inline, and every
- * call site (pin instance matrices per ADR-7, the camera framing target per
- * ADR-27, and the field baker's xᵢ set per ADR-1) must route through it. Raw
+ * call site (pin instance matrices per, the camera framing target per
+ *, and the field baker's xᵢ set per ) must route through it. Raw
  * `Math.cos`/`Math.sin` on any lat/lon identifier is banned elsewhere.
  *
  * Coordinate convention (three.js: right-handed, Y-up):
@@ -71,7 +71,7 @@ export function latLonToVector3(
  * to [latDeg, lonDeg] in degrees. Longitude is undefined exactly at the poles
  * (where the point is ±Y and the x/z components vanish); `atan2(0, 0)` yields 0
  * there, which is a stable, arbitrary choice — callers that care about polar
- * azimuth must handle it upstream (see ADR-27's degenerate-azimuth note).
+ * azimuth must handle it upstream (see 's degenerate-azimuth note).
  */
 export function vector3ToLatLon(v: THREE.Vector3): [number, number] {
   // Normalize so the result is radius-independent; asin needs a unit y.

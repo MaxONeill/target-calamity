@@ -1,12 +1,12 @@
 -- =============================================================================
 -- Target: Calamity — 004_reputability.sql
--- Persists the reputability gate's audit trail on the factor (ADR-33/-37).
+-- Persists the reputability gate's audit trail on the factor.
 --
--- ADR-33 landed the LLM source-credibility gate: it scores every source of a
+--  landed the LLM source-credibility gate: it scores every source of a
 -- candidate, takes the MAX, and gates verified/pending on
 -- REPUTABILITY_VERIFY_THRESHOLD (0.7). Until now the DECIDING score + the model's
 -- reasoning were only LOGGED — the verification_state was the only persisted
--- trace. ADR-37 makes the gate AUDITABLE: the deciding source's score and its
+-- trace.  makes the gate AUDITABLE: the deciding source's score and its
 -- reasoning are stored on the factor, so a viewer (and the FactorDetails panel)
 -- can see WHY a factor is verified or pending.
 --

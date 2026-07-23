@@ -10,19 +10,19 @@
  *
  * Three ADRs govern here:
  *
- *   ADR-18 — the `0.15` cosine distance is a CANDIDATE FILTER, not the decision
+ *    — the `0.15` cosine distance is a CANDIDATE FILTER, not the decision
  *            boundary. We retrieve the top-k within a looser ceiling and let the
  *            entity-resolution prompt make the actual escalate/independent call.
  *
- *   ADR-19 — the "dynamically recalculated" effect/significance (spec §3 Phase D,
+ *    — the "dynamically recalculated" effect/significance ( Phase D,
  *            never defined) is pinned to an explicit, bounded, convex blend here.
  *
- *   ADR-30/finding-29 — parent selection among multiple collisions is a total
+ *   /finding-29 — parent selection among multiple collisions is a total
  *            order (exact distance, then age, then id), never HNSW visit order.
  */
 
 /* -------------------------------------------------------------------------- */
-/* Query contract (ADR-18 / ADR-30)                                           */
+/* Query contract                                           */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -36,7 +36,7 @@
  *   ORDER BY embedding <=> :query
  *   LIMIT :k;
  *
- * SPEC DEVIATION (ADR-30, comprehensive §3 Phase C): the spec's
+ * the spec's
  * "queried for cosine distance collisions (< 0.15)" reads as a
  * `WHERE embedding <=> :q < 0.15` predicate. pgvector only uses the HNSW index
  * for the `ORDER BY ... LIMIT` shape; a bare predicate falls back to a
@@ -63,10 +63,10 @@ export const SIMILARITY_QUERY_SHAPE =
 export const CANDIDATE_TOP_K = 20;
 
 /**
- * The spec's original number, retained as the CANDIDATE ceiling (ADR-18). A row
+ * The spec's original number, retained as the CANDIDATE ceiling. A row
  * further than this in cosine distance is not even offered to the resolver.
  *
- * Failure modes of treating this as a hard decision boundary (why ADR-18 demotes
+ * Failure modes of treating this as a hard decision boundary (why  demotes
  * it to a filter):
  *   - Too tight: two genuinely-different-wording reports of the SAME event sit
  *     just above 0.15 → missed escalation → duplicate factors for one event,
@@ -101,7 +101,7 @@ export interface FactorCandidate {
   significance: number;
   /** Row birth time; the age tiebreak for deterministic parent selection. */
   createdAt: Date;
-  /** Number of citations already attached (drives the ADR-19 blend weight λ). */
+  /** Number of citations already attached (drives the  blend weight λ). */
   citationCount: number;
   /** Exact cosine distance to the inbound embedding, from `embedding <=> :query`. */
   distance: number;
@@ -123,7 +123,7 @@ export function filterCandidates(
 }
 
 /**
- * Total order for parent selection (finding 29): nearest exact distance wins;
+ * Total order for parent selection: nearest exact distance wins;
  * ties broken by oldest `createdAt` (event identity anchors to the first report);
  * final tiebreak by ascending `id` so the order is total and stable across
  * processes — Postgres gives no stable order for exact ties, so without the id
@@ -151,7 +151,7 @@ export function selectParent(
 }
 
 /* -------------------------------------------------------------------------- */
-/* Escalation recalculation (ADR-19)                                          */
+/* Escalation recalculation                                          */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -200,9 +200,9 @@ export function escalationLambda(citationCount: number): number {
 }
 
 /**
- * ADR-19 — the escalation recalculation, defined once as a pure function.
+ *  — the escalation recalculation, defined once as a pure function.
  *
- * SPEC DEVIATION (ADR-19, comprehensive §3 Phase D): the spec says effect and
+ * the spec says effect and
  * significance are "dynamically recalculated" and gives no formula. We use a
  * citation-count-weighted convex blend:
  *
@@ -221,7 +221,7 @@ export function escalationLambda(citationCount: number): number {
  * this function over its ordered citation history, so persisting each report's
  * (directionality, effect_new, significance_new) lets the value be audited or
  * recomputed if the formula changes (see the `factor_revisions` write in the
- * pipeline, ADR-13).
+ * pipeline).
  */
 export function recalculateOnEscalation(
   parent: ParentMetrics,
@@ -251,7 +251,7 @@ export function recalculateOnEscalation(
 /* -------------------------------------------------------------------------- */
 
 /**
- * The entity-resolution prompt's verdict (ADR-18). Deliberately narrow: the LLM
+ * The entity-resolution prompt's verdict. Deliberately narrow: the LLM
  * classifies, it does NOT compute the stored numbers (finding 28 — arithmetic is
  * the server's job, above). `parentId`, when present, must reference one of the
  * candidates offered to the prompt.

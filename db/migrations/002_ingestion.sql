@@ -5,13 +5,13 @@
 -- revision core; this migration adds the two surfaces the ingestion ports need
 -- that the core schema did not provide:
 --
---   * citations.content_hash  — the ADR-21 idempotency key. contentHash(item) is
+--   * citations.content_hash  — the  idempotency key. contentHash(item) is
 --     recorded on the citation so a re-ingest of the same item is caught by
 --     IngestionRepository.existsByContentHash BEFORE any extraction/embedding
 --     spend. Partial-unique so the ledger also enforces idempotency in the DB,
 --     not only in app code.
 --   * ingestion_quarantine    — where value-validation / allowlist rejects land
---     (finding 27). Rejected items must NEVER reach `factors`; they are parked
+--. Rejected items must NEVER reach `factors`; they are parked
 --     here with a reason for later inspection.
 --
 -- Applied after 001 by both bootstrap paths (docker initdb runs *.sql in order;
@@ -19,7 +19,7 @@
 -- guards (IF NOT EXISTS) so a re-run is a no-op.
 -- =============================================================================
 
--- ADR-21 idempotency key. Nullable: hand-curated/seed citations have none, and a
+--  idempotency key. Nullable: hand-curated/seed citations have none, and a
 -- NULL does not collide under the partial unique index below.
 ALTER TABLE citations ADD COLUMN IF NOT EXISTS content_hash TEXT;
 

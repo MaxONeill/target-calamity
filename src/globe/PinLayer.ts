@@ -1,18 +1,18 @@
 /**
- * Pin layer (ADR-7): every factor pin rendered as ONE `InstancedMesh` — one
+ * Pin layer: every factor pin rendered as ONE `InstancedMesh` — one
  * draw call regardless of factor count — with instance scale by significance and
  * instance color by effect sign. Hit-testing is GPU picking (render per-instance
  * IDs to an offscreen target and read back one pixel), never raycasting N objects.
  *
- * SPEC DEVIATION (ADR-7): the spec implies a pin object per factor with
+ * the spec implies a pin object per factor with
  * per-object raycast picking. Both scale with N — N draw calls and an O(N)
  * raycast per pointer move. Instancing collapses the draw to one call; ID-buffer
  * picking is O(1) in the factor count.
  *
- * SPEC DEVIATION (ADR-25): pin positions come from `latLonToVector3` (the one
+ * pin positions come from `latLonToVector3` (the one
  * sanctioned lat/lon→vector conversion) — no trig on lat/lon here.
  *
- * SPEC DEVIATION (ADR-3): pins share the field's ramp (`rampColor`), so a pin
+ * pins share the field's ramp (`rampColor`), so a pin
  * and the region it charges read as the same hue: crimson for Calamity,
  * electric blue for Humanity, purple near zero.
  */
@@ -38,7 +38,7 @@ export interface PinLayerOptions {
 }
 
 /**
- * Spike LENGTH as a fraction of radius, before significance scaling (ADR-7). The
+ * Spike LENGTH as a fraction of radius, before significance scaling. The
  * per-instance length is `radius · PIN_LENGTH_FRAC · (0.35 + significance)` so a
  * more significant factor reads as a longer, more prominent spike.
  */
@@ -181,14 +181,14 @@ export class PinLayer {
 
     for (let i = 0; i < n; i++) {
       const pin = clean[i]!;
-      // Long thin INVERTED PYRAMID (ADR-42): the geometry's apex sits at local
+      // Long thin INVERTED PYRAMID: the geometry's apex sits at local
       // origin and the square base extends along +Y. We seat the APEX on the
       // surface point and orient +Y along the OUTWARD radial normal, so the apex
       // points inward (at the globe centre) and the base widens outward — a
-      // slender spike marking the point (ADR-25 conversion for the surface point).
+      // slender spike marking the point ( conversion for the surface point).
       //
       // The apex seats on the BASE radius: ocean pins touch sea level; where the
-      // terrain is raised (ADR-42) the apex tip may sit just under the displaced
+      // terrain is raised the apex tip may sit just under the displaced
       // land, but the long body still stands proud and reads clearly. (Sampling
       // the displaced surface per pin is deliberately skipped to keep the layer
       // independent of the async elevation grid — documented simplification.)
@@ -203,7 +203,7 @@ export class PinLayer {
       this.tmpMatrix.compose(this.tmpPos, this.tmpQuat, this.tmpScale);
       mesh.setMatrixAt(i, this.tmpMatrix);
 
-      // Hue by effect sign, shared with the field ramp (ADR-3).
+      // Hue by effect sign, shared with the field ramp.
       rampColor(pin.effect, this.tmpColor);
       mesh.setColorAt(i, this.tmpColor);
 
@@ -303,7 +303,7 @@ export class PinLayer {
     return bestIdx >= 0 ? this.factorIds[bestIdx] ?? null : null;
   }
 
-  /** Subscribe to redraw requests (ADR-7). Returns an unsubscribe function. */
+  /** Subscribe to redraw requests. Returns an unsubscribe function. */
   onNeedsRender(callback: () => void): () => void {
     this.listeners.add(callback);
     return () => {

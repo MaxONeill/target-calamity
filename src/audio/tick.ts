@@ -1,7 +1,7 @@
 /**
  * Ambient clock tick — WebAudio, fully synthesized, no asset files.
  *
- * SPEC DEVIATION (no ADR): comprehensive §7 / v3.2 §4 reference a "background
+ *  /  reference a "background
  * ambient clock ticking sound" that the explainer modal "halts", but neither
  * spec defines the sound, how it is produced, or its lifecycle. We synthesize it
  * at runtime so the bundle ships no audio assets, and expose the minimal control

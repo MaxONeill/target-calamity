@@ -3,7 +3,7 @@
  * orbit rig + alignment) to the React UI (Clock, Sidebar, Explainer) and to the
  * two API data paths.
  *
- * TWO STRICTLY SEPARATE DATA PATHS (ADR-26):
+ * TWO STRICTLY SEPARATE DATA PATHS:
  *   1. The SIDEBAR FEED fetches `GET /api/factors` with cursor pagination and a
  *      sort toggle. It drives the sidebar list and the pending/verified badges,
  *      and nothing on the GPU.
@@ -15,13 +15,13 @@
  *      what keeps the heatmap a function of the data alone, so two clients on the
  *      same `fieldEpoch` render the same planet.
  *
- * RENDER-ON-DEMAND (ADR-7): there is no unconditional rAF loop. A single
+ * RENDER-ON-DEMAND: there is no unconditional rAF loop. A single
  * coalesced `requestRender()` repaints once per animation frame, and it is
  * called only when something actually changes — the rig on user input, the
  * alignment on each of its animated frames, the globe/pins on a rebake, and the
  * window on resize. Between those the canvas is static.
  *
- * SELECTION → ALIGNMENT (ADR-27): selecting a factor (card click, keyboard, or a
+ * SELECTION → ALIGNMENT: selecting a factor (card click, keyboard, or a
  * GPU-picked pin) flies the camera to face it over 750ms by interpolating
  * POSITION, not orientation. Any manual camera input drops the lock instantly
  * via the capture-phase interrupt guard.
@@ -45,7 +45,7 @@ import { SubmitFactor } from './ui/SubmitFactor.js';
 import type { ClockFactorInput, TippingPoint as ClockTippingPoint } from './ui/clockModel.js';
 
 /**
- * Project a field pin onto the Clock's input shape (ADR-35). The zod-inferred
+ * Project a field pin onto the Clock's input shape. The zod-inferred
  * `FieldPin.tippingPoint` uses `.optional()` (each field typed `T | undefined`),
  * whereas the Clock's hand-written `ClockFactorInput`/`TippingPoint` use `?: T`
  * / `| null`. Under exactOptionalPropertyTypes those are nominally distinct even
@@ -73,7 +73,7 @@ function toClockFactor(pin: FieldPin): ClockFactorInput {
 /** Movement (in CSS px) below which a pointer down→up counts as a click, not a drag. */
 const CLICK_SLOP_PX = 5;
 
-/** Connection state of the live SSE delta stream (ADR-17), surfaced in the header. */
+/** Connection state of the live SSE delta stream, surfaced in the header. */
 type StreamStatus = 'connecting' | 'live' | 'seed' | 'closed';
 
 /* -------------------------------------------------------------------------- */
@@ -83,7 +83,7 @@ type StreamStatus = 'connecting' | 'live' | 'seed' | 'closed';
 interface SceneHandle {
   setFieldPins(pins: readonly FieldPin[]): void;
   alignToLatLon(lat: number, lon: number): void;
-  /** Toggle the coastline landmass overlay (ADR-39). */
+  /** Toggle the coastline landmass overlay. */
   setLandVisible(visible: boolean): void;
   dispose(): void;
 }
@@ -115,11 +115,11 @@ function createScene(container: HTMLDivElement, callbacks: SceneCallbacks): Scen
 
   const camera = new THREE.PerspectiveCamera(45, width / height, 0.05 * GLOBE_RADIUS, 100);
 
-  // Land mask raster (ADR-41): drives the shader's ocean-blue/land-green base and
+  // Land mask raster: drives the shader's ocean-blue/land-green base and
   // the CPU land-relief displacement fallback. Built once from world-atlas 110m.
   const landMask = createLandMask();
 
-  // Land-relief FALLBACK sampler (ADR-42): until the real elevation grid loads
+  // Land-relief FALLBACK sampler: until the real elevation grid loads
   // (or offline, when it never does), raise land a small constant above the flat
   // ocean so continents still show in relief. Ocean (landFrac 0) stays at 0 m —
   // the same sea-level floor the real grid uses.
@@ -137,16 +137,16 @@ function createScene(container: HTMLDivElement, callbacks: SceneCallbacks): Scen
     },
   });
   const pins = new PinLayer({ radius: GLOBE_RADIUS });
-  // Coastline landmass overlay (ADR-39). Static — built once, never rebaked, so
+  // Coastline landmass overlay. Static — built once, never rebaked, so
   // (unlike globe/pins) it has no onNeedsRender subscription; one paint below.
-  // Lift is a HAIRLINE z-fighting offset only (ADR-43): at 1.02 the lines floated
+  // Lift is a HAIRLINE z-fighting offset only: at 1.02 the lines floated
   // a visible 2% above the surface. 1.001 keeps them reading as ON the globe.
   const coastlines = new Coastlines({ radius: GLOBE_RADIUS, lift: 1.001 });
   scene.add(globe.object3D);
   scene.add(pins.object3D);
   scene.add(coastlines.object3D);
 
-  /* --- render-on-demand coalescer (ADR-7) -------------------------------- */
+  /* --- render-on-demand coalescer -------------------------------- */
   let frameHandle: number | null = null;
   const renderFrame = (): void => {
     frameHandle = null;
@@ -238,7 +238,7 @@ function createScene(container: HTMLDivElement, callbacks: SceneCallbacks): Scen
   // static coastline overlay, which never requests a redraw of its own.
   requestRender();
 
-  // Real elevation displacement (ADR-42): fire-and-forget. The globe is already
+  // Real elevation displacement: fire-and-forget. The globe is already
   // showing the land-relief fallback; if the operator has baked the grid
   // (`npm run fetch:elevation`, needs network) we swap in real terrain. Returns
   // null offline / 404 → keep the fallback. Guarded against teardown.
@@ -262,7 +262,7 @@ function createScene(container: HTMLDivElement, callbacks: SceneCallbacks): Scen
 
   return {
     setFieldPins(pinSet): void {
-      // ADR-26: the ONLY place shader input is rewritten. Never called from
+      // : the ONLY place shader input is rewritten. Never called from
       // camera/scroll/sort/selection paths.
       globe.update(pinSet);
       pins.update(pinSet);
@@ -320,17 +320,17 @@ export function App(): JSX.Element {
   const [fieldPins, setFieldPins] = useState<FieldPin[]>([]);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  // Right-edge slideout open state (ADR-40). Closed by default so the globe is
+  // Right-edge slideout open state. Closed by default so the globe is
   // the full-bleed hero; the FEED tab / a pin selection opens it.
   const [panelOpen, setPanelOpen] = useState(false);
-  // Anonymous submission form (ADR-45). A THIRD mutually-exclusive occupant of
+  // Anonymous submission form. A THIRD mutually-exclusive occupant of
   // the same slideout, taking precedence over both feed and detail while open.
   // Kept as its own flag (rather than folded into selectedId) so closing it
   // returns the panel to exactly the state it was in before.
   const [submitOpen, setSubmitOpen] = useState(false);
   const [streamStatus, setStreamStatus] = useState<StreamStatus>('connecting');
   const [following, setFollowing] = useState(false);
-  // Coastline landmass overlay visibility (ADR-39). Default ON.
+  // Coastline landmass overlay visibility. Default ON.
   const [landVisible, setLandVisible] = useState(true);
 
   /* ----- coordinate lookup for alignment (id → lat/lon) ------------------- */
@@ -363,14 +363,14 @@ export function App(): JSX.Element {
     };
   }, []);
 
-  /* ----- data path 2: field → GPU (ADR-26) -------------------------------- */
+  /* ----- data path 2: field → GPU -------------------------------- */
   // Hand the field set to the shader baker whenever it changes. This effect and
   // the SSE-driven refetch below are the only writers of shader input.
   useEffect(() => {
     sceneRef.current?.setFieldPins(fieldPins);
   }, [fieldPins]);
 
-  // Push the coastline overlay toggle to the scene whenever it changes (ADR-39).
+  // Push the coastline overlay toggle to the scene whenever it changes.
   useEffect(() => {
     sceneRef.current?.setLandVisible(landVisible);
   }, [landVisible]);
@@ -423,7 +423,7 @@ export function App(): JSX.Element {
     [],
   );
 
-  // First page + reset whenever the sort mode changes (ADR-15: a sort toggle is a
+  // First page + reset whenever the sort mode changes (: a sort toggle is a
   // new result set, so the cursor is discarded and we restart from page one).
   useEffect(() => {
     const gen = ++feedGenRef.current;
@@ -438,7 +438,7 @@ export function App(): JSX.Element {
     void fetchFeedPage(sortMode, nextCursor, feedGenRef.current);
   }, [feedLoading, nextCursor, sortMode, fetchFeedPage]);
 
-  /* ----- SSE live stream (ADR-17) ---------------------------------------- */
+  /* ----- SSE live stream ---------------------------------------- */
   useEffect(() => {
     const source = new EventSource('/api/stream');
     let fieldRefetch: number | null = null;
@@ -464,7 +464,7 @@ export function App(): JSX.Element {
     });
 
     source.addEventListener('factor', (event) => {
-      // Patch the cached card in place (ADR-17: escalations reach the sidebar
+      // Patch the cached card in place (: escalations reach the sidebar
       // out-of-band, not through the immutable-keyset backfill feed) …
       try {
         const delta: unknown = JSON.parse((event as MessageEvent).data);
@@ -498,14 +498,14 @@ export function App(): JSX.Element {
     };
   }, [loadField]);
 
-  /* ----- selection → camera alignment (ADR-27) --------------------------- */
+  /* ----- selection → camera alignment --------------------------- */
   const selectFactor = useCallback((id: string, opts?: { scroll?: boolean }) => {
     setSelectedId(id);
     // Any selection — pin pick or feed card — auto-opens the slideout in detail
-    // mode (ADR-40). selectedId !== null makes the panel render FactorDetails.
+    // mode. selectedId !== null makes the panel render FactorDetails.
     setPanelOpen(true);
     // A selection is a request to look at THAT factor, so it dismisses the
-    // submission form rather than being silently hidden behind it (ADR-45).
+    // submission form rather than being silently hidden behind it.
     setSubmitOpen(false);
     const coords = coordsRef.current.get(id);
     if (coords) {
@@ -532,12 +532,12 @@ export function App(): JSX.Element {
     [selectFactor],
   );
 
-  // Escape closes the slideout when it is in FEED mode (ADR-40). In DETAIL mode
+  // Escape closes the slideout when it is in FEED mode. In DETAIL mode
   // FactorDetails owns Escape (it stops propagation and returns to feed), so the
   // sequence is: Escape once → feed, Escape again → closed.
   // While the submission form is open it owns Escape (closing it returns to
   // whatever the panel was showing before), so the layering becomes:
-  // Escape → close submit → close detail → close panel (ADR-45 on top of ADR-40).
+  // Escape → close submit → close detail → close panel ( on top of ).
   useEffect(() => {
     if (!panelOpen) return;
     if (!submitOpen && selectedId !== null) return;
@@ -556,7 +556,7 @@ export function App(): JSX.Element {
   // The selected factor's FULL record (citations live in the feed set). When the
   // selection is a globe pin whose card has not paged in yet, fall back to the
   // lean field pin so the detail panel can still show metrics + a "loading" note
-  // (ADR-36) rather than nothing.
+  // rather than nothing.
   const selectedFactor = useMemo(
     () => (selectedId ? feedFactors.find((f) => f.id === selectedId) ?? null : null),
     [selectedId, feedFactors],
@@ -569,7 +569,7 @@ export function App(): JSX.Element {
     [selectedId, selectedFactor, fieldPins],
   );
 
-  // The Clock reads the FIELD set (ADR-26/-35), now carrying tipping points.
+  // The Clock reads the FIELD set, now carrying tipping points.
   // Projected onto the Clock's input shape (see toClockFactor). Memoised so the
   // model only re-derives when the pin set actually changes.
   const clockFactors = useMemo<ClockFactorInput[]>(

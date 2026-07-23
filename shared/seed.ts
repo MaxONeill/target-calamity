@@ -1,18 +1,18 @@
 /**
- * Curated seed corpus for "Target: Calamity" — real, sourced factors drawn from
+ * Curated seed data for "Target: Calamity" — real, sourced factors drawn from
  * the "Alchemizing Reality" research document.
  *
  * PROVENANCE — read this honestly. The on-disk essay (`Prompt.txt`) carries NO
  * bibliography, so the first pass of these citations was reconstructed from model
  * knowledge. They have since been reconciled against the product owner's
  * referenced bibliography, reproduced as the single source of truth in
- * `docs/corpus-bibliography.md`. Every citation here is traced back to an entry
+ * `docs/seed data-bibliography.md`. Every citation here is traced back to an entry
  * in that file: publisher and `sourceUrl` are re-pointed to match the
  * bibliography, `quoteSnippet`s are typed as verbatim vs paraphrase (see below),
  * and every "correction flag" the bibliography records is carried into the data
  * rather than silently cleaned up to the more dramatic number.
  *
- * Editorial rules applied here (see `docs/corpus-bibliography.md`, "Rules"):
+ * Editorial rules applied here (see `docs/seed data-bibliography.md`, "Rules"):
  *   - `quoteSnippet` + `verbatim`: `verbatim: true` ONLY where the snippet is a
  *     genuine contiguous span from the cited source; `verbatim: false` where it
  *     is a paraphrase/summary or a composite no single source sentence contains.
@@ -25,9 +25,9 @@
  *   - `verificationState: 'verified'` requires the citation to trace to the
  *     bibliography (rule #4). A handful of real, well-known sources (IRENA, the
  *     Global Tipping Points Report, REScoop.eu, Global Forest Watch, the PNAS
- *     breadbasket study) are NOT reproduced in the corpus bibliography, so their
+ *     breadbasket study) are NOT reproduced in the seed data bibliography, so their
  *     factors are held at `'pending'` — they stay in the feed but are kept off
- *     the verified field/Clock until added to the corpus. Their citations are
+ *     the verified field/Clock until added to the seed data. Their citations are
  *     retained with an analyst note stating exactly why.
  *   - `effect ∈ [-1, 1]`: negative = Calamity (systemic decay), positive =
  *     Humanity (resilient counter-measure), magnitude ~ systemic reach.
@@ -494,8 +494,8 @@ export const SEED_FACTORS: Factor[] = [
     lon: -93.6,
     zoneLevel: 'global',
     // Held at 'pending': the cited PNAS study is real and well-known but is NOT
-    // reproduced in docs/corpus-bibliography.md, so it cannot ship as 'verified'
-    // (corpus rule #4). It stays in the feed but is kept off the field/Clock.
+    // reproduced in docs/seed data-bibliography.md, so it cannot ship as 'verified'
+    // (seed data rule #4). It stays in the feed but is kept off the field/Clock.
     verificationState: 'pending',
     createdAt: ts(16),
     updatedAt: ts(16),
@@ -584,7 +584,7 @@ export const SEED_FACTORS: Factor[] = [
     lat: 10.0,
     lon: 0.0,
     zoneLevel: 'global',
-    // Held at 'pending': IRENA is a real source but is NOT in the corpus
+    // Held at 'pending': IRENA is a real source but is NOT in the seed data
     // bibliography (rule #4). Stays in the feed, off the verified field/Clock.
     verificationState: 'pending',
     createdAt: ts(19),
@@ -617,7 +617,7 @@ export const SEED_FACTORS: Factor[] = [
     lon: 0.0,
     zoneLevel: 'global',
     // Held at 'pending': the Global Tipping Points Report is real but is NOT in
-    // the corpus bibliography (rule #4). Stays in the feed, off the field/Clock.
+    // the seed data bibliography (rule #4). Stays in the feed, off the field/Clock.
     verificationState: 'pending',
     createdAt: ts(20),
     updatedAt: ts(20),
@@ -647,7 +647,7 @@ export const SEED_FACTORS: Factor[] = [
     lat: 51.1657,
     lon: 10.4515,
     zoneLevel: 'national',
-    // Held at 'pending': REScoop.eu is a real source but is NOT in the corpus
+    // Held at 'pending': REScoop.eu is a real source but is NOT in the seed data
     // bibliography (rule #4). Stays in the feed, off the verified field/Clock.
     verificationState: 'pending',
     createdAt: ts(21),
@@ -678,7 +678,7 @@ export const SEED_FACTORS: Factor[] = [
     lon: -77.0353,
     zoneLevel: 'global',
     // Held at 'pending': Global Forest Watch is a real source but is NOT in the
-    // corpus bibliography (rule #4). Stays in the feed, off the field/Clock.
+    // seed data bibliography (rule #4). Stays in the feed, off the field/Clock.
     verificationState: 'pending',
     createdAt: ts(22),
     updatedAt: ts(22),

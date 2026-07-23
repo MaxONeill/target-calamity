@@ -1,5 +1,5 @@
 /**
- * POST /api/factors/submit — anonymous Phase-1 factor submission (ADR-45).
+ * POST /api/factors/submit — anonymous Phase-1 factor submission.
  *
  * No accounts, one submission per identity per 24 hours, shadow-banning for
  * bad-faith submitters, and a cheap noise filter in front of the expensive
@@ -336,7 +336,7 @@ export default async function submitRoutes(
         reply.header('Retry-After', String(decision.body.retryAfterSeconds));
       }
       reply.code(decision.statusCode);
-      // Re-validate our own response against the shared contract (ADR-23).
+      // Re-validate our own response against the shared contract.
       return SubmissionResponseSchema.parse(decision.body);
     },
   );

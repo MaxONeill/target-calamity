@@ -3,25 +3,25 @@
 -- Phase 1 schema. Derived from spec-comprehensive.md §2 (authoritative baseline)
 -- and spec.md (v3.2) §2, as revised by the adopted ADRs in docs/ARCHITECTURE.md.
 --
--- Every departure from the literal spec DDL carries a "SPEC DEVIATION (ADR-n)"
+-- Every departure from the literal spec DDL carries a ""
 -- comment stating what the spec said, what we do instead, and why. A full,
 -- ADR-keyed deviation list also lives in db/README.md.
 --
 -- -----------------------------------------------------------------------------
 -- MINIMUM PLATFORM REQUIREMENTS (verified against pgvector/pgvector:pg17 —
--- ADR-22 — with PostgreSQL 17.x, pgvector 0.8.5, ltree 1.3, PostGIS 3.6.4):
+--  — with PostgreSQL 17.x, pgvector 0.8.5, ltree 1.3, PostGIS 3.6.4):
 --
 --   * PostgreSQL >= 13   — gen_random_uuid() is a CORE built-in from PG13 on, so
---                          pgcrypto is deliberately NOT required (finding #7).
+--                          pgcrypto is deliberately NOT required.
 --                          We target/verify on PG17.
---   * pgvector  >= 0.7.0 — halfvec type + halfvec_cosine_ops HNSW opclass (ADR-12).
+--   * pgvector  >= 0.7.0 — halfvec type + halfvec_cosine_ops HNSW opclass.
 --                          We target/verify on 0.8.5. (HNSW halfvec dimension cap
 --                          is 4000; our 512 dims are well under — do not downsize.)
---   * PostGIS   >= 3.0   — geography(Point,4326) + GiST (ADR-8). Verified on 3.6.4.
+--   * PostGIS   >= 3.0   — geography(Point,4326) + GiST. Verified on 3.6.4.
 --
 -- Verified in-container: nlevel(), ST_MakePoint(), ST_SetSRID(), and the
 -- geometry->geography cast are all IMMUTABLE, which is what makes the zone_level
--- and geog GENERATED columns below legal without a trigger fallback (see ADR-10).
+-- and geog GENERATED columns below legal without a trigger fallback.
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
@@ -39,9 +39,9 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 -- -----------------------------------------------------------------------------
 -- Core Extensions
 -- -----------------------------------------------------------------------------
--- SPEC DEVIATION (ADR-14): comprehensive §2 wrote `CREATE EXTENSION ... pgvector;`.
+--  wrote `CREATE EXTENSION ... pgvector;`.
 -- There is no pgvector.control file — the extension the project installs is named
--- `vector` (finding #6). The spec statement ERRORs on every platform (IF NOT EXISTS
+-- `vector`. The spec statement ERRORs on every platform (IF NOT EXISTS
 -- does not suppress it, since "pgvector" can never already be present under that
 -- name) and aborts the whole migration transaction. We use the correct name, and
 -- do NOT hard-code `WITH SCHEMA` (portable form; managed hosts default search_path
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 -- the HNSW index, which both come from it.
 CREATE EXTENSION IF NOT EXISTS vector;   -- pgvector: halfvec type, hnsw AM, cosine opclass
 CREATE EXTENSION IF NOT EXISTS ltree;    -- hierarchical spatial_path
--- SPEC DEVIATION (ADR-8): the specs never enable PostGIS; the comprehensive §4
+-- the specs never enable PostGIS; the
 -- viewport filter was a raw `lat/lon BETWEEN` box. We add PostGIS so viewport
 -- queries use a real spherical predicate (ST_DWithin / ST_Intersects) that does
 -- not break across the antimeridian or degenerate at the poles (findings #20/#22/#34).
@@ -58,9 +58,9 @@ CREATE EXTENSION IF NOT EXISTS postgis;  -- geography(Point,4326) + GiST
 -- -----------------------------------------------------------------------------
 -- factors — current-state projection of the append-only factor_revisions log.
 -- -----------------------------------------------------------------------------
--- On event sourcing (ADR-13): comprehensive §2 calls the store "event-sourced"
+-- On event sourcing:  calls the store "event-sourced"
 -- but the spec schema is a single mutable table whose Phase D UPDATE destroys the
--- prior effect/significance in place (finding #17). We make the claim true:
+-- prior effect/significance in place. We make the claim true:
 -- `factor_revisions` (below) is the append-only log; `factors` is the current-state
 -- read model maintained from it by trigger. Direct INSERT seeds a factor (and auto-
 -- writes its genesis revision); escalations (Phase D) append a revision, which the
@@ -68,16 +68,16 @@ CREATE EXTENSION IF NOT EXISTS postgis;  -- geography(Point,4326) + GiST
 CREATE TABLE factors (
     id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
-    -- SPEC DEVIATION (ADR-15 / ADR-15a): the spec paginates the feed on
+    -- the spec paginates the feed on
     -- (updated_at, id). Phase D mutates updated_at, so a factor sitting below a
     -- live keyset cursor that escalates jumps ABOVE the cursor and is silently
     -- skipped for the rest of the scroll session (findings #13/#21). `seq` is an
     -- insert-only, monotonic, immutable total-order key: assigned once at INSERT,
     -- NEVER rewritten on escalation. The feed cursor keys on (seq DESC); updated_at
-    -- is reserved for the out-of-band changed_since delta path (ADR-17).
+    -- is reserved for the out-of-band changed_since delta path.
     seq                      BIGINT GENERATED ALWAYS AS IDENTITY,
 
-    -- SPEC DEVIATION (ADR-11): spec had bare `LTREE NOT NULL` with the "global /
+    -- spec had bare `LTREE NOT NULL` with the "global /
     -- global.[country_code]" bound stated only in a comment. We enforce it: the
     -- path must be rooted at `global` and be at most 2 levels deep (findings
     -- #11/#33). One-line ALTER to relax when the §8/Phase-2 variable-depth phase
@@ -89,38 +89,38 @@ CREATE TABLE factors (
     name                     TEXT NOT NULL,
     description              TEXT NOT NULL,
 
-    -- SPEC DEVIATION (ADR-12): spec stored `VECTOR(1536)`. We store `halfvec(512)`
+    -- spec stored `VECTOR(1536)`. We store `halfvec(512)`
     -- — embeddings are Matryoshka-truncated to 512 dims via the embedding API's
     -- `dimensions` param and half-precision-packed (~2x storage cut, negligible
     -- HNSW recall loss). Nullable: set during Phase B, so it may be absent between
     -- extraction and vectorization (HNSW simply does not index NULLs).
     embedding                halfvec(512),
 
-    -- SPEC DEVIATION (ADR-9): spec used bare unbounded `NUMERIC` (arbitrary
+    -- spec used bare unbounded `NUMERIC` (arbitrary
     -- precision, up to 131072 integer digits — accepts effect = -99999, and even
     -- 'NaN'::numeric passes a typmod). These reach the shader as float32 anyway.
-    -- SPEC DEVIATION (ADR-11a): effect is bounded to [-1,1] — load-bearing for the
-    -- ADR-3 two-field color model, whose normalized polarity P inherits effect's
+    -- effect is bounded to [-1,1] — load-bearing for the
+    --  two-field color model, whose normalized polarity P inherits effect's
     -- units, so the ±0.5 ramp thresholds only mean anything if effect is bounded
-    -- (findings #4/#10/#32). BETWEEN also rejects NaN/±Infinity (finding #9) — we do
+    -- (findings #4/#10/#32). BETWEEN also rejects NaN/±Infinity — we do
     -- NOT use the `x = x` idiom, which passes NaN for float and is TRUE for numeric.
     effect                   REAL NOT NULL CHECK (effect BETWEEN -1.0 AND 1.0),
                                  -- signed charge: Negative = Calamity, Positive = Humanity
-    -- SPEC DEVIATION (ADR-9 + ADR-11): spec commented "Scale 0.0 to 1.0" but
+    -- spec commented "Scale 0.0 to 1.0" but
     -- enforced nothing — a NEGATIVE significance silently inverts a factor's
     -- polarity (a Calamity renders resilient blue). The non-negativity half is the
-    -- correctness fix (finding #10).
+    -- correctness fix.
     significance             REAL NOT NULL CHECK (significance BETWEEN 0.0 AND 1.0),
 
-    -- SPEC DEVIATION (ADR-9): spec used NUMERIC(8,6)/(9,6). We use DOUBLE PRECISION.
-    -- Stored in WGS84 DEGREES (finding #1/ADR-25): lat in [-90,90], lon in [-180,180].
+    -- spec used NUMERIC(8,6)/(9,6). We use DOUBLE PRECISION.
+    -- Stored in WGS84 DEGREES (finding #1/): lat in [-90,90], lon in [-180,180].
     -- The range CHECKs close the "silent band" where e.g. lat=95 inserts cleanly
     -- (numeric-overflow only fires past the type max, not past the valid range —
-    -- finding #16) and also reject NaN/±Infinity via BETWEEN (finding #9).
+    -- finding #16) and also reject NaN/±Infinity via BETWEEN.
     lat                      DOUBLE PRECISION NOT NULL CHECK (lat BETWEEN -90.0 AND 90.0),
     lon                      DOUBLE PRECISION NOT NULL CHECK (lon BETWEEN -180.0 AND 180.0),
 
-    -- SPEC DEVIATION (ADR-8): the spec has no spatial column; §4 filtered a lat/lon
+    -- the spec has no spatial column; §4 filtered a lat/lon
     -- box. `geog` is a GENERATED point in SRID 4326 derived from (lon, lat) — note
     -- ST_MakePoint takes (X=lon, Y=lat). It backs ST_DWithin/ST_Intersects viewport
     -- queries with no antimeridian/pole special cases. Verified IMMUTABLE:
@@ -130,11 +130,11 @@ CREATE TABLE factors (
                                GENERATED ALWAYS AS
                                (ST_SetSRID(ST_MakePoint(lon, lat), 4326)::geography) STORED,
 
-    -- SPEC DEVIATION (ADR-10): spec stored `zone_level TEXT NOT NULL` as a second,
+    -- spec stored `zone_level TEXT NOT NULL` as a second,
     -- unconstrained source of truth for a value fully determined by
     -- nlevel(spatial_path) — the two could drift (findings #11/#33). We derive it as
     -- a STORED generated column so drift is structurally impossible. Verified:
-    -- nlevel() is IMMUTABLE, so this is legal (the ADR-10 trigger fallback is NOT
+    -- nlevel() is IMMUTABLE, so this is legal (the  trigger fallback is NOT
     -- needed). Wire format is byte-identical to the spec (still a TEXT 'global' /
     -- 'national'). The `ELSE 'national'` branch is only correct while depth <= 2,
     -- which the spatial_path CHECK above guarantees.
@@ -142,7 +142,7 @@ CREATE TABLE factors (
                                (CASE nlevel(spatial_path) WHEN 1 THEN 'global'
                                                           ELSE 'national' END) STORED,
 
-    -- SPEC DEVIATION (ADR-20): factors extracted by the Phase A/B LLM pipeline land
+    -- factors extracted by the Phase A/B LLM pipeline land
     -- 'pending' and are marked unreviewed in the UI, distinct from 'verified'
     -- entries. §3 is an unbounded LLM write path; this costs nothing and lets the
     -- feed / field / Clock gate on review state. Default 'pending' so ingestion is
@@ -150,8 +150,8 @@ CREATE TABLE factors (
     verification_state       TEXT NOT NULL DEFAULT 'pending'
                                CHECK (verification_state IN ('verified', 'pending')),
 
-    -- SPEC DEVIATION (ADR-12): full-text vector for hybrid retrieval alongside the
-    -- HNSW vector index — this corpus is dense with named entities and figures
+    -- full-text vector for hybrid retrieval alongside the
+    -- HNSW vector index — this seed data is dense with named entities and figures
     -- where keyword search beats pure vector. GENERATED STORED; the two-arg
     -- to_tsvector('english', ...) form is IMMUTABLE (the one-arg form, which reads
     -- the default_text_search_config GUC, is only STABLE and would be rejected here).
@@ -159,15 +159,15 @@ CREATE TABLE factors (
                                (to_tsvector('english',
                                             coalesce(name, '') || ' ' || coalesce(description, ''))) STORED,
 
-    -- From comprehensive §2: cryptographic anchor for the Phase-2 Gestalt F2F
+    -- From : cryptographic anchor for the Phase-2 Gestalt F2F
     -- deep-link. UNIQUE (a NULL is allowed and does not collide under UNIQUE).
     gestalt_channel_address  BYTEA UNIQUE,
 
-    -- SPEC DEVIATION (ADR-11): spec wrote `TIMESTAMPTZ DEFAULT NOW()` WITHOUT
+    -- spec wrote `TIMESTAMPTZ DEFAULT NOW()` WITHOUT
     -- NOT NULL. DEFAULT does not imply NOT NULL — an explicit ...VALUES(NULL)
     -- (common ORM behavior for an unset optional field) stores NULL, and a NULL
     -- cursor sort key makes the row unreachable via keyset pagination forever
-    -- (finding #12). Both are NOT NULL.
+    --. Both are NOT NULL.
     created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at               TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -178,8 +178,8 @@ CREATE TABLE factors (
 CREATE TABLE citations (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
-    -- SPEC DEVIATION (ADR-11): spec omitted NOT NULL, so a FK permits NULL and
-    -- orphan, cascade-unreachable citations accumulate (finding #14), contradicting
+    -- spec omitted NOT NULL, so a FK permits NULL and
+    -- orphan, cascade-unreachable citations accumulate, contradicting
     -- the "One-to-Many Strict" header. Now NOT NULL.
     factor_id     UUID NOT NULL REFERENCES factors(id) ON DELETE CASCADE,
 
@@ -188,15 +188,15 @@ CREATE TABLE citations (
     quote_snippet TEXT NOT NULL,
     analyst_notes TEXT,                                   -- nullable free-text (from spec)
 
-    -- NOT NULL added for hygiene (finding #12) and because the ADR-11 index below
+    -- NOT NULL added for hygiene and because the  index below
     -- orders on it.
     retrieved_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- -----------------------------------------------------------------------------
--- factor_revisions — the append-only event log (ADR-13).
+-- factor_revisions — the append-only event log.
 -- -----------------------------------------------------------------------------
--- SPEC DEVIATION (ADR-13): the spec has no history table and Phase D overwrites
+-- the spec has no history table and Phase D overwrites
 -- effect/significance in place (finding #17/#31). Every change to a factor's
 -- weighting is appended here; `factors` is the projection of the newest revision.
 -- This makes Phase D auditable (before/after + reason + the citation that
@@ -206,7 +206,7 @@ CREATE TABLE factor_revisions (
     factor_id       UUID NOT NULL REFERENCES factors(id) ON DELETE CASCADE,
 
     -- Same bounds as the projection columns, so the log can never carry a value the
-    -- projection would reject (ADR-11a; Phase D / ADR-19 must clamp into this domain).
+    -- projection would reject (; Phase D /  must clamp into this domain).
     effect          REAL NOT NULL CHECK (effect BETWEEN -1.0 AND 1.0),
     significance    REAL NOT NULL CHECK (significance BETWEEN 0.0 AND 1.0),
 
@@ -222,11 +222,11 @@ CREATE TABLE factor_revisions (
 );
 
 -- =============================================================================
--- Triggers: updated_at maintenance + event-log <-> projection wiring (ADR-13).
+-- Triggers: updated_at maintenance + event-log <-> projection wiring.
 -- =============================================================================
 
 -- Any direct UPDATE to a factor bumps updated_at. seq is GENERATED ... AS IDENTITY
--- and is never assignable on UPDATE, so it stays immutable (ADR-15a) regardless.
+-- and is never assignable on UPDATE, so it stays immutable regardless.
 CREATE FUNCTION tc_factors_touch_updated_at() RETURNS trigger
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -280,75 +280,75 @@ CREATE TRIGGER trg_apply_revision_to_projection
 -- Indexes
 -- =============================================================================
 
--- From spec §2: hierarchical spatial_path traversal.
+-- From : hierarchical spatial_path traversal.
 CREATE INDEX idx_factors_spatial_path ON factors USING gist (spatial_path);
 
--- SPEC DEVIATION (ADR-15a): replaces the spec's idx_factors_cursor_pagination on
+-- replaces the spec's idx_factors_cursor_pagination on
 -- (updated_at DESC, id DESC) as the FEED cursor index. The feed keysets on the
 -- immutable seq (see the seq column note); seq is unique on its own, id kept as a
 -- defensive tiebreak.
 CREATE INDEX idx_factors_feed_seq ON factors (seq DESC, id DESC);
 
--- Retained for the out-of-band changed_since delta endpoint (ADR-17), which MAY
+-- Retained for the out-of-band changed_since delta endpoint, which MAY
 -- legitimately key on updated_at because it patches already-cached cards in place
 -- rather than driving a keyset scroll.
 CREATE INDEX idx_factors_updated_at ON factors (updated_at DESC, id DESC);
 
--- SPEC DEVIATION (ADR-15): supports the §4 "Sorting Override" magnitude mode
+-- supports the §4 "Sorting Override" magnitude mode
 -- (ORDER BY abs(effect) DESC, id DESC). abs(real) is IMMUTABLE so the expression
 -- index is legal; the spec provided no index for this sort, making it a full scan +
 -- sort every request (findings #18/#19/#23).
 CREATE INDEX idx_factors_magnitude ON factors (abs(effect) DESC, id DESC);
 
--- SPEC DEVIATION (ADR-26): backs GET /api/field, the camera/cursor-INVARIANT field
+-- backs GET /api/field, the camera/cursor-INVARIANT field
 -- endpoint whose set drives the shader (NOT the paginated feed — findings #5). Ranks
 -- by actual field influence ABS(effect*significance); `id ASC` tiebreak is
 -- mandatory for determinism (Postgres has no stable order for ties).
 CREATE INDEX idx_factors_field_rank ON factors ((ABS(effect * significance)) DESC, id ASC);
 
--- SPEC DEVIATION (ADR-8): GiST on the geography point for real spherical viewport
+-- GiST on the geography point for real spherical viewport
 -- queries (ST_DWithin / ST_Intersects).
 CREATE INDEX idx_factors_geog ON factors USING gist (geog);
 
--- SPEC DEVIATION (ADR-12): HNSW over the halfvec embedding with the cosine opclass,
+-- HNSW over the halfvec embedding with the cosine opclass,
 -- for the Phase C dedup nearest-neighbour query. Build params m=16 / ef_construction=64
 -- are a documented starting point (findings #8/#30); the ingestion worker should
 -- raise hnsw.ef_search well above the default 40 for the dedup workload. NOTE the
 -- query MUST be `ORDER BY embedding <=> $1 LIMIT k` — a `WHERE dist < 0.15` predicate
--- will NOT use this index and falls back to a seq scan (finding #8/ADR-18/-30).
+-- will NOT use this index and falls back to a seq scan (finding #8//-30).
 CREATE INDEX idx_factors_embedding_hnsw
     ON factors USING hnsw (embedding halfvec_cosine_ops)
     WITH (m = 16, ef_construction = 64);
 
--- SPEC DEVIATION (ADR-12): GIN over the generated tsvector for the keyword half of
+-- GIN over the generated tsvector for the keyword half of
 -- hybrid retrieval.
 CREATE INDEX idx_factors_search_tsv ON factors USING gin (search_tsv);
 
--- SPEC DEVIATION (ADR-11 / findings #15/#24): the spec provided no index on the FK
+-- the spec provided no index on the FK
 -- referencing side. Postgres never auto-indexes it, so every ON DELETE CASCADE and
 -- every per-card citation fetch was a full scan of the (largest) citations table.
 -- factor_id leads (serves the equality lookup and the cascade); retrieved_at DESC
 -- lets "newest citation first" be served straight from the index.
 CREATE INDEX idx_citations_factor_id ON citations (factor_id, retrieved_at DESC);
 
--- Audit/replay fetch of a factor's revision history in order (ADR-13).
+-- Audit/replay fetch of a factor's revision history in order.
 CREATE INDEX idx_factor_revisions_factor ON factor_revisions (factor_id, changed_at DESC);
 
 -- =============================================================================
--- Write-path contract (ADR-13), for implementers of the ingestion pipeline (§3):
+-- Write-path contract, for implementers of the ingestion pipeline (§3):
 --
 --   INSERT a new factor  (Phase D "No Collision"):
 --     1. INSERT INTO factors (...) VALUES (...) RETURNING id;    -- genesis revision auto-written
 --     2. INSERT INTO citations (factor_id, ...) VALUES (id, ...);
 --        (do 1+2 in one transaction so a factor is never citation-less)
 --
---   ESCALATE an existing factor (Phase D "Collision" -> escalation, ADR-19):
+--   ESCALATE an existing factor (Phase D "Collision" -> escalation):
 --     1. INSERT INTO citations (factor_id, ...) VALUES (parent_id, ...) RETURNING id;
 --     2. INSERT INTO factor_revisions (factor_id, effect, significance, revision_reason, citation_id)
 --        VALUES (parent_id, <clamped new effect>, <clamped new significance>, 'escalation', cit_id);
 --        -> the projection trigger folds the new weights into factors and bumps updated_at.
 --        Never UPDATE factors.effect/significance directly; always append a revision.
---        seq is NEVER touched by escalation, keeping the feed cursor stable (ADR-15a).
+--        seq is NEVER touched by escalation, keeping the feed cursor stable.
 -- =============================================================================
 
 -- Self-register in the migration ledger so the docker initdb path and the

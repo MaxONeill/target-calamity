@@ -1,5 +1,5 @@
 /*
- * Submission form styling (ADR-45) — the same dark instrument-panel language as
+ * Submission form styling — the same dark instrument-panel language as
  * the sidebar feed. Tokens are re-declared (not inherited) so the component is
  * self-contained and can be mounted anywhere in the slideout without depending
  * on `.tc-sidebar` being an ancestor.

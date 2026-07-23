@@ -1,5 +1,5 @@
 /**
- * Phase A — LIVE research + extraction (ADR-31, provider-migrated by ADR-44), the
+ * Phase A — LIVE research + extraction (, provider-migrated by ), the
  * front of the research engine.
  *
  * `researchFactors(topic)` turns a research TOPIC into structured candidate
@@ -18,7 +18,7 @@
  * its `sourceIndex`, and this module substitutes Firecrawl's real `url` and the
  * domain-derived `publisher`. A hallucinated index is dropped, so a persisted
  * source is always one that was genuinely retrieved. (Anthropic's server-side
- * citation handling is what we gave up here — ADR-44.)
+ * citation handling is what we gave up here.)
  *
  * Direction vs magnitude: `effect` is the SIGNED position on the
  * Humanity↔Calamity axis (negative = Calamity, positive = Humanity) and
@@ -27,7 +27,7 @@
  *
  * VERIFICATION happens downstream: this module does NOT decide verified/pending.
  * It surfaces the sources; `reputability.ts` scores them and the worker sets the
- * state (ADR-33). A candidate here is a CLAIM plus its sources, nothing more.
+ * state. A candidate here is a CLAIM plus its sources, nothing more.
  *
  * OFFLINE: with EITHER credential missing ({@link hasLiveCredentials} for
  * Fireworks, {@link hasRetrievalCredentials} for Firecrawl) we return a
@@ -69,7 +69,7 @@ export interface ResearchedSource {
   /**
    * True only when `quoteSnippet` is a genuine contiguous verbatim span from the
    * source; false for a paraphrase/summary. Mirrors `CitationSchema.verbatim`
-   * (corpus rule #2): a paraphrase must never be rendered as a direct quote.
+   * (seed data rule #2): a paraphrase must never be rendered as a direct quote.
    */
   verbatim: boolean;
 }
@@ -77,7 +77,7 @@ export interface ResearchedSource {
 /**
  * A candidate factor as produced by Phase A. A signed direction + magnitude on
  * the Humanity↔Calamity axis, positioned on the globe, backed by sources. It is
- * NOT yet verified — that is the reputability gate's job downstream (ADR-33).
+ * NOT yet verified — that is the reputability gate's job downstream.
  */
 export interface CandidateFactor {
   name: string;
@@ -90,10 +90,10 @@ export interface CandidateFactor {
   lat: number;
   /** WGS84 degrees, [-180, 180]. */
   lon: number;
-  /** `global` or `global.<code>` (depth ≤ 2, ADR-11). */
+  /** `global` or `global.<code>` (depth ≤ 2). */
   spatialPath: string;
   /**
-   * A dated, (near-)irreversible threshold this factor represents (ADR-34), when
+   * A dated, (near-)irreversible threshold this factor represents, when
    * — and ONLY when — the sources give a concrete dated/near-dated one (e.g. an
    * AMOC-collapse or ice-free-Arctic year). Absent for the majority of factors,
    * which are pressures/counter-forces, not dated thresholds. Feeds the Clock
@@ -106,7 +106,7 @@ export interface CandidateFactor {
 
 /** Tuning + injection points for one research call. */
 export interface ResearchOptions {
-  /** Cap on candidate factors returned from one topic (bounded batch, ADR-32). */
+  /** Cap on candidate factors returned from one topic (bounded batch). */
   maxCandidates?: number;
   /** Cap on retrieved+scraped sources per topic (cost control). */
   maxResults?: number;
@@ -133,7 +133,7 @@ const DEFAULT_MAX_CANDIDATES = 8;
 
 /**
  * The EXTRACTION-turn output contract. Authored with `zod/v4` so `z.toJSONSchema`
- * can derive the constrained-decoding grammar from it (ADR-44); the SAME schema
+ * can derive the constrained-decoding grammar from it; the SAME schema
  * then validates the decode. Ranges are permissive here —
  * {@link normalizeCandidate} clamps, and `pipeline.ExtractedFactorSchema`
  * re-validates strictly and quarantines anything still out of domain (defence in
@@ -150,7 +150,7 @@ const ExtractionSourceSchema = z.object({
 });
 
 /**
- * Optional dated tipping-point threshold (ADR-34). Shape mirrors the shared
+ * Optional dated tipping-point threshold. Shape mirrors the shared
  * `TippingPointSchema`. The extraction prompt is instructed to emit this ONLY
  * when the sources give a concrete dated/near-dated threshold, else omit it.
  */
@@ -319,7 +319,7 @@ export function normalizeCandidate(
     ...(tippingPoint ? { tippingPoint } : {}),
     // Provenance is resolved from the RETRIEVED documents, never from model text:
     // a citation whose 1-based index does not name a real retrieved source is
-    // dropped outright rather than persisted with an invented URL (ADR-44).
+    // dropped outright rather than persisted with an invented URL.
     sources: raw.sources.flatMap((s) => {
       const doc = docs[Math.round(s.sourceIndex) - 1];
       const quote = s.quoteSnippet.trim();
@@ -462,7 +462,7 @@ export function researchFactorsOffline(topic: string): CandidateFactor[] {
     const lon = Number((rand() * 360 - 180).toFixed(4));
     const polarity = effect < 0 ? 'Calamity' : 'Humanity';
     // The FIRST stub factor carries a deterministic dated threshold so the offline
-    // path exercises the tipping-point plumbing end-to-end (ADR-34). A near-future
+    // path exercises the tipping-point plumbing end-to-end. A near-future
     // year derived from the seed; later stubs stay threshold-less (the common case).
     const tippingPoint: TippingPoint | undefined =
       i === 0

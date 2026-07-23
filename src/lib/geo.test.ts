@@ -1,5 +1,5 @@
 /**
- * Tests for the ONE sanctioned lat/lon ⇄ Cartesian conversion (ADR-25).
+ * Tests for the ONE sanctioned lat/lon ⇄ Cartesian conversion.
  *
  * The bug this file exists to catch: the spec wrote `cos(lat)` with no unit
  * conversion, and lat/lon are stored in DEGREES while trig takes RADIANS.
@@ -7,7 +7,7 @@
  * radius-preservation check passes under the bug and is NOT coverage. The
  * load-bearing regression guard here is the London↔Tokyo great-circle angle,
  * which a degrees-in-radians implementation gets grossly wrong (≈148° vs the
- * true ≈86°). See ADR-25.
+ * true ≈86°). See .
  */
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';

@@ -1,5 +1,5 @@
 /**
- * SubmitFactor — the anonymous Phase-1 submission form (ADR-45).
+ * SubmitFactor — the anonymous Phase-1 submission form.
  *
  * Compact, keyboard-accessible, and deliberately minimal: a claim, the source
  * that backs it, and an optional note. It does NOT offer effect, significance,
@@ -76,7 +76,7 @@ export function SubmitFactor({ onClose }: SubmitFactorProps): JSX.Element {
       event.preventDefault();
       if (submitting) return;
 
-      // Validate against the SAME schema the server uses (ADR-23) so the
+      // Validate against the SAME schema the server uses so the
       // submitter gets immediate feedback and we never spend a round trip on a
       // request we already know is invalid.
       const payload = {

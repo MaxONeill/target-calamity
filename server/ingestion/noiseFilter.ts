@@ -1,5 +1,5 @@
 /**
- * The cheap noise filter (ADR-45) — one small model call in FRONT of the
+ * The cheap noise filter — one small model call in FRONT of the
  * expensive vetting pipeline.
  *
  * The existing pipeline (retrieve the cited source with Firecrawl, extract typed
@@ -98,7 +98,7 @@ export interface NoiseFilterOptions {
  */
 export const NOISE_BAN_CONFIDENCE = 0.85;
 
-/** True when this assessment should also shadow-ban the submitter (ADR-45). */
+/** True when this assessment should also shadow-ban the submitter. */
 export function shouldAutoBan(assessment: NoiseAssessment): boolean {
   return (
     (assessment.verdict === 'spam' || assessment.verdict === 'abuse') &&

@@ -1,15 +1,15 @@
 /**
- * Field texture baker (ADR-1, ADR-3, ADR-26). Turns the `/api/field` pin set
+ * Field texture baker. Turns the `/api/field` pin set
  * into an equirectangular `DataTexture` the globe fragment shader samples.
  *
- * SPEC DEVIATION (ADR-1): replaces the spec's per-fragment factor loop with a
+ * replaces the spec's per-fragment factor loop with a
  * once-per-data-change CPU bake (field.ts) written into a 2048×1024 texture.
  *
- * SPEC DEVIATION (ADR-3): two channels — R = net polarity P ∈ [-1, 1],
+ * two channels — R = net polarity P ∈ [-1, 1],
  * G = evidence density W ≥ 0 — so the shader can gate color on evidence rather
  * than collapsing "no data" and "equilibrium" into one purple.
  *
- * SPEC DEVIATION (ADR-26): the ONLY input is the `/api/field` response, which
+ * the ONLY input is the `/api/field` response, which
  * carries no camera and no cursor. `bake()` must be called solely on receipt of
  * a new field response — never from an OrbitControls change handler, the render
  * loop, or a pagination reducer. That negative rule is what keeps the heatmap
@@ -68,7 +68,7 @@ export class FieldBaker {
   }
 
   /**
-   * Rebake the field from a new pin set (the `/api/field` response, ADR-26).
+   * Rebake the field from a new pin set (the `/api/field` response).
    * Pins with a non-finite value are skipped defensively — a single NaN would
    * otherwise poison the whole field (audit finding 9). Returns the CPU
    * {@link BakedField} for tests/inspection.

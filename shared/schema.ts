@@ -1,6 +1,6 @@
 /**
  * Shared zod contract — the single source of truth for client and server
- * (ADR-23). TypeScript types are derived from these schemas via `z.infer` in
+ *. TypeScript types are derived from these schemas via `z.infer` in
  * `shared/types.ts`; never hand-write a type that duplicates a schema here.
  *
  * Runtime validation happens at the API boundary on both sides: the server
@@ -8,8 +8,8 @@
  * validates responses before trusting them. A schema change is therefore a
  * contract change visible to both halves at compile time.
  *
- * Numeric domains mirror the enforced database CHECK constraints (ADR-11 /
- * ADR-11a): effect ∈ [-1, 1], significance ∈ [0, 1], lat ∈ [-90, 90],
+ * Numeric domains mirror the enforced database CHECK constraints ( /
+ * ): effect ∈ [-1, 1], significance ∈ [0, 1], lat ∈ [-90, 90],
  * lon ∈ [-180, 180]. Keeping them here means a poisoned row that somehow
  * bypasses the DB is still rejected before it reaches the shader or the feed.
  */
@@ -21,21 +21,21 @@ import { z } from 'zod';
 
 /**
  * Spatial tier. Phase 1 is strictly bounded to Global and National
- * (spec §2 / ADR-11: `nlevel(spatial_path) <= 2`). Derived from `spatial_path`
- * on the server (ADR-10), so it is read-only from the client's perspective.
+ * <= 2`). Derived from `spatial_path`
+ * on the server, so it is read-only from the client's perspective.
  */
 export const ZoneLevelSchema = z.enum(['global', 'national']);
 
 /**
  * Feed sort mode. `recent` keys on insertion recency; `magnitude` keys on
- * absolute impact index |effect| (spec §4 "Sorting Override"). The cursor is
- * mode-tagged (ADR-15) so a cursor minted under one mode can never be replayed
+ * absolute impact index |effect|. The cursor is
+ * mode-tagged so a cursor minted under one mode can never be replayed
  * against the other.
  */
 export const SortModeSchema = z.enum(['recent', 'magnitude']);
 
 /**
- * Verification lifecycle (ADR-20). LLM-ingested factors land as `pending`,
+ * Verification lifecycle. LLM-ingested factors land as `pending`,
  * visibly marked in the UI and excluded from the field bake, until reviewed and
  * promoted to `verified`.
  */
@@ -46,7 +46,7 @@ export const VerificationStateSchema = z.enum(['verified', 'pending']);
 /* -------------------------------------------------------------------------- */
 
 /**
- * A dated, (near-)irreversible threshold a factor represents (ADR-34/-35). Most
+ * A dated, (near-)irreversible threshold a factor represents. Most
  * factors have none — they are pressures or counter-forces, not dated thresholds
  * — so it is `.optional()` on both {@link FactorSchema} and {@link FieldPinSchema}.
  *
@@ -69,7 +69,7 @@ export const TippingPointSchema = z.object({
 
 /**
  * A single piece of evidence attached to a factor. One-to-many strict: every
- * citation belongs to exactly one factor (`factor_id NOT NULL`, ADR-11).
+ * citation belongs to exactly one factor (`factor_id NOT NULL`).
  * Timestamps cross the wire as ISO 8601 strings.
  */
 export const CitationSchema = z.object({
@@ -81,7 +81,7 @@ export const CitationSchema = z.object({
   /**
    * True only when `quoteSnippet` is a genuine contiguous span lifted verbatim
    * from the cited source; false when it is a paraphrase/summary or a composite
-   * that no single source sentence contains (corpus rule #2 / review finding #12).
+   * that no single source sentence contains (seed data rule #2 / review finding #12).
    * The UI MUST render a verbatim:false snippet WITHOUT quotation marks and with
    * a "summary" affordance so a paraphrase can never masquerade as a direct quote.
    * Defaults to `false` so anything of unknown provenance (e.g. machine-ingested
@@ -95,7 +95,7 @@ export const CitationSchema = z.object({
 /**
  * A tracked vector of systemic decay (Calamity, negative effect) or resilient
  * counter-measure (Humanity, positive effect). This is the feed/detail shape:
- * it carries its citations inline (ADR-16, returned via `json_agg`) but never
+ * it carries its citations inline (, returned via `json_agg`) but never
  * the `embedding` — that column stays server-side and never crosses the wire.
  */
 export const FactorSchema = z.object({
@@ -103,7 +103,7 @@ export const FactorSchema = z.object({
   spatialPath: z.string(),
   name: z.string(),
   description: z.string(),
-  /** Signed impact. Negative = Calamity, Positive = Humanity. Bounded (ADR-11a). */
+  /** Signed impact. Negative = Calamity, Positive = Humanity. Bounded. */
   effect: z.number().gte(-1).lte(1),
   /** Weight coefficient mapping to physical vertex weight. */
   significance: z.number().gte(0).lte(1),
@@ -117,12 +117,12 @@ export const FactorSchema = z.object({
   updatedAt: z.string().datetime({ offset: true }),
   citations: z.array(CitationSchema),
   /**
-   * Dated tipping-point threshold (ADR-34/-35), if this factor represents one.
+   * Dated tipping-point threshold, if this factor represents one.
    * Absent on most factors. Feeds the Clock's significance-weighted baseline.
    */
   tippingPoint: TippingPointSchema.optional(),
   /**
-   * The reputability gate's audit trail (ADR-33/-37). When a machine-ingested
+   * The reputability gate's audit trail. When a machine-ingested
    * factor cleared (or failed) the source-credibility gate, this carries the
    * DECIDING source's score `∈ [0, 1]` and the model/heuristic's reasoning, so a
    * viewer can see WHY it is `verified` or `pending` — the gate is auditable, not
@@ -135,14 +135,14 @@ export const FactorSchema = z.object({
 });
 
 /* -------------------------------------------------------------------------- */
-/* Field endpoint (ADR-26) — data-defined, camera-invariant shader input      */
+/* Field endpoint — data-defined, camera-invariant shader input      */
 /* -------------------------------------------------------------------------- */
 
 /**
  * Deliberately leaner than {@link FactorSchema}: the field bake needs only the
  * charge (effect × significance) and a position. No description, no citations,
  * no cursor — the field set is a function of the data alone, never of camera or
- * scroll (ADR-26), so screenshots of the same `fieldEpoch` are reproducible.
+ * scroll, so screenshots of the same `fieldEpoch` are reproducible.
  */
 export const FieldPinSchema = z.object({
   id: z.string().uuid(),
@@ -151,7 +151,7 @@ export const FieldPinSchema = z.object({
   lat: z.number().gte(-90).lte(90),
   lon: z.number().gte(-180).lte(180),
   /**
-   * Dated tipping-point threshold (ADR-35), if any. The Clock reads the FIELD
+   * Dated tipping-point threshold, if any. The Clock reads the FIELD
    * set (`<Clock factors={fieldPins} />`), so a pin must carry its tipping point
    * for the countdown baseline to include it. Absent on most pins.
    */
@@ -169,7 +169,7 @@ export const FieldResponseSchema = z.object({
 });
 
 /* -------------------------------------------------------------------------- */
-/* Feed endpoint (ADR-15 / ADR-16) — cursor pagination                        */
+/* Feed endpoint — cursor pagination                        */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -190,13 +190,13 @@ export const ViewportSchema = z.object({
  * Decoded pagination cursor — the exact payload `server/pagination.ts` encodes
  * and decodes (that module imports THIS schema so the two can never drift). A
  * cursor is only valid for the sort mode AND the viewport that produced it
- * (ADR-15); both are embedded so the server can 400 a mismatched cursor instead
+ *; both are embedded so the server can 400 a mismatched cursor instead
  * of silently returning an incoherent page. The discriminant is `mode`, which
  * also selects the keyset tuple. The wire form is an opaque base64url string.
  *
- * ADR-15a: recent mode keysets on the IMMUTABLE insert-only `seq` (a BIGINT
+ * : recent mode keysets on the IMMUTABLE insert-only `seq` (a BIGINT
  * identity transmitted as a lossless decimal string), NOT `updated_at`. Phase D
- * (ADR-19) rewrites `updated_at = NOW()` on escalation, so an `updated_at` key
+ * rewrites `updated_at = NOW()` on escalation, so an `updated_at` key
  * would silently skip escalating rows for the rest of a scroll session (and it
  * also truncates microseconds across a JSON round-trip). `seq` has neither flaw.
  *
@@ -226,7 +226,7 @@ export const CursorSchema = z.discriminatedUnion('mode', [
  * `GET /api/feed` request. First page omits `cursor` (null); subsequent pages
  * pass the opaque token returned as `nextCursor`. `sortMode` and `viewport` are
  * always sent — on a sort toggle or viewport change the client discards its
- * cursor and restarts from page one (ADR-15).
+ * cursor and restarts from page one.
  */
 export const FeedRequestSchema = z.object({
   sortMode: SortModeSchema.default('recent'),
@@ -244,7 +244,7 @@ export const FeedResponseSchema = z.object({
 });
 
 /* -------------------------------------------------------------------------- */
-/* Anonymous submission (ADR-45) — POST /api/factors/submit                   */
+/* Anonymous submission — POST /api/factors/submit                   */
 /* -------------------------------------------------------------------------- */
 
 /** Bounds on the free-text fields. Enforced here AND by the route, not just in the UI. */
@@ -262,13 +262,13 @@ function protocolOf(value: string): string {
 }
 
 /**
- * What an ANONYMOUS submitter is allowed to send (ADR-45). Deliberately tiny:
+ * What an ANONYMOUS submitter is allowed to send. Deliberately tiny:
  * a claim, the source that backs it, an optional note for a human reviewer, and
  * an opaque client-generated device id.
  *
  * **`.strict()` is the anti-manipulation rule, not a style choice.** `effect`,
  * `significance`, `verificationState`, `lat`, `lon` and `tippingPoint` are
- * SYSTEM-ASSIGNED by the vetting pipeline (ADR-31/-33). If a submitter could set
+ * SYSTEM-ASSIGNED by the vetting pipeline. If a submitter could set
  * them, anyone could steer the Clock's aggregate by hand and the "empirical"
  * premise would be hollow. `.strict()` turns any attempt to supply one — or any
  * other unknown key — into a hard validation failure rather than a silently
@@ -309,7 +309,7 @@ export const FactorSubmissionSchema = z
  * both receive the byte-identical `received` payload, and so does a submission
  * the noise classifier confidently called spam/abuse. The client must never be
  * able to distinguish those cases — that is what makes the ban a SHADOW ban
- * (ADR-45).
+ *.
  */
 export const SubmissionOutcomeSchema = z.enum([
   'received',

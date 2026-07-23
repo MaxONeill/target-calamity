@@ -1,10 +1,10 @@
 /**
- * FactorDetails — the selection detail panel (ADR-36).
+ * FactorDetails — the selection detail panel.
  *
  * When a factor is selected (from a sidebar card OR a GPU-picked globe pin), this
  * panel surfaces the FULL record the compact card cannot: the complete
  * description, the verification + reputability audit trail, the dated
- * tipping-point threshold (if any, ADR-34), and — the point of the view — the
+ * tipping-point threshold (if any), and — the point of the view — the
  * SOURCES.
  *
  * Sources render as a PLAIN LIST: publisher + the URL as a real, clickable link.
@@ -192,7 +192,7 @@ function TippingPointBlock({ tp }: { tp: TippingPoint }): JSX.Element {
 }
 
 /**
- * The reputability audit trail (ADR-33/-37): the deciding source's credibility
+ * The reputability audit trail: the deciding source's credibility
  * score + reasoning behind the verified/pending state. Rendered only when the
  * factor carries one (machine-ingested via the gate) — seed/curated factors have
  * none. Framed as the WHY behind the verification badge, so the gate is auditable

@@ -221,7 +221,7 @@ describe('resolveOutcome — deterministic guards over the verdict', () => {
     if (out.kind === 'escalate') {
       expect(out.parent.id).toBe('target');
       expect(out.directionality).toBe('intensifying');
-      // recomputed via the ADR-19 blend, in-domain.
+      // recomputed via the  blend, in-domain.
       expect(out.recalculated.effect).toBeGreaterThanOrEqual(-1);
       expect(out.recalculated.effect).toBeLessThanOrEqual(1);
     }

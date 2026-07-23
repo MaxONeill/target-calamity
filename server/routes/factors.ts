@@ -1,19 +1,19 @@
 /**
  * GET /api/factors  (alias: GET /api/feed) — the sidebar feed.
  *
- * ADR-26: this path drives the sidebar and NOTHING else. It is cursor-paginated
+ * : this path drives the sidebar and NOTHING else. It is cursor-paginated
  * and viewport-clipped; it must never feed the shader (that is `/api/field`).
  *
- * ADR-16: citations are returned inline via a `LATERAL` + `json_agg` in ONE
+ * : citations are returned inline via a `LATERAL` + `json_agg` in ONE
  * round trip — never an N+1 per 50-row page.
  *
- * ADR-8: viewport filtering uses PostGIS, not a `lat/lon BETWEEN`. The visible
+ * : viewport filtering uses PostGIS, not a `lat/lon BETWEEN`. The visible
  * region is intersected with a geometry envelope built from the viewport, with
  * the antimeridian handled by splitting into two envelopes (confirmed defects
  * #20 & #34). A `lat BETWEEN … AND lon BETWEEN …` returns zero rows across the
  * date line and degenerates near the poles; PostGIS makes those cases correct.
  *
- * ADR-15 / ADR-15a: recent mode keysets on the immutable `seq`; magnitude mode
+ *  / : recent mode keysets on the immutable `seq`; magnitude mode
  * is a bounded top-N snapshot (see pagination.ts for why neither uses a
  * Phase-D-mutated column as its key).
  */
@@ -34,11 +34,11 @@ import {
 } from '../pagination.js';
 import { SEED_FACTORS } from '../../shared/seed.js';
 
-/** Feed page size (spec §4: `LIMIT 50`). */
+/** Feed page size. */
 const FEED_PAGE_SIZE = 50;
 
 /**
- * Magnitude mode is a bounded top-N snapshot, not deep pagination (ADR-15a:
+ * Magnitude mode is a bounded top-N snapshot, not deep pagination (:
  * `abs(effect)` is Phase-D-mutated and unsafe as a keyset key). This caps the
  * "heaviest disruptions" view at a fixed budget.
  */
@@ -74,11 +74,11 @@ interface FeedRow {
 /* -------------------------------------------------------------------------- */
 
 /**
- * PostGIS viewport predicate (ADR-8). Intersects each factor's `geog` (cast to
+ * PostGIS viewport predicate. Intersects each factor's `geog` (cast to
  * planar geometry in lon/lat) with the viewport envelope. When `minLon > maxLon`
  * the viewport crosses the antimeridian, so the test is a UNION of the
  * `[minLon, 180]` and `[-180, maxLon]` envelopes — never `Math.min/max`, which
- * would select the complement of the viewport (confirmed defect #20).
+ * would select the complement of the viewport.
  *
  * Note: `geog::geometry` is a functional expression, so the plain GiST index on
  * `geog` does not serve it; recent mode is bounded by the `seq` index + LIMIT,
@@ -94,7 +94,7 @@ function viewportFilter(vp: Viewport): RawBuilder<unknown> {
   )`;
 }
 
-/** Inline citations (ADR-16): newest-first, one round trip, no N+1. */
+/** Inline citations: newest-first, one round trip, no N+1. */
 const CITATIONS_LATERAL = sql`
   LEFT JOIN LATERAL (
     SELECT json_agg(
@@ -141,7 +141,7 @@ const FACTOR_JSON = sql`
  * The tipping-point column is NULL for most factors, and `TippingPointSchema` is
  * `.optional()` (not `.nullable()`), so a literal `"tippingPoint": null` from the
  * JSON assembly would be REJECTED by the contract. Drop the key when it is null so
- * the property is simply absent (ADR-34/-35). node-postgres has already parsed the
+ * the property is simply absent. node-postgres has already parsed the
  * jsonb into an object, so no JSON.parse is needed here.
  */
 function stripNullTippingPoint(factor: Factor): Factor {
@@ -153,7 +153,7 @@ function stripNullTippingPoint(factor: Factor): Factor {
 }
 
 /**
- * The reputability audit-trail columns (ADR-33/-37) are NULL for seed/curated
+ * The reputability audit-trail columns are NULL for seed/curated
  * factors and for anything ingested before migration 004, and both schema fields
  * are `.optional()` (never `.nullable()`), so a literal `null` from the JSON
  * assembly would be REJECTED by the contract. Drop each key when it is null so the
@@ -219,7 +219,7 @@ async function magnitudeFeedDb(db: Database, viewport: Viewport): Promise<FeedRe
     ORDER BY ABS(f.effect) DESC, f.id DESC
     LIMIT ${MAGNITUDE_CAP}
   `.execute(db);
-  // Bounded snapshot: never paginated (ADR-15a).
+  // Bounded snapshot: never paginated.
   return { factors: rows.map((r) => mapFactorRow(r.factor)), nextCursor: null };
 }
 
@@ -326,7 +326,7 @@ export default async function factorsRoutes(fastify: FastifyInstance): Promise<v
       response = feedSeed(sortMode, viewport, cursor?.mode === 'recent' ? cursor : null);
     }
 
-    // Re-validate our own response against the shared contract (ADR-23).
+    // Re-validate our own response against the shared contract.
     return FeedResponseSchema.parse(response);
   };
 

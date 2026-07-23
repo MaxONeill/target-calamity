@@ -1,12 +1,12 @@
 /**
- * FactorDetails panel (ADR-36). A floating instrument-panel drawer anchored
+ * FactorDetails panel. A floating instrument-panel drawer anchored
  * bottom-left, over the globe, clear of the top-left Clock and the right Sidebar
  * so all three stay usable. Reuses the shared card/citation classes defined in
  * sidebar.css (tc-badge, tc-effectbar, tc-metric, tc-sigbar, tc-cite__*), which
  * load globally; this file styles only the tc-details* wrapper.
  */
 
-/* ADR-40: FactorDetails is no longer a separately-positioned floating drawer.
+/* : FactorDetails is no longer a separately-positioned floating drawer.
    It fills the shared right-edge slideout body — the slideout owns position,
    width, background and slide animation; this panel just fills it. */
 /* BUGFIX (polish pass): the shared card classes reused here — .tc-metric,
@@ -193,7 +193,7 @@
   color: var(--tc-ink-faint);
 }
 
-/* Reputability audit trail (ADR-33/-37) --------------------------------- */
+/* Reputability audit trail --------------------------------- */
 .tc-details__rep {
   margin-top: 14px;
   padding: 10px 12px;

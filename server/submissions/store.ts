@@ -1,5 +1,5 @@
 /**
- * Persistence port for anonymous submissions (ADR-45).
+ * Persistence port for anonymous submissions.
  *
  * The route depends on this interface, not on Kysely, so the whole submission
  * flow — including the shadow-ban and rate-limit branches — runs offline against
@@ -30,7 +30,7 @@ export type SubmissionStatus =
   | 'rate_limited'
   | 'duplicate';
 
-/** The salted identity pair. Never carries a raw IP or device id (ADR-45). */
+/** The salted identity pair. Never carries a raw IP or device id. */
 export interface SubmitterIdentity {
   ipHash: string;
   deviceHash: string;

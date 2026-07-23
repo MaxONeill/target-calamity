@@ -1,5 +1,5 @@
 /**
- * Coastline landmass overlay (ADR-39). Renders the world's coastlines as thin
+ * Coastline landmass overlay. Renders the world's coastlines as thin
  * glowing great-circle vector lines hugging the wireframe globe, so the viewer
  * can read WHERE things are on the otherwise featureless icosphere.
  *
@@ -9,7 +9,7 @@
  * we project and pack into ONE `THREE.LineSegments` (one geometry, one draw
  * call). 110m is the default; a finer set can be swapped in via `detail`.
  *
- * Projection routes through geo.ts's `latLonToVector3` (ADR-25 bans lat/lon trig
+ * Projection routes through geo.ts's `latLonToVector3` ( bans lat/lon trig
  * anywhere else). Long chords between sparse coastline vertices would cut through
  * the sphere, so each segment is subdivided by great-circle interpolation (slerp
  * of the endpoint unit vectors) whenever its endpoints span more than ~2° of arc.
@@ -44,7 +44,7 @@ export interface CoastlinesOptions {
    */
   detail?: '110m';
   /**
-   * Above-surface lift factor (ADR-42). Defaults to {@link SURFACE_LIFT}. When
+   * Above-surface lift factor. Defaults to {@link SURFACE_LIFT}. When
    * the globe is displaced by elevation, coastal land rises, so callers pass a
    * slightly larger lift to keep the lines from sinking under raised terrain.
    */

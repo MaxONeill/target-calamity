@@ -1,9 +1,9 @@
 /**
- * Shared LLM client factory for the live research engine (ADR-31/-33, ADR-44).
+ * Shared LLM client factory for the live research engine.
  *
  * The whole ingestion module reaches the model through THIS file so credential
  * handling, model selection and the structured-output convention live in one
- * place. As of ADR-44 the provider is **Fireworks AI** (DeepSeek V4 Flash), not
+ * place. As of  the provider is **Fireworks AI** (DeepSeek V4 Flash), not
  * Anthropic:
  *
  *   - Fireworks exposes an **OpenAI-COMPATIBLE wire protocol**. We therefore use
@@ -12,7 +12,7 @@
  *     `api.openai.com` — the base URL is always set explicitly.
  *   - `hasLiveCredentials()` is the single gate the offline stubs branch on. When
  *     it returns false, `websearch.ts` / `reputability.ts` serve their clearly
- *     labelled deterministic stubs and the scheduled worker no-ops (ADR-32) —
+ *     labelled deterministic stubs and the scheduled worker no-ops —
  *     production code never silently fabricates "live" findings.
  *   - `ingestModel()` reads `INGEST_MODEL` (default
  *     `accounts/fireworks/models/deepseek-v4-flash`), so the research + scoring
@@ -26,7 +26,7 @@
  *     non-conforming decode is caught rather than trusted.
  *
  * Anthropic-specific machinery (`messages.parse`, `zodOutputFormat`, adaptive
- * thinking, `pause_turn` resumes, server-side citations) is gone — see ADR-44 for
+ * thinking, `pause_turn` resumes, server-side citations) is gone — see  for
  * what that costs us.
  */
 import OpenAI from 'openai';
@@ -39,7 +39,7 @@ import * as z from 'zod/v4';
 export const FIREWORKS_BASE_URL = 'https://api.fireworks.ai/inference/v1';
 
 /**
- * Default research/scoring model. Overridable via `INGEST_MODEL` (ADR-31/-44).
+ * Default research/scoring model. Overridable via `INGEST_MODEL`.
  * DeepSeek V4 Flash is the cost-effective member of the V4 family and supports
  * constrained/structured decoding on Fireworks.
  */
