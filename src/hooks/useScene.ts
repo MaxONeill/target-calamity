@@ -12,8 +12,12 @@ export interface UseSceneOptions {
   sceneRef: MutableRefObject<SceneHandle | null>;
   fieldPins: readonly FieldPin[];
   globalFactors: readonly GlobalFactor[];
+  /** The selected factor id, emphasized in the scene. Null when none. */
+  selectedId: string | null;
   landVisible: boolean;
   onPickFactor: (id: string) => void;
+  /** The hovered factor changed (null when the pointer is over nothing). */
+  onHoverFactor: (id: string | null) => void;
   onInterrupt: () => void;
 }
 
@@ -29,16 +33,20 @@ export function useScene({
   sceneRef,
   fieldPins,
   globalFactors,
+  selectedId,
   landVisible,
   onPickFactor,
+  onHoverFactor,
   onInterrupt,
 }: UseSceneOptions): void {
   const pickRef = useRef(onPickFactor);
+  const hoverRef = useRef(onHoverFactor);
   const interruptRef = useRef(onInterrupt);
   useEffect(() => {
     pickRef.current = onPickFactor;
+    hoverRef.current = onHoverFactor;
     interruptRef.current = onInterrupt;
-  }, [onPickFactor, onInterrupt]);
+  }, [onPickFactor, onHoverFactor, onInterrupt]);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -46,6 +54,7 @@ export function useScene({
 
     const handle = createScene(mount, {
       onPickFactor: (id) => pickRef.current(id),
+      onHoverFactor: (id) => hoverRef.current(id),
       onInterrupt: () => interruptRef.current(),
     });
     sceneRef.current = handle;
@@ -63,6 +72,10 @@ export function useScene({
   useEffect(() => {
     sceneRef.current?.setGlobalFactors(globalFactors);
   }, [globalFactors, sceneRef]);
+
+  useEffect(() => {
+    sceneRef.current?.setSelected(selectedId);
+  }, [selectedId, sceneRef]);
 
   useEffect(() => {
     sceneRef.current?.setLandVisible(landVisible);

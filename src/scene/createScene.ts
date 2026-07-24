@@ -70,6 +70,7 @@ export function createScene(
   const renderFrame = (): void => {
     frameHandle = null;
     globe.syncCamera(camera);
+    ring.faceCamera(camera);
     renderer.render(scene, camera);
   };
   const requestRender = (): void => {
@@ -102,6 +103,7 @@ export function createScene(
     ring,
     globeRadius: GLOBE_RADIUS,
     onPick: callbacks.onPickFactor,
+    onHover: callbacks.onHoverFactor,
     requestRender,
   });
 
@@ -132,6 +134,17 @@ export function createScene(
     setGlobalFactors(factors): void {
       ring.update(factors);
       globe.setGlobalAggregate(factors);
+    },
+
+    setHighlighted(id): void {
+      // Routed to both layers; each ignores an id it does not own.
+      pins.setHighlighted(id);
+      ring.setHighlighted(id);
+    },
+
+    setSelected(id): void {
+      pins.setSelected(id);
+      ring.setSelected(id);
     },
 
     alignToLatLon(lat, lon): void {

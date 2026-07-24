@@ -59,11 +59,18 @@ export function App(): JSX.Element {
     sceneRef,
     fieldPins,
     globalFactors,
+    selectedId: panel.selectedId,
     landVisible,
     onPickFactor: useCallback(
       (id: string) => selectFactor(id, { scrollIntoView: true }),
       [selectFactor],
     ),
+    // Hover emphasis is imperative on purpose: routing it through React state
+    // would re-render the tree on every pointer move for a purely visual cue.
+    onHoverFactor: useCallback((id: string | null) => {
+      sceneRef.current?.setHighlighted(id);
+      document.body.style.cursor = id ? 'pointer' : '';
+    }, []),
     onInterrupt: useCallback(() => setFollowing(false), []),
   });
 

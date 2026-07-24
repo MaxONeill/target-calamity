@@ -13,28 +13,51 @@ export interface PickingOptions {
   ring: GlobalRing;
   globeRadius: number;
   onPick: (id: string) => void;
+  /** Reports the factor under the pointer as it moves. Null when over nothing. */
+  onHover: (id: string | null) => void;
   /** Picking rebinds the pin material, so the scene must repaint afterwards. */
   requestRender: () => void;
 }
 
 /**
- * Wires click-to-select on the canvas.
+ * Wires click-to-select and hover on the canvas.
  *
- * A click first tries the pin geometry. If it misses, it raycasts the globe
- * sphere and falls back to the pin whose painted halo covers that surface point,
- * so clicking a factor's visible glow selects it even when the marker itself is
- * small on screen.
+ * Both resolve a pointer position to a factor the same way: the pin geometry
+ * first (exact), then the ring arcs, then the pin whose painted halo covers the
+ * clicked surface point. Hover is coalesced to one pick per animation frame, so
+ * dragging the pointer never issues more than one GPU read-back per frame.
  *
- * @returns a teardown function removing both listeners.
+ * @returns a teardown function removing the listeners.
  */
 export function attachPicking(options: PickingOptions): () => void {
-  const { canvas, renderer, camera, pins, ring, globeRadius, onPick, requestRender } = options;
+  const { canvas, renderer, camera, pins, ring, globeRadius, onPick, onHover, requestRender } =
+    options;
 
   const raycaster = new THREE.Raycaster();
   const globeSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), globeRadius);
   const surfaceHit = new THREE.Vector3();
   const ndc = new THREE.Vector2();
 
+  /** Resolves canvas-local CSS pixels to a factor id, or null. */
+  const pickAt = (x: number, y: number, rectW: number, rectH: number): string | null => {
+    const id = pins.pick(renderer, camera, x, y);
+    if (id !== null) return id;
+
+    ndc.set((x / rectW) * 2 - 1, -((y / rectH) * 2 - 1));
+    raycaster.setFromCamera(ndc, camera);
+
+    // The ring sits outside the globe, so it is tested before the halo: a click
+    // landing on an arc is unambiguous, where a halo hit is a fallback guess.
+    const ringId = ring.pick(raycaster);
+    if (ringId !== null) return ringId;
+
+    if (raycaster.ray.intersectSphere(globeSphere, surfaceHit)) {
+      return pins.pickHalo(surfaceHit.normalize());
+    }
+    return null;
+  };
+
+  /* ------------------------------- selection ------------------------------- */
   let downX = 0;
   let downY = 0;
   let downValid = false;
@@ -49,37 +72,57 @@ export function attachPicking(options: PickingOptions): () => void {
   const onPointerUp = (event: PointerEvent): void => {
     if (!downValid || event.button !== 0) return;
     downValid = false;
-
     if (Math.hypot(event.clientX - downX, event.clientY - downY) > CLICK_SLOP_PX) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-
-    let id = pins.pick(renderer, camera, x, y);
-
-    if (id === null) {
-      ndc.set((x / rect.width) * 2 - 1, -((y / rect.height) * 2 - 1));
-      raycaster.setFromCamera(ndc, camera);
-
-      // The ring sits outside the globe, so it is tested first: a click landing
-      // on an arc is unambiguous, where a halo hit is a fallback guess.
-      id = ring.pick(raycaster);
-
-      if (id === null && raycaster.ray.intersectSphere(globeSphere, surfaceHit)) {
-        id = pins.pickHalo(surfaceHit.normalize());
-      }
-    }
+    const id = pickAt(event.clientX - rect.left, event.clientY - rect.top, rect.width, rect.height);
 
     requestRender();
     if (id !== null) onPick(id);
   };
 
+  /* --------------------------------- hover --------------------------------- */
+  let hoverId: string | null = null;
+  let pendingHover: { x: number; y: number } | null = null;
+  let hoverFrame: number | null = null;
+
+  const resolveHover = (): void => {
+    hoverFrame = null;
+    if (pendingHover === null) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const next = pickAt(pendingHover.x - rect.left, pendingHover.y - rect.top, rect.width, rect.height);
+    pendingHover = null;
+
+    if (next !== hoverId) {
+      hoverId = next;
+      onHover(next);
+    }
+  };
+
+  const onPointerMove = (event: PointerEvent): void => {
+    pendingHover = { x: event.clientX, y: event.clientY };
+    if (hoverFrame === null) hoverFrame = requestAnimationFrame(resolveHover);
+  };
+
+  const onPointerLeave = (): void => {
+    pendingHover = null;
+    if (hoverId !== null) {
+      hoverId = null;
+      onHover(null);
+    }
+  };
+
   canvas.addEventListener('pointerdown', onPointerDown);
   canvas.addEventListener('pointerup', onPointerUp);
+  canvas.addEventListener('pointermove', onPointerMove);
+  canvas.addEventListener('pointerleave', onPointerLeave);
 
   return () => {
+    if (hoverFrame !== null) cancelAnimationFrame(hoverFrame);
     canvas.removeEventListener('pointerdown', onPointerDown);
     canvas.removeEventListener('pointerup', onPointerUp);
+    canvas.removeEventListener('pointermove', onPointerMove);
+    canvas.removeEventListener('pointerleave', onPointerLeave);
   };
 }

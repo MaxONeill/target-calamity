@@ -78,9 +78,16 @@ export class PinLayer {
   private pickAttr: THREE.InstancedBufferAttribute | null = null;
   private capacity = 0;
   private factorIds: string[] = [];
+  /** The displayed pin set, parallel to factorIds — re-read when state changes. */
+  private pins: PinInput[] = [];
+  private indexById = new Map<string, number>();
+  private highlightedId: string | null = null;
+  private selectedId: string | null = null;
   /** Per-pin unit surface direction, parallel to factorIds — for halo hit-testing. */
   private haloVecs: THREE.Vector3[] = [];
   private disposed = false;
+
+  private readonly white = /* @__PURE__ */ new THREE.Color(1, 1, 1);
 
   // Offscreen picking resources (allocated lazily on first pick).
   private pickTarget: THREE.WebGLRenderTarget | null = null;
@@ -170,36 +177,13 @@ export class PinLayer {
     if (mesh === null || pickAttr === null) return;
 
     const pickArray = pickAttr.array as Float32Array;
+    this.pins = clean.slice();
     this.factorIds = clean.map((p) => p.id);
+    this.indexById = new Map(clean.map((p, i) => [p.id, i]));
     this.haloVecs = new Array(n);
 
     for (let i = 0; i < n; i++) {
-      const pin = clean[i]!;
-      // Long thin INVERTED PYRAMID: the geometry's apex sits at local
-      // origin and the square base extends along +Y. We seat the APEX on the
-      // surface point and orient +Y along the OUTWARD radial normal, so the apex
-      // points inward (at the globe centre) and the base widens outward — a
-      // slender spike marking the point ( conversion for the surface point).
-      //
-      // The apex seats on the BASE radius: ocean pins touch sea level; where the
-      // terrain is raised the apex tip may sit just under the displaced
-      // land, but the long body still stands proud and reads clearly. (Sampling
-      // the displaced surface per pin is deliberately skipped to keep the layer
-      // independent of the async elevation grid — documented simplification.)
-      latLonToVector3(pin.lat, pin.lon, this.radius, this.tmpPos);
-      this.tmpVec.copy(this.tmpPos).normalize();
-      this.haloVecs[i] = this.tmpVec.clone(); // unit surface direction for halo picks
-      this.tmpQuat.setFromUnitVectors(LOCAL_UP, this.tmpVec);
-      const thickness = this.baseSize * this.radius;
-      const length = this.radius * PIN_LENGTH_FRAC * (0.35 + pin.significance);
-      // Non-uniform: thin in X/Z (base half-width), long in Y (spike length).
-      this.tmpScale.set(thickness, length, thickness);
-      this.tmpMatrix.compose(this.tmpPos, this.tmpQuat, this.tmpScale);
-      mesh.setMatrixAt(i, this.tmpMatrix);
-
-      // Hue by effect sign, shared with the field ramp.
-      rampColor(pin.effect, this.tmpColor);
-      mesh.setColorAt(i, this.tmpColor);
+      this.writeInstance(mesh, i);
 
       // Encode instance id = i + 1 into RGB (0 is reserved for "no hit").
       const id = i + 1;
@@ -215,6 +199,87 @@ export class PinLayer {
     mesh.visible = n > 0;
 
     this.emitNeedsRender();
+  }
+
+  /** Marks one pin as hover-highlighted, or clears it with null. */
+  setHighlighted(id: string | null): void {
+    if (id === this.highlightedId) return;
+    const previous = this.highlightedId;
+    this.highlightedId = id;
+    this.restyle(previous, id);
+  }
+
+  /** Marks one pin as selected, or clears it with null. */
+  setSelected(id: string | null): void {
+    if (id === this.selectedId) return;
+    const previous = this.selectedId;
+    this.selectedId = id;
+    this.restyle(previous, id);
+  }
+
+  /** Rewrites only the instances whose state changed, then requests a redraw. */
+  private restyle(...ids: (string | null)[]): void {
+    const mesh = this.mesh;
+    if (mesh === null) return;
+
+    let touched = false;
+    for (const id of ids) {
+      if (id === null) continue;
+      const index = this.indexById.get(id);
+      if (index === undefined) continue;
+      this.writeInstance(mesh, index);
+      touched = true;
+    }
+    if (!touched) return;
+
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    this.emitNeedsRender();
+  }
+
+  /**
+   * Writes one instance's transform and color, factoring in its hover/selected
+   * state. A highlighted or selected pin grows and brightens; selected wins over
+   * highlighted. The apex stays seated on the surface — only the outward length
+   * and base width scale — so an emphasized pin reads as a taller spike from the
+   * same point rather than a marker that has drifted off it.
+   */
+  private writeInstance(mesh: THREE.InstancedMesh, i: number): void {
+    const pin = this.pins[i]!;
+    const emphasis = this.emphasisOf(pin.id);
+
+    // Long thin INVERTED PYRAMID: the geometry's apex sits at local origin and
+    // the square base extends along +Y. Seat the APEX on the surface point and
+    // orient +Y along the OUTWARD radial normal, so the apex points inward and
+    // the base widens outward — a slender spike marking the point.
+    //
+    // The apex seats on the BASE radius: ocean pins touch sea level; where the
+    // terrain is raised the apex tip may sit just under the displaced land, but
+    // the long body still stands proud. (Per-pin sampling of the displaced
+    // surface is deliberately skipped to keep the layer independent of the async
+    // elevation grid.)
+    latLonToVector3(pin.lat, pin.lon, this.radius, this.tmpPos);
+    this.tmpVec.copy(this.tmpPos).normalize();
+    this.haloVecs[i] = this.tmpVec.clone(); // unit surface direction for halo picks
+    this.tmpQuat.setFromUnitVectors(LOCAL_UP, this.tmpVec);
+
+    const thickness = this.baseSize * this.radius * emphasis.thickMul;
+    const length = this.radius * PIN_LENGTH_FRAC * (0.35 + pin.significance) * emphasis.lengthMul;
+    // Non-uniform: thin in X/Z (base half-width), long in Y (spike length).
+    this.tmpScale.set(thickness, length, thickness);
+    this.tmpMatrix.compose(this.tmpPos, this.tmpQuat, this.tmpScale);
+    mesh.setMatrixAt(i, this.tmpMatrix);
+
+    // Hue by effect sign, shared with the field ramp; brightened when emphasized.
+    rampColor(pin.effect, this.tmpColor);
+    if (emphasis.whiten > 0) this.tmpColor.lerp(this.white, emphasis.whiten);
+    mesh.setColorAt(i, this.tmpColor);
+  }
+
+  private emphasisOf(id: string): { lengthMul: number; thickMul: number; whiten: number } {
+    if (id === this.selectedId) return { lengthMul: 1.35, thickMul: 1.5, whiten: 0.45 };
+    if (id === this.highlightedId) return { lengthMul: 1.18, thickMul: 1.28, whiten: 0.28 };
+    return { lengthMul: 1, thickMul: 1, whiten: 0 };
   }
 
   /**
