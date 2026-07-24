@@ -13,11 +13,19 @@ const ARC_GAP = 0.035;
 /** Radial segments per arc. Enough that the curve reads as smooth. */
 const ARC_SEGMENTS = 48;
 
-/** Per-state visuals. Selected takes precedence over highlighted. */
+/**
+ * Per-state visuals. Selected takes precedence over highlighted.
+ *
+ * `thicken` grows the arc's radial thickness about its own mid-radius, which
+ * only ADDS coverage on both edges — a pointer already over the arc stays over
+ * it. Scaling the mesh instead would translate the annulus radially (it scales
+ * about the globe centre, far outside the arc) and slide the arc out from under
+ * the pointer, causing hover to oscillate.
+ */
 const STATE_STYLE = {
-  base: { opacity: 0.72, scale: 1, whiten: 0 },
-  highlighted: { opacity: 0.9, scale: 1.03, whiten: 0.28 },
-  selected: { opacity: 1, scale: 1.06, whiten: 0.45 },
+  base: { opacity: 0.72, thicken: 1, whiten: 0 },
+  highlighted: { opacity: 0.9, thicken: 1.7, whiten: 0.28 },
+  selected: { opacity: 1, thicken: 2.3, whiten: 0.45 },
 } as const;
 
 type ArcState = keyof typeof STATE_STYLE;
@@ -31,6 +39,13 @@ interface ArcRecord {
   baseColor: THREE.Color;
   material: THREE.MeshBasicMaterial;
   mesh: THREE.Mesh;
+  /** Geometry parameters, so thickness can be regrown about the mid-radius. */
+  midRadius: number;
+  halfThickness: number;
+  startAngle: number;
+  endAngle: number;
+  /** The thickness multiplier currently baked into the geometry. */
+  appliedThicken: number;
 }
 
 /**
@@ -157,18 +172,8 @@ export class GlobalRing {
     const thickness =
       MIN_THICKNESS + (MAX_THICKNESS - MIN_THICKNESS) * clamp01(factor.significance);
     const inner = this.#globeRadius * RING_RADIUS;
-    const outer = inner + this.#globeRadius * thickness;
-
-    // Built in the local XY plane (normal +Z). The group is billboarded onto the
-    // camera, so this plane ends up facing the viewer.
-    const geometry = new THREE.RingGeometry(
-      inner,
-      outer,
-      ARC_SEGMENTS,
-      1,
-      startAngle,
-      endAngle - startAngle,
-    );
+    const halfThickness = (this.#globeRadius * thickness) / 2;
+    const midRadius = inner + halfThickness;
 
     const baseColor = rampColor(factor.effect).clone();
     const material = new THREE.MeshBasicMaterial({
@@ -182,10 +187,46 @@ export class GlobalRing {
       depthWrite: false,
     });
 
-    const mesh = new THREE.Mesh(geometry, material);
+    const mesh = new THREE.Mesh(
+      this.#makeGeometry(midRadius, halfThickness, startAngle, endAngle, STATE_STYLE.base.thicken),
+      material,
+    );
     mesh.renderOrder = 3;
 
-    return { factorId: factor.id, baseColor, material, mesh };
+    return {
+      factorId: factor.id,
+      baseColor,
+      material,
+      mesh,
+      midRadius,
+      halfThickness,
+      startAngle,
+      endAngle,
+      appliedThicken: STATE_STYLE.base.thicken,
+    };
+  }
+
+  /**
+   * Builds an arc annulus grown symmetrically about its mid-radius. Built in the
+   * local XY plane (normal +Z); the group is billboarded onto the camera, so
+   * this plane ends up facing the viewer.
+   */
+  #makeGeometry(
+    midRadius: number,
+    halfThickness: number,
+    startAngle: number,
+    endAngle: number,
+    thicken: number,
+  ): THREE.RingGeometry {
+    const grown = halfThickness * thicken;
+    return new THREE.RingGeometry(
+      midRadius - grown,
+      midRadius + grown,
+      ARC_SEGMENTS,
+      1,
+      startAngle,
+      endAngle - startAngle,
+    );
   }
 
   #stateOf(id: string): ArcState {
@@ -199,7 +240,20 @@ export class GlobalRing {
       const style = STATE_STYLE[this.#stateOf(arc.factorId)];
       arc.material.opacity = style.opacity;
       arc.material.color.copy(arc.baseColor).lerp(this.#white, style.whiten);
-      arc.mesh.scale.setScalar(style.scale);
+
+      // Rebuild only when the thickness actually changed. The pointer stays over
+      // the arc because growth adds coverage on both radial edges.
+      if (style.thicken !== arc.appliedThicken) {
+        arc.mesh.geometry.dispose();
+        arc.mesh.geometry = this.#makeGeometry(
+          arc.midRadius,
+          arc.halfThickness,
+          arc.startAngle,
+          arc.endAngle,
+          style.thicken,
+        );
+        arc.appliedThicken = style.thicken;
+      }
     }
   }
 
