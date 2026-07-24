@@ -169,7 +169,12 @@ const ExtractionCandidateSchema = z.object({
   lat: z.number().nullable(),
   lon: z.number().nullable(),
   spatialPath: z.string(),
-  tippingPoint: ExtractionTippingPointSchema.optional(),
+  // Nullable, NOT optional: an optional field is absent from the grammar's
+  // `required` set, so the constrained decoder skips it and the model never
+  // emits a tipping point (lat/lon, which are nullable, were always emitted).
+  // Nullable forces the model to make an explicit null-or-object decision per
+  // factor, so a real dated threshold is actually captured.
+  tippingPoint: ExtractionTippingPointSchema.nullable(),
   sources: z.array(ExtractionSourceSchema),
 });
 
@@ -198,12 +203,14 @@ const EXTRACTION_SYSTEM =
   'NEVER use 0,0 to mean "global": that is a real location in the Gulf of ' +
   'Guinea and would place the factor there. spatialPath ' +
   "is 'global' for worldwide factors or 'global.<iso-ish-code>' for one country. " +
-  'Set tippingPoint ONLY when the sources give a concrete dated or near-dated, ' +
-  '(near-)irreversible threshold for THIS factor (e.g. a projected AMOC-collapse ' +
-  'or ice-free-Arctic year): centralYear is the best-estimate year, with optional ' +
-  'earliestYear/latestYear bounds and a short label naming the source. If the ' +
-  'sources give no such dated threshold — most factors are ongoing pressures, not ' +
-  'dated thresholds — OMIT tippingPoint entirely; never invent a year. ' +
+  'tippingPoint is REQUIRED on every factor: emit an object when the sources give ' +
+  'a projected year (or year-range) for a THIS-factor (near-)irreversible threshold ' +
+  '(e.g. a projected AMOC-collapse, ice-sheet-collapse, or ice-free-Arctic year), ' +
+  'else emit null. centralYear is the best-estimate year; a CONTESTED or RANGED ' +
+  'estimate STILL counts — use the midpoint as centralYear and the bounds as ' +
+  'earliestYear/latestYear, with a short label naming the source. Use null ONLY ' +
+  'when the sources genuinely give no projected year — most factors are ongoing ' +
+  'pressures, not dated thresholds. NEVER invent or guess a year to avoid null. ' +
   'Cite sources by sourceIndex — the number of the SOURCE block the evidence came ' +
   'from. NEVER write a URL; the system attaches the real URL itself. Give a ' +
   'supporting quote per source, and verbatim = true ONLY if that quote is copied ' +
@@ -287,7 +294,7 @@ function normalizeSpatialPath(path: string): string {
  * Clock baseline (which itself ignores non-finite central years, defence in depth).
  */
 function normalizeTippingPoint(
-  raw: z.infer<typeof ExtractionTippingPointSchema> | undefined,
+  raw: z.infer<typeof ExtractionTippingPointSchema> | null | undefined,
 ): TippingPoint | null {
   if (!raw || !Number.isFinite(raw.centralYear)) return null;
   const tp: TippingPoint = { centralYear: raw.centralYear };

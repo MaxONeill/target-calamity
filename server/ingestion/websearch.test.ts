@@ -103,6 +103,7 @@ describe('normalizeCandidate — citations resolve to REAL retrieved sources', (
     lat: 10,
     lon: 20,
     spatialPath: 'global',
+    tippingPoint: null,
   };
 
   it('substitutes the retrieved URL + publisher for a cited index', () => {
@@ -156,6 +157,36 @@ describe('normalizeCandidate — citations resolve to REAL retrieved sources', (
       lon: -180,
       spatialPath: 'global',
     });
+  });
+
+  it('keeps a dated tipping point, including a contested year-range', () => {
+    const c = normalizeCandidate(
+      {
+        ...base,
+        tippingPoint: {
+          centralYear: 2057,
+          earliestYear: 2025,
+          latestYear: 2095,
+          label: 'AMOC collapse (Ditlevsen & Ditlevsen 2023)',
+        },
+        sources: [{ sourceIndex: 1, quoteSnippet: 'q', verbatim: true }],
+      },
+      docs,
+    );
+    expect(c!.tippingPoint).toEqual({
+      centralYear: 2057,
+      earliestYear: 2025,
+      latestYear: 2095,
+      label: 'AMOC collapse (Ditlevsen & Ditlevsen 2023)',
+    });
+  });
+
+  it('omits the tipping point when the model returns null', () => {
+    const c = normalizeCandidate(
+      { ...base, tippingPoint: null, sources: [{ sourceIndex: 1, quoteSnippet: 'q', verbatim: true }] },
+      docs,
+    );
+    expect(c!.tippingPoint).toBeUndefined();
   });
 });
 
