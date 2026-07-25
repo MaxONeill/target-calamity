@@ -105,7 +105,7 @@ export function App(): JSX.Element {
   );
 
   return (
-    <div className="tc-app">
+    <div className="tc-app" data-panel-open={panel.open}>
       <div className="tc-globe-mount" ref={mountRef} aria-hidden="true" />
 
       <div className="tc-overlay">

@@ -102,6 +102,26 @@ body {
   position: absolute;
   inset: 0;
   z-index: 0;
+  transition: transform 240ms ease;
+  will-change: transform;
+}
+
+/* When the slideout is open it would otherwise overlap the globe, forcing a
+   close-select-close loop. Shift the globe left by half the panel width so it
+   re-centers in the remaining space and stays fully visible. A transform (not a
+   resize) keeps it cheap and leaves pointer picking correct, since
+   getBoundingClientRect reflects the transform. Guarded to widths where the
+   remaining space is actually usable — below that the panel is near-full-width. */
+@media (min-width: 700px) {
+  .tc-app[data-panel-open='true'] .tc-globe-mount {
+    transform: translateX(calc(var(--tc-sidebar-w) / -2));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tc-globe-mount {
+    transition: none;
+  }
 }
 
 .tc-globe-canvas {
