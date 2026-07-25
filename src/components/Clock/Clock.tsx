@@ -3,7 +3,6 @@ import { deriveClock, type ClockFactorInput } from '../../lib/clock/clockModel.j
 import { ExplainerModal } from '../ExplainerModal/index.js';
 import { ClockCompact } from './ClockCompact.js';
 import { ClockDerivation } from './ClockDerivation.js';
-import { currentYearFraction, resolveElasticity } from './horizon.js';
 import { useAmbientTick } from './useAmbientTick.js';
 import { useCountdown } from './useCountdown.js';
 import './Clock.css';
@@ -27,14 +26,7 @@ export interface ClockProps {
  * discloses how that time was derived.
  */
 export function Clock({ factors, className }: ClockProps): JSX.Element {
-  const elasticity = useMemo(() => resolveElasticity(), []);
-  // The reference year updates only on remount; the runway warp does not need
-  // sub-year precision, and the live countdown ticks off the target separately.
-  const nowYear = useMemo(() => currentYearFraction(), []);
-  const model = useMemo(
-    () => deriveClock(factors, { nowYear, elasticity }),
-    [factors, nowYear, elasticity],
-  );
+  const model = useMemo(() => deriveClock(factors), [factors]);
 
   const { remaining, overdue } = useCountdown(model);
   const { soundEnabled, toggleSound, setModalOpen } = useAmbientTick();

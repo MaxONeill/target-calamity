@@ -4,13 +4,10 @@ import {
   targetDeadlineMs,
   yearToEpochMs,
   confidenceForCount,
-  ELASTICITY_DEFAULT,
   type ClockFactorInput,
 } from './clockModel.js';
 
-const NOW = 2025;
-const derive = (factors: ClockFactorInput[], elasticity = ELASTICITY_DEFAULT) =>
-  deriveClock(factors, { nowYear: NOW, elasticity });
+const derive = (factors: ClockFactorInput[]) => deriveClock(factors);
 
 describe('deriveClock — anchor', () => {
   it('is indeterminate with no tipping points', () => {
@@ -30,8 +27,8 @@ describe('deriveClock — anchor', () => {
 
   it('anchors the median between two thresholds, weighted by significance', () => {
     const m = derive([
-      { effect: -0.5, significance: 0.9, tippingPoint: { centralYear: 2040 }, domains: [] },
-      { effect: -0.5, significance: 0.9, tippingPoint: { centralYear: 2060 }, domains: [] },
+      { effect: 0, significance: 0.9, tippingPoint: { centralYear: 2040 }, domains: [] },
+      { effect: 0, significance: 0.9, tippingPoint: { centralYear: 2060 }, domains: [] },
     ]);
     expect(m.baselineTargetYear).toBeGreaterThan(2045);
     expect(m.baselineTargetYear).toBeLessThan(2055);
@@ -42,84 +39,120 @@ describe('deriveClock — anchor', () => {
 
   it('a heavier threshold pulls the anchor toward its year', () => {
     const m = derive([
-      { effect: -0.5, significance: 0.2, tippingPoint: { centralYear: 2040 }, domains: [] },
-      { effect: -0.5, significance: 0.9, tippingPoint: { centralYear: 2060 }, domains: [] },
+      { effect: 0, significance: 0.2, tippingPoint: { centralYear: 2040 }, domains: [] },
+      { effect: 0, significance: 0.9, tippingPoint: { centralYear: 2060 }, domains: [] },
     ]);
     expect(m.baselineTargetYear).toBeGreaterThan(2050);
   });
 });
 
-describe('deriveClock — force warp', () => {
-  const oceanThreshold: ClockFactorInput = {
-    effect: -0.8,
+describe('deriveClock — forces interpolate within the published range', () => {
+  const ocean = (centralYear = 2060): ClockFactorInput => ({
+    effect: -0.4,
     significance: 0.9,
-    tippingPoint: { centralYear: 2060, earliestYear: 2050, latestYear: 2075 },
+    tippingPoint: { centralYear, earliestYear: 2050, latestYear: 2075 },
     domains: ['ocean'],
-  };
-
-  it('a domain-matched Calamity force pulls the threshold sooner', () => {
-    const calm = derive([oceanThreshold]);
-    const withForce = derive([
-      oceanThreshold,
-      { effect: -0.9, significance: 0.9, domains: ['ocean'] },
-    ]);
-    expect(withForce.targetYear!).toBeLessThan(calm.targetYear!);
-    expect(withForce.shiftYears).toBeLessThan(0);
   });
 
-  it('a domain-matched Humanity force pushes the threshold later', () => {
-    const withForce = derive([
-      oceanThreshold,
+  it('a domain-matched Calamity force moves the estimate earlier, never past the bound', () => {
+    const m = derive([
+      ocean(),
+      { effect: -0.9, significance: 0.9, domains: ['ocean'] },
+      { effect: -0.9, significance: 0.9, domains: ['ocean'] },
+    ]);
+    const t = m.thresholds[0]!;
+    expect(t.warpedYear).toBeLessThan(2060);
+    expect(t.warpedYear).toBeGreaterThanOrEqual(2050); // clamped to the earliest bound
+    expect(m.shiftYears).toBeLessThan(0);
+  });
+
+  it('a domain-matched Humanity force moves it later, never past the latest bound', () => {
+    const m = derive([
+      { effect: 0.4, significance: 0.9, tippingPoint: { centralYear: 2060, earliestYear: 2050, latestYear: 2075 }, domains: ['ocean'] },
+      { effect: 0.9, significance: 0.9, domains: ['ocean'] },
       { effect: 0.9, significance: 0.9, domains: ['ocean'] },
     ]);
-    expect(withForce.shiftYears).toBeGreaterThan(0);
-    expect(withForce.targetYear!).toBeGreaterThan(oceanThreshold.tippingPoint!.centralYear);
+    const t = m.thresholds[0]!;
+    expect(t.warpedYear).toBeGreaterThan(2060);
+    expect(t.warpedYear).toBeLessThanOrEqual(2075);
+  });
+
+  it('strong, well-evidenced Calamity pushes most of the way to the earliest bound', () => {
+    const forces: ClockFactorInput[] = Array.from({ length: 10 }, () => ({
+      effect: -1,
+      significance: 1,
+      domains: ['ocean'] as const,
+    }));
+    const m = derive([ocean(), ...forces]);
+    // Evidence-mass damping means it approaches — not exactly reaches — the 2050
+    // bound: a 10-year room, moved well past halfway, clamped at the bound.
+    expect(m.thresholds[0]!.warpedYear).toBeLessThan(2054);
+    expect(m.thresholds[0]!.warpedYear).toBeGreaterThanOrEqual(2050);
+  });
+
+  it('a wider published range permits a larger shift than a tight one', () => {
+    const forces: ClockFactorInput[] = [
+      { effect: -0.9, significance: 0.9, domains: ['ocean'] },
+      { effect: -0.9, significance: 0.9, domains: ['ocean'] },
+    ];
+    const wide = derive([
+      { effect: -0.4, significance: 0.9, tippingPoint: { centralYear: 2060, earliestYear: 2045, latestYear: 2080 }, domains: ['ocean'] },
+      ...forces,
+    ]);
+    const tight = derive([
+      { effect: -0.4, significance: 0.9, tippingPoint: { centralYear: 2060, earliestYear: 2058, latestYear: 2062 }, domains: ['ocean'] },
+      ...forces,
+    ]);
+    expect(Math.abs(wide.thresholds[0]!.shiftYears)).toBeGreaterThan(
+      Math.abs(tight.thresholds[0]!.shiftYears),
+    );
+  });
+
+  it('thinner evidence moves the estimate less than a strong, corroborated force', () => {
+    const thin = derive([ocean(), { effect: -0.9, significance: 0.9, domains: ['ocean'] }]);
+    const strong = derive([
+      ocean(),
+      ...Array.from({ length: 8 }, () => ({ effect: -0.9, significance: 0.9, domains: ['ocean'] as const })),
+    ]);
+    expect(Math.abs(strong.shiftYears)).toBeGreaterThan(Math.abs(thin.shiftYears));
   });
 
   it('climate force reaches an ocean threshold via the upstream link', () => {
-    const withClimate = derive([
-      oceanThreshold,
-      { effect: -0.9, significance: 0.9, domains: ['climate'] },
-    ]);
-    expect(withClimate.shiftYears).toBeLessThan(0);
+    const m = derive([ocean(), { effect: -0.9, significance: 0.9, domains: ['climate'] }]);
+    expect(m.shiftYears).toBeLessThan(0);
   });
 
   it('an UNRELATED-domain force does not move the threshold', () => {
-    const calm = derive([oceanThreshold]);
-    const withUnrelated = derive([
-      oceanThreshold,
-      { effect: -0.9, significance: 0.9, domains: ['society'] },
-    ]);
+    const calm = derive([ocean()]);
+    const withUnrelated = derive([ocean(), { effect: -0.9, significance: 0.9, domains: ['society'] }]);
     expect(withUnrelated.targetYear).toBeCloseTo(calm.targetYear!, 3);
   });
 
   it('a systemic (undomained) force applies to every threshold', () => {
-    const calm = derive([oceanThreshold]);
+    const calm = derive([{ effect: 0, significance: 0.9, tippingPoint: { centralYear: 2060, earliestYear: 2050, latestYear: 2075 }, domains: ['ocean'] }]);
     const withSystemic = derive([
-      oceanThreshold,
+      { effect: 0, significance: 0.9, tippingPoint: { centralYear: 2060, earliestYear: 2050, latestYear: 2075 }, domains: ['ocean'] },
       { effect: -0.9, significance: 0.9, domains: [] },
     ]);
     expect(withSystemic.targetYear!).toBeLessThan(calm.targetYear!);
   });
+});
 
-  it('elasticity scales the shift; zero elasticity means no warp', () => {
-    const none = derive([oceanThreshold, { effect: -0.9, significance: 0.9, domains: ['ocean'] }], 0);
-    expect(none.shiftYears).toBeCloseTo(0, 6);
-    const more = derive([oceanThreshold, { effect: -0.9, significance: 0.9, domains: ['ocean'] }], 0.6);
-    const less = derive([oceanThreshold, { effect: -0.9, significance: 0.9, domains: ['ocean'] }], 0.2);
-    expect(Math.abs(more.shiftYears)).toBeGreaterThan(Math.abs(less.shiftYears));
+describe('deriveClock — assumed band from peers', () => {
+  it('gives a range-less threshold the median peer half-width', () => {
+    const m = derive([
+      { effect: 0, significance: 0.9, tippingPoint: { centralYear: 2050, earliestYear: 2040, latestYear: 2060 }, domains: [] },
+      { effect: 0, significance: 0.9, tippingPoint: { centralYear: 2055 }, domains: [] }, // no range
+    ]);
+    // Peer half-widths are 10 and 10 → assumed spread 10.
+    expect(m.assumedSpreadYears).toBe(10);
   });
 
-  it('the same force bends a distant threshold more than an imminent one', () => {
-    const near = derive([
-      { effect: -0.8, significance: 0.9, tippingPoint: { centralYear: 2028 }, domains: ['ocean'] },
-      { effect: -0.9, significance: 0.9, domains: ['ocean'] },
+  it('reports null when every threshold published its own range', () => {
+    const m = derive([
+      { effect: 0, significance: 0.9, tippingPoint: { centralYear: 2050, earliestYear: 2045, latestYear: 2058 }, domains: [] },
     ]);
-    const far = derive([
-      { effect: -0.8, significance: 0.9, tippingPoint: { centralYear: 2075 }, domains: ['ocean'] },
-      { effect: -0.9, significance: 0.9, domains: ['ocean'] },
-    ]);
-    expect(Math.abs(far.shiftYears)).toBeGreaterThan(Math.abs(near.shiftYears));
+    expect(m.assumedSpreadYears).toBeNull();
   });
 });
 
@@ -138,7 +171,7 @@ describe('deriveClock — derivation output', () => {
 
   it('lists each threshold with its shift and driving domains', () => {
     const m = derive([
-      { effect: -0.8, significance: 0.9, tippingPoint: { centralYear: 2060, label: 'AMOC' }, domains: ['ocean'] },
+      { effect: -0.4, significance: 0.9, tippingPoint: { centralYear: 2060, earliestYear: 2050, latestYear: 2075, label: 'AMOC' }, domains: ['ocean'] },
       { effect: -0.9, significance: 0.9, domains: ['climate'] },
     ]);
     expect(m.thresholds).toHaveLength(1);

@@ -139,11 +139,18 @@ export function WhyPanel({ model }: { model: ClockModel }): JSX.Element | null {
         <Thresholds model={model} />
 
         <p className="tc-why-assumption">
-          The one knob: forces can bend a threshold by up to{' '}
-          <strong>{Math.round(model.elasticity * 100)}%</strong> of its remaining
-          runway at full tilt. That elasticity is a reasoned modeling assumption,
-          not a figure from any source — it is the single value that is chosen
-          rather than measured.
+          No invented dials: the forces only move each estimate <em>within</em> the
+          threshold&apos;s own published uncertainty range — full net Calamity toward
+          the earliest year science allows, full net Humanity toward the latest. A
+          date is never claimed outside what was published.
+          {model.assumedSpreadYears !== null ? (
+            <>
+              {' '}
+              Thresholds that published only a single year are given an assumed
+              ±{model.assumedSpreadYears.toFixed(0)}-year band, the median of the
+              ranges the other thresholds did publish.
+            </>
+          ) : null}
         </p>
       </div>
     </details>

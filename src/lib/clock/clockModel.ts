@@ -13,29 +13,30 @@
  *      targets its median — with the interquartile p25–p75 years as an honest
  *      band. Heavier and nearer thresholds dominate by construction.
  *
- *   2. FORCES WARP THE ANCHOR — the other factors are pressures and
- *      counter-forces, not dated thresholds. Each acts only on the tipping points
- *      it is causally linked to, by shared {@link Domain} (see
+ *   2. FORCES INTERPOLATE WITHIN THE PUBLISHED RANGE — the other factors are
+ *      pressures and counter-forces, not dated thresholds. Each acts only on the
+ *      tipping points it is causally linked to, by shared {@link Domain} (see
  *      `shared/domains.ts`): deforestation moves the Amazon threshold, clean
- *      energy moves the climate-driven ones, not the AMOC one directly. A
- *      threshold's arrival is warped by the net force of its driving domains,
- *      scaled by (a) how much runway remains to it — you can bend a distant
- *      threshold more than an imminent one — and (b) how much evidence backs the
- *      force. There is no flat year cap; the shift emerges from the physics.
- *
- *   3. THE ONE ASSUMPTION — {@link ELASTICITY_DEFAULT}, a dimensionless measure
- *      of how far collective force can bend a timeline (a fraction of its
- *      runway). It cannot be derived from data; it is surfaced as the modeling
- *      choice it is, and its EFFECT is data-scaled rather than hardcoded in years.
+ *      energy moves the climate-driven ones, not the AMOC one directly. Crucially,
+ *      the net force does NOT bend a threshold by some invented amount — it moves
+ *      the best estimate WITHIN the threshold's own published uncertainty band.
+ *      Full net Calamity pulls the estimate to the earliest published year, full
+ *      net Humanity to the latest; a balanced or thinly-evidenced set barely
+ *      moves it. So the maximum a factor can shift a date is the science's own
+ *      stated uncertainty — there is no free "elasticity" constant to choose, and
+ *      the model can never claim a date outside what was published.
  *
  * What this model deliberately does NOT claim: the anchor is a weighted aggregate
  * of published, individually-uncertain estimates; the band is the honest spread,
  * not a precise deadline; and `netPolarity == 0` means "balanced" only when
  * {@link ClockModel.hasEvidence} (never read 0 as balanced without checking it).
+ * A threshold that publishes only a central year gets an assumed band derived
+ * from its peers (the median published half-width), so even that fallback is
+ * data-grounded rather than a tuned constant.
  *
- * `deriveClock` is PURE and deterministic: it reads only its arguments (including
- * the reference `nowYear`), calls no clock, and emits absolute years. The view
- * converts those to a live countdown, so the model stays unit-testable.
+ * `deriveClock` is PURE and deterministic: it reads only its arguments, calls no
+ * clock, and emits absolute years. The view converts those to a live countdown,
+ * so the model stays unit-testable.
  */
 import type { VerificationState } from '../../../shared/types.js';
 import {
@@ -57,14 +58,12 @@ export interface TippingPoint {
 }
 
 /**
- * Dimensionless elasticity: the maximum fraction of a threshold's remaining
- * runway that the net force can move it, at full tilt and full evidence. The one
- * irreducible modeling assumption — surfaced in the UI as such.
+ * Assumed half-width (years) around a `centralYear` used ONLY when NO threshold
+ * in the set publishes a range to derive one from. When at least one does, the
+ * assumed spread is the median of the published half-widths (see `deriveClock`),
+ * so this constant is a last-resort fallback rather than a tuned parameter.
  */
-export const ELASTICITY_DEFAULT = 0.35;
-
-/** Half-width (years) assumed around a `centralYear` that lacks a published range. */
-const DEFAULT_SPREAD_YEARS = 8;
+const FALLBACK_SPREAD_YEARS = 10;
 
 /** Weight at which evidence mass reaches 0.5 (saturating: more evidence → →1). */
 const EVIDENCE_HALF_SATURATION = 4;
@@ -85,12 +84,6 @@ export interface ClockFactorInput {
   readonly verificationState?: VerificationState;
   readonly tippingPoint?: TippingPoint | null;
   readonly domains?: readonly Domain[];
-}
-
-/** Reference frame for the derivation. `nowYear` is a decimal calendar year. */
-export interface DeriveOptions {
-  readonly nowYear: number;
-  readonly elasticity?: number;
 }
 
 /** Net force exerted within one domain (for the Why panel). */
@@ -156,8 +149,12 @@ export interface ClockModel {
   readonly domainForces: readonly DomainForce[];
   /** Each anchor threshold and how the forces moved it. */
   readonly thresholds: readonly ThresholdContribution[];
-  /** The elasticity actually used. */
-  readonly elasticity: number;
+  /**
+   * The assumed half-width (years) applied to thresholds that published only a
+   * central year — the median of the peer half-widths, or the fallback constant
+   * when none published a range. Null when every threshold carried its own range.
+   */
+  readonly assumedSpreadYears: number | null;
 
   readonly confidence: ClockConfidence;
 }
@@ -232,9 +229,17 @@ interface ThresholdRaw {
   label: string | null;
   significance: number;
   central: number;
-  earliest: number;
-  latest: number;
+  /** Published bounds, undefined when the source gave only a central year. */
+  earliestPub: number | undefined;
+  latestPub: number | undefined;
   domains: readonly Domain[];
+}
+
+/** Median of a non-empty list (linear-interpolated). */
+function median(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 1 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
 }
 
 /**
@@ -243,15 +248,7 @@ interface ThresholdRaw {
  * {@link ClockModel} — `hasBaseline === false` / `targetYear === null` rather
  * than a NaN or throw.
  */
-export function deriveClock(
-  factors: readonly ClockFactorInput[],
-  options: DeriveOptions,
-): ClockModel {
-  const nowYear = options.nowYear;
-  const elasticity = Number.isFinite(options.elasticity)
-    ? Math.max(0, options.elasticity as number)
-    : ELASTICITY_DEFAULT;
-
+export function deriveClock(factors: readonly ClockFactorInput[]): ClockModel {
   let contributingCount = 0;
   let pendingCount = 0;
   let rejectedCount = 0;
@@ -307,22 +304,34 @@ export function deriveClock(
     const tp = f.tippingPoint;
     if (tp && Number.isFinite(tp.centralYear) && significance > 0) {
       const central = tp.centralYear;
-      const earliest = Number.isFinite(tp.earliestYear ?? NaN)
-        ? Math.min(tp.earliestYear as number, central)
-        : central - DEFAULT_SPREAD_YEARS;
-      const latest = Number.isFinite(tp.latestYear ?? NaN)
-        ? Math.max(tp.latestYear as number, central)
-        : central + DEFAULT_SPREAD_YEARS;
       thresholdsRaw.push({
         label: tp.label ?? null,
         significance,
         central,
-        earliest,
-        latest,
+        earliestPub: Number.isFinite(tp.earliestYear ?? NaN)
+          ? Math.min(tp.earliestYear as number, central)
+          : undefined,
+        latestPub: Number.isFinite(tp.latestYear ?? NaN)
+          ? Math.max(tp.latestYear as number, central)
+          : undefined,
         domains,
       });
     }
   }
+
+  // The assumed band for thresholds that published only a central year: the
+  // median of the published half-widths across the set (data-grounded), or the
+  // fallback constant when nothing published a range.
+  const publishedHalfWidths: number[] = [];
+  for (const t of thresholdsRaw) {
+    if (t.earliestPub !== undefined) publishedHalfWidths.push(t.central - t.earliestPub);
+    if (t.latestPub !== undefined) publishedHalfWidths.push(t.latestPub - t.central);
+  }
+  const derivedSpread =
+    publishedHalfWidths.length > 0 ? median(publishedHalfWidths) : FALLBACK_SPREAD_YEARS;
+  const usedFallbackSpread = thresholdsRaw.some(
+    (t) => t.earliestPub === undefined || t.latestPub === undefined,
+  );
 
   const hasEvidence = totalSignificance > 0;
   const netPolarity = hasEvidence ? clamp(netCharge / totalSignificance, -1, 1) : 0;
@@ -340,6 +349,9 @@ export function deriveClock(
   let baselineLatestYear: number | null = null;
 
   for (const t of thresholdsRaw) {
+    const earliest = t.earliestPub ?? t.central - derivedSpread;
+    const latest = t.latestPub ?? t.central + derivedSpread;
+
     const driving = drivingDomains(t.domains);
 
     // Aggregate the force of the driving domains (by their mass) with the
@@ -355,31 +367,30 @@ export function deriveClock(
     }
     const force = den > 0 ? clamp(num / den, -1, 1) : 0;
     const mass = den / (den + EVIDENCE_HALF_SATURATION); // evidence damping ∈ [0,1)
-    const runway = Math.max(0, t.central - nowYear);
-    const shift = force * elasticity * runway * mass;
+
+    // Move the estimate WITHIN the published band: Calamity toward `earliest`,
+    // Humanity toward `latest`. At full force + full evidence it reaches the
+    // bound; it can never move past it. The band itself does not move.
+    const room = force < 0 ? t.central - earliest : latest - t.central;
+    const warpedCentral = clamp(t.central + force * room * mass, earliest, latest);
 
     const wNorm = totalTippingSig > 0 ? t.significance / totalTippingSig : 0;
-    baselineDists.push({ a: t.earliest, c: t.central, b: t.latest, w: wNorm });
-    warpedDists.push({
-      a: t.earliest + shift,
-      c: t.central + shift,
-      b: t.latest + shift,
-      w: wNorm,
-    });
+    baselineDists.push({ a: earliest, c: t.central, b: latest, w: wNorm });
+    warpedDists.push({ a: earliest, c: warpedCentral, b: latest, w: wNorm });
 
     thresholds.push({
       label: t.label,
       significance: t.significance,
       baselineYear: t.central,
-      warpedYear: t.central + shift,
-      shiftYears: shift,
+      warpedYear: warpedCentral,
+      shiftYears: warpedCentral - t.central,
       drivingDomains: [...driving],
     });
 
     baselineEarliestYear =
-      baselineEarliestYear === null ? t.earliest : Math.min(baselineEarliestYear, t.earliest);
+      baselineEarliestYear === null ? earliest : Math.min(baselineEarliestYear, earliest);
     baselineLatestYear =
-      baselineLatestYear === null ? t.latest : Math.max(baselineLatestYear, t.latest);
+      baselineLatestYear === null ? latest : Math.max(baselineLatestYear, latest);
   }
 
   const hasBaseline = warpedDists.length > 0 && totalTippingSig > 0;
@@ -441,7 +452,7 @@ export function deriveClock(
     band,
     domainForces,
     thresholds,
-    elasticity,
+    assumedSpreadYears: hasBaseline && usedFallbackSpread ? derivedSpread : null,
     confidence: confidenceForCount(contributingCount),
   };
 }
