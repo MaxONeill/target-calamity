@@ -259,8 +259,9 @@ export function createPipeline(deps: PipelineDeps) {
           },
         });
       } else {
-        // Collision — escalate exactly one parent with recalculated metrics
-        //, appending a citation + revision (finding 29 one-target write).
+        // Collision — escalate exactly one parent with recalculated metrics,
+        // appending a citation + revision (one-target write) and merging in any
+        // new data the parent lacked (tipping point, reputable promotion).
         await tx.escalateFactor({
           parentId: outcome.parent.id,
           effect: outcome.recalculated.effect,
@@ -272,6 +273,10 @@ export function createPipeline(deps: PipelineDeps) {
             directionality: outcome.directionality,
             reason: `escalation:${outcome.directionality}`,
           },
+          tippingPoint: p.draft.tippingPoint,
+          verificationState: p.draft.verificationState,
+          reputabilityScore: p.draft.reputabilityScore,
+          reputabilityReasoning: p.draft.reputabilityReasoning,
         });
       }
 

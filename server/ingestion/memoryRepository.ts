@@ -132,6 +132,22 @@ export function createMemoryIngestionRepository(): MemoryIngestionRepository {
       parent.updatedAt = new Date();
       contentHashes.add(input.citation.contentHash);
       if (input.citation.sourceUrl) sourceUrls.add(input.citation.sourceUrl);
+
+      // Mirror the DB merge: capture data the parent lacked, monotonically.
+      if (parent.tippingPoint === undefined && input.tippingPoint !== undefined) {
+        parent.tippingPoint = input.tippingPoint;
+      }
+      if (input.verificationState === 'verified') {
+        parent.verificationState = 'verified';
+      }
+      if (
+        input.reputabilityScore !== undefined &&
+        (parent.reputabilityScore === undefined ||
+          input.reputabilityScore > parent.reputabilityScore)
+      ) {
+        parent.reputabilityScore = input.reputabilityScore;
+        parent.reputabilityReasoning = input.reputabilityReasoning;
+      }
     },
   };
 

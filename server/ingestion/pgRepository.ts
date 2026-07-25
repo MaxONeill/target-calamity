@@ -167,6 +167,31 @@ async function escalateFactor(
        ${revisionReason(input.revision.directionality)}, ${citationId})
   `.execute(trx);
 
+  // 3. Merge in data the parent lacked. These attributes are not event-sourced
+  //    (unlike effect/significance, folded from revisions above), so they are set
+  //    directly. Every clause is monotonic — it fills a gap or upgrades, never
+  //    discards: adopt a tipping point only when absent, promote pending →
+  //    verified but never demote, and keep the higher reputability score. Old row
+  //    values drive every CASE, since all SET expressions see the pre-update row.
+  const tippingPointJson = input.tippingPoint ? JSON.stringify(input.tippingPoint) : null;
+  const promoteVerified = input.verificationState === 'verified';
+  const newScore = input.reputabilityScore ?? null;
+  await sql`
+    UPDATE factors SET
+      tipping_point = COALESCE(tipping_point, ${tippingPointJson}::jsonb),
+      verification_state = CASE WHEN ${promoteVerified} THEN 'verified'
+                                ELSE verification_state END,
+      reputability_score = CASE
+        WHEN ${newScore}::real IS NOT NULL
+             AND (reputability_score IS NULL OR ${newScore}::real > reputability_score)
+        THEN ${newScore}::real ELSE reputability_score END,
+      reputability_reasoning = CASE
+        WHEN ${newScore}::real IS NOT NULL
+             AND (reputability_score IS NULL OR ${newScore}::real > reputability_score)
+        THEN ${input.reputabilityReasoning ?? null} ELSE reputability_reasoning END
+    WHERE id = ${input.parentId}::uuid
+  `.execute(trx);
+
   await notifyFactorDelta(trx, {
     type: 'escalation',
     id: input.parentId,

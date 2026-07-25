@@ -190,4 +190,67 @@ describe('full offline A→D cycle', () => {
     expect(repo.factors()).toHaveLength(1);
     expect(repo.factors()[0]!.citationCount).toBe(2);
   });
+
+  it('merges new data on escalation: backfills the tipping point and promotes to verified', async () => {
+    const repo = createMemoryIngestionRepository();
+    const gate = buildReputabilityGate(silent, { logger: silent });
+
+    // Cycle 1: a weak, placeless source with NO tipping point → pending, no threshold.
+    // Cycle 2: the SAME event (identical text → collision) from a reputable source
+    // that DOES carry a dated threshold → would be verified on its own. The distinct
+    // source URLs keep per-finding idempotency from pre-skipping cycle 2.
+    let cycle = 0;
+    const evolvingResearch: ResearchFn = async (): Promise<CandidateFactor[]> => {
+      cycle += 1;
+      const reputable = cycle === 2;
+      return [
+        {
+          name: 'AMOC weakening',
+          description: 'Identical text across both reports so the embeddings collide.',
+          effect: -0.7,
+          significance: 0.6,
+          lat: 59,
+          lon: -30,
+          spatialPath: 'global',
+          ...(reputable ? { tippingPoint: { centralYear: 2057, label: 'AMOC collapse' } } : {}),
+          sources: [
+            reputable
+              ? {
+                  url: 'https://www.nature.com/articles/amoc',
+                  publisher: 'Nature',
+                  quoteSnippet: 'A reputable primary source with a dated threshold.',
+                  verbatim: true,
+                }
+              : {
+                  url: 'https://example.org/blog/amoc',
+                  publisher: 'Some Blog',
+                  quoteSnippet: 'A weak placeholder source.',
+                  verbatim: false,
+                },
+          ],
+        },
+      ];
+    };
+    const pipeline = createPipeline({
+      repository: repo,
+      embeddings: createStubEmbeddingClient(),
+      extractor: createResearchExtractor(evolvingResearch, gate),
+      resolver: createStubResolver(),
+      logger: silent,
+    });
+
+    await pipeline.processBatch(items);
+    const afterFirst = repo.factors()[0]!;
+    expect(afterFirst.verificationState).toBe('pending');
+    expect(afterFirst.tippingPoint).toBeUndefined();
+
+    const second = await pipeline.processBatch(items);
+    expect(second.escalated).toBe(1);
+
+    const merged = repo.factors()[0]!;
+    expect(repo.factors()).toHaveLength(1);
+    expect(merged.citationCount).toBe(2); // both sources captured
+    expect(merged.tippingPoint).toEqual({ centralYear: 2057, label: 'AMOC collapse' }); // backfilled
+    expect(merged.verificationState).toBe('verified'); // promoted by the reputable source
+  });
 });

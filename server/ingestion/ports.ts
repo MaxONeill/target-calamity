@@ -104,12 +104,31 @@ export interface NewFactorInput {
 /** Everything needed to escalate an existing parent (the "Collision" branch). */
 export interface EscalationWriteInput {
   parentId: string;
-  /** New stored metrics from the  recalculation. */
+  /** New stored metrics from the recalculation. */
   effect: number;
   significance: number;
   citation: CitationWriteInput;
   /** Appends a `factor_revisions` row capturing the classified inbound values. */
   revision: RevisionInput;
+  /**
+   * The inbound report's own attributes, merged into the parent so an escalation
+   * CAPTURES new data rather than discarding it. The citation is always
+   * appended; these fields fill gaps the parent left, monotonically:
+   *
+   * - `tippingPoint` is adopted only when the parent has none (never overwrites
+   *   an existing threshold).
+   * - `verificationState: 'verified'` promotes a `pending` parent; a `pending`
+   *   report never demotes a `verified` parent.
+   * - the reputability score/reasoning replace the parent's only when higher, so
+   *   the audit trail reflects the most credible source seen.
+   *
+   * Name and description are deliberately NOT merged: the first-seen values stay
+   * canonical, and accumulating sources are captured as citations.
+   */
+  tippingPoint?: TippingPoint | undefined;
+  verificationState?: VerificationState | undefined;
+  reputabilityScore?: number | undefined;
+  reputabilityReasoning?: string | undefined;
 }
 
 /**
