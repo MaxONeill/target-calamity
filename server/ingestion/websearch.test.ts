@@ -104,7 +104,16 @@ describe('normalizeCandidate — citations resolve to REAL retrieved sources', (
     lon: 20,
     spatialPath: 'global',
     tippingPoint: null,
+    domains: [] as ('climate' | 'ocean')[],
   };
+
+  it('passes through and dedupes LLM-assigned domains', () => {
+    const c = normalizeCandidate(
+      { ...base, domains: ['ocean', 'ocean', 'climate'], sources: [] },
+      docs,
+    );
+    expect(c!.domains).toEqual(['ocean', 'climate']);
+  });
 
   it('substitutes the retrieved URL + publisher for a cited index', () => {
     const c = normalizeCandidate(

@@ -6,6 +6,7 @@
  * runnable — and testable — with no network and no database.
  */
 import type { TippingPoint, VerificationState } from '../../shared/types.js';
+import type { Domain } from '../../shared/domains.js';
 import type {
   EscalationDirectionality,
   FactorCandidate,
@@ -86,6 +87,8 @@ export interface NewFactorInput {
   embedding: number[];
   /** LLM-ingested factors land unreviewed. */
   verificationState: VerificationState;
+  /** Causal domains linking the factor to the thresholds it moves. */
+  domains: readonly Domain[];
   /** Dated tipping-point threshold, when the draft carried one. */
   tippingPoint?: TippingPoint | undefined;
   /**
@@ -129,6 +132,8 @@ export interface EscalationWriteInput {
   verificationState?: VerificationState | undefined;
   reputabilityScore?: number | undefined;
   reputabilityReasoning?: string | undefined;
+  /** New domains from the inbound report; unioned into the parent's set. */
+  domains?: readonly Domain[] | undefined;
 }
 
 /**

@@ -244,6 +244,7 @@ export function createPipeline(deps: PipelineDeps) {
           spatialPath: p.draft.spatialPath,
           embedding,
           verificationState: p.draft.verificationState ?? 'pending',
+          domains: p.draft.domains ?? [],
           // Carried through when the draft had a dated threshold; else undefined.
           tippingPoint: p.draft.tippingPoint,
           // Reputability audit trail: carry the deciding source's
@@ -277,6 +278,7 @@ export function createPipeline(deps: PipelineDeps) {
           verificationState: p.draft.verificationState,
           reputabilityScore: p.draft.reputabilityScore,
           reputabilityReasoning: p.draft.reputabilityReasoning,
+          domains: p.draft.domains,
         });
       }
 

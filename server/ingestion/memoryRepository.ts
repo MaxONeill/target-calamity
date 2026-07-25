@@ -38,6 +38,7 @@ export interface StoredFactor {
   reputabilityScore: number | undefined;
   reputabilityReasoning: string | undefined;
   tippingPoint: TippingPoint | undefined;
+  domains: string[];
   embedding: number[];
   citationCount: number;
   createdAt: Date;
@@ -109,6 +110,7 @@ export function createMemoryIngestionRepository(): MemoryIngestionRepository {
         reputabilityScore: input.reputabilityScore,
         reputabilityReasoning: input.reputabilityReasoning,
         tippingPoint: input.tippingPoint,
+        domains: [...input.domains],
         embedding: input.embedding,
         citationCount: 1,
         createdAt: now,
@@ -147,6 +149,9 @@ export function createMemoryIngestionRepository(): MemoryIngestionRepository {
       ) {
         parent.reputabilityScore = input.reputabilityScore;
         parent.reputabilityReasoning = input.reputabilityReasoning;
+      }
+      if (input.domains && input.domains.length > 0) {
+        parent.domains = [...new Set([...parent.domains, ...input.domains])];
       }
     },
   };

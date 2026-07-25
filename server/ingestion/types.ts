@@ -4,7 +4,8 @@
  */
 import { z } from 'zod';
 import type { TippingPoint, VerificationState } from '../../shared/types.js';
-import { TippingPointSchema, VerificationStateSchema } from '../../shared/schema.js';
+import { DomainSchema, TippingPointSchema, VerificationStateSchema } from '../../shared/schema.js';
+import type { Domain } from '../../shared/domains.js';
 
 /**
  * One raw item off the inbound intel stream. `rawText`
@@ -51,6 +52,11 @@ export interface ExtractedFactorDraft {
    */
   tippingPoint?: TippingPoint | undefined;
   /**
+   * Causal domains (LLM-assigned in the live path, keyword-derived offline).
+   * Persisted so the Clock links the factor's force to the thresholds it moves.
+   */
+  domains?: readonly Domain[] | undefined;
+  /**
    * The reputability gate's audit trail: the DECIDING (max-scoring)
    * source's credibility score `∈ [0, 1]` and its reasoning, carried onto the
    * persisted factor so the verified/pending decision is auditable. The live gate
@@ -92,6 +98,8 @@ export const ExtractedFactorSchema = z.object({
   // Optional dated threshold; most drafts have none. `.optional()` (not
   // `.nullable()`) mirrors the shared contract and satisfies exactOptionalPropertyTypes.
   tippingPoint: TippingPointSchema.optional(),
+  // Causal domains; defaults to [] so a draft that omits them is still valid.
+  domains: z.array(DomainSchema).default([]),
   // Reputability audit trail: deciding source's score + reasoning.
   // Optional — present only when the live gate ran; the offline stubs omit it.
   reputabilityScore: z.number().finite().gte(0).lte(1).optional(),

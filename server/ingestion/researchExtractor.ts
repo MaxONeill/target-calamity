@@ -108,6 +108,8 @@ export function createResearchExtractor(
           verificationState: g.verificationState,
           // Carry a dated threshold through when Phase A found one; else undefined.
           tippingPoint: c.tippingPoint,
+          // LLM-assigned causal domains.
+          domains: c.domains,
           // Carry the reputability audit trail from the gate.
           reputabilityScore: g.reputabilityScore,
           reputabilityReasoning: g.reputabilityReasoning,

@@ -107,16 +107,17 @@ async function insertFactor(
   // Reputability audit trail; NULL when the gate did not run (offline/ungated).
   const reputabilityScore = input.reputabilityScore ?? null;
   const reputabilityReasoning = input.reputabilityReasoning ?? null;
+  const domains = [...input.domains];
   const { rows } = await sql<{ id: string }>`
     INSERT INTO factors
       (spatial_path, name, description, embedding,
        effect, significance, lat, lon, verification_state, tipping_point,
-       reputability_score, reputability_reasoning)
+       reputability_score, reputability_reasoning, domains)
     VALUES
       (${input.spatialPath}::ltree, ${input.name}, ${input.description}, ${vec}::halfvec,
        ${input.effect}, ${input.significance}, ${input.lat}, ${input.lon}, ${input.verificationState},
        ${tippingPointJson}::jsonb,
-       ${reputabilityScore}, ${reputabilityReasoning})
+       ${reputabilityScore}, ${reputabilityReasoning}, ${sql.val(domains)}::text[])
     RETURNING id
   `.execute(trx);
 
@@ -176,6 +177,7 @@ async function escalateFactor(
   const tippingPointJson = input.tippingPoint ? JSON.stringify(input.tippingPoint) : null;
   const promoteVerified = input.verificationState === 'verified';
   const newScore = input.reputabilityScore ?? null;
+  const newDomains = [...(input.domains ?? [])];
   await sql`
     UPDATE factors SET
       tipping_point = COALESCE(tipping_point, ${tippingPointJson}::jsonb),
@@ -188,7 +190,11 @@ async function escalateFactor(
       reputability_reasoning = CASE
         WHEN ${newScore}::real IS NOT NULL
              AND (reputability_score IS NULL OR ${newScore}::real > reputability_score)
-        THEN ${input.reputabilityReasoning ?? null} ELSE reputability_reasoning END
+        THEN ${input.reputabilityReasoning ?? null} ELSE reputability_reasoning END,
+      -- Union the inbound domains into the parent's set (dedup, order-agnostic).
+      domains = ARRAY(
+        SELECT DISTINCT unnest(domains || ${sql.val(newDomains)}::text[])
+      )
     WHERE id = ${input.parentId}::uuid
   `.execute(trx);
 

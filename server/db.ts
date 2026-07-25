@@ -79,6 +79,8 @@ interface FactorsTable {
   /** ingested factors land `pending`; the field bake takes only `verified`. */
   verification_state: Generated<VerificationState>;
 
+  /** Causal domain tags (migration 008); `{}` on rows predating it. */
+  domains: Generated<string[]>;
 
   created_at: Timestamptz; // NOT NULL.
   updated_at: Timestamptz; // NOT NULL; mutated by Phase D — NOT a cursor key.

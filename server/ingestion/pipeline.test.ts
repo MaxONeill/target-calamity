@@ -38,6 +38,7 @@ const research: ResearchFn = async (topic): Promise<CandidateFactor[]> => [
     lat: 78,
     lon: -42,
     spatialPath: 'global',
+    domains: ['ocean'],
     tippingPoint: { centralYear: 2045, label: 'test threshold' },
     sources: [
       {
@@ -56,6 +57,7 @@ const research: ResearchFn = async (topic): Promise<CandidateFactor[]> => [
     lat: 10,
     lon: 20,
     spatialPath: 'global',
+    domains: [],
     sources: [
       {
         url: 'https://example.org/blog/test-2',
@@ -162,6 +164,7 @@ describe('full offline A→D cycle', () => {
           lat: 0,
           lon: 0,
           spatialPath: 'global',
+          domains: [],
           sources: [
             {
               url: `https://example.org/report-${n}`,
@@ -212,6 +215,7 @@ describe('full offline A→D cycle', () => {
           lat: 59,
           lon: -30,
           spatialPath: 'global',
+          domains: ['ocean'],
           ...(reputable ? { tippingPoint: { centralYear: 2057, label: 'AMOC collapse' } } : {}),
           sources: [
             reputable

@@ -40,6 +40,13 @@
 import * as z from 'zod/v4';
 import type { TippingPoint } from '../../shared/types.js';
 import {
+  DOMAINS,
+  DOMAIN_LABELS,
+  classifyDomains,
+  isDomain,
+  type Domain,
+} from '../../shared/domains.js';
+import {
   type LlmClient,
   getLlmClient,
   hasLiveCredentials,
@@ -100,6 +107,8 @@ export interface CandidateFactor {
    * countdown baseline once persisted.
    */
   tippingPoint?: TippingPoint;
+  /** Causal domains, LLM-assigned. Links the factor to the thresholds it moves. */
+  domains: Domain[];
   /** The sources the model cited. May be empty; the gate treats that as pending. */
   sources: ResearchedSource[];
 }
@@ -175,6 +184,11 @@ const ExtractionCandidateSchema = z.object({
   // Nullable forces the model to make an explicit null-or-object decision per
   // factor, so a real dated threshold is actually captured.
   tippingPoint: ExtractionTippingPointSchema.nullable(),
+  // Required array (empty when none): a required field is in the grammar's
+  // `required` set, so the constrained decoder always emits it. This is the
+  // authoritative domain classification — the keyword classifier in
+  // shared/domains.ts is only a fallback for untagged rows.
+  domains: z.array(z.enum(DOMAINS)),
   sources: z.array(ExtractionSourceSchema),
 });
 
@@ -211,6 +225,13 @@ const EXTRACTION_SYSTEM =
   'earliestYear/latestYear, with a short label naming the source. Use null ONLY ' +
   'when the sources genuinely give no projected year — most factors are ongoing ' +
   'pressures, not dated thresholds. NEVER invent or guess a year to avoid null. ' +
+  'domains is REQUIRED (an array, possibly empty): the causal domains this factor ' +
+  'acts in, chosen ONLY from ' +
+  DOMAINS.map((d) => `${d} (${DOMAIN_LABELS[d]})`).join(', ') +
+  '. Tag every domain the factor is a pressure or counter-force in, or a threshold ' +
+  'of — e.g. an emissions or clean-energy factor is [climate]; an AMOC or coral ' +
+  'factor is [ocean]; deforestation is [forest]. Use [] only when none genuinely ' +
+  'apply. These links decide which tipping points the factor moves. ' +
   'Cite sources by sourceIndex — the number of the SOURCE block the evidence came ' +
   'from. NEVER write a URL; the system attaches the real URL itself. Give a ' +
   'supporting quote per source, and verbatim = true ONLY if that quote is copied ' +
@@ -330,6 +351,8 @@ export function normalizeCandidate(
     lat: raw.lat === null || raw.lon === null ? null : clamp(raw.lat, -90, 90),
     lon: raw.lat === null || raw.lon === null ? null : clamp(raw.lon, -180, 180),
     spatialPath: normalizeSpatialPath(raw.spatialPath.trim()),
+    // Dedupe and keep only known domains (the enum already constrains the decode).
+    domains: [...new Set(raw.domains.filter(isDomain))],
     // Present only when a concrete dated threshold survived normalization.
     ...(tippingPoint ? { tippingPoint } : {}),
     // Provenance is resolved from the RETRIEVED documents, never from model text:
@@ -498,6 +521,9 @@ export function researchFactorsOffline(topic: string): CandidateFactor[] {
       lat,
       lon,
       spatialPath: 'global',
+      // Offline stub: derive domains from the topic text via the fallback
+      // classifier (there is no live model to assign them).
+      domains: classifyDomains(topic),
       ...(tippingPoint ? { tippingPoint } : {}),
       sources: [
         {

@@ -20,7 +20,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { sql } from 'kysely';
 import { FieldResponseSchema } from '../../shared/schema.js';
 import type { FieldPin, FieldResponse, GlobalFactor, TippingPoint } from '../../shared/types.js';
-import { classifyDomains } from '../../shared/domains.js';
+import { classifyDomains, isDomain, type Domain } from '../../shared/domains.js';
 import type { Database } from '../db.js';
 import { SEED_FACTORS } from '../../shared/seed.js';
 
@@ -45,7 +45,19 @@ interface FieldRow {
   lat: number | null;
   lon: number | null;
   tipping_point: TippingPoint | null;
+  /** Stored LLM-assigned tags; `[]` on rows predating classification. */
+  domains: string[] | null;
   updated_at: string;
+}
+
+/**
+ * The factor's causal domains: the stored (LLM-assigned) tags when present,
+ * else the deterministic keyword classifier as a fallback for rows that predate
+ * classification (seed mode, offline stub, un-re-ingested rows).
+ */
+function domainsOf(row: FieldRow): Domain[] {
+  const stored = (row.domains ?? []).filter(isDomain);
+  return stored.length > 0 ? stored : classifyDomains(row.name, row.description, row.spatial_path);
 }
 
 /** Spread the tipping point only when present, to satisfy the `.optional()` (never-null) schema. */
@@ -63,7 +75,7 @@ function toPins(rows: readonly FieldRow[]): FieldPin[] {
       significance: r.significance,
       lat: r.lat,
       lon: r.lon,
-      domains: classifyDomains(r.name, r.description, r.spatial_path),
+      domains: domainsOf(r),
       ...tippingPointField(r.tipping_point),
     }));
 }
@@ -77,7 +89,7 @@ function toGlobalFactors(rows: readonly FieldRow[]): GlobalFactor[] {
       name: r.name,
       effect: r.effect,
       significance: r.significance,
-      domains: classifyDomains(r.name, r.description, r.spatial_path),
+      domains: domainsOf(r),
       ...tippingPointField(r.tipping_point),
     }));
 }
@@ -90,7 +102,7 @@ function fieldEpochOf(rows: readonly { updated_at: string }[]): string {
 async function fieldDb(db: Database): Promise<FieldResponse> {
   const { rows } = await sql<FieldRow>`
     SELECT id, name, description, spatial_path::text AS spatial_path,
-           effect, significance, lat, lon, tipping_point,
+           effect, significance, lat, lon, tipping_point, domains,
            to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS updated_at
     FROM factors
     WHERE verification_state = 'verified'
@@ -127,6 +139,7 @@ function fieldSeed(): FieldResponse {
       lat: f.lat,
       lon: f.lon,
       tipping_point: f.tippingPoint ?? null,
+      domains: null,
       updated_at: f.updatedAt,
     }));
 
