@@ -382,6 +382,29 @@ body {
   text-transform: uppercase;
 }
 
+/* Bottom-centre CTA. Centred over the full viewport, then shifted left by half
+   the panel width when the slideout opens so it tracks the globe's visible
+   centre (matching the .tc-globe-mount transform and its >=700px guard). */
+.tc-fight-slot {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  z-index: 2;
+  pointer-events: auto;
+  transition: transform 240ms ease;
+}
+@media (min-width: 700px) {
+  .tc-app[data-panel-open='true'] .tc-fight-slot {
+    transform: translateX(calc(-50% - var(--tc-sidebar-w) / 2));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tc-fight-slot {
+    transition: none;
+  }
+}
+
 @media (max-width: 860px) {
   :root {
     --tc-sidebar-w: 320px;

@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef } from 'react';
 import { Clock } from './components/Clock/index.js';
 import { FactorDetails } from './components/FactorDetails/index.js';
+import { FightTheClock } from './components/FightTheClock/index.js';
 import { Sidebar } from './components/Sidebar/index.js';
 import { Slideout } from './components/Slideout/Slideout.js';
 import { StatusBar } from './components/StatusBar/StatusBar.js';
@@ -119,6 +120,12 @@ export function App(): JSX.Element {
         <footer className="tc-hint">
           <span>DRAG or WASDQE to orbit · WHEEL to zoom · CLICK a pin or card to align</span>
         </footer>
+
+        {/* Bottom-centre CTA. Shifts with the globe when the panel opens so it
+            stays under the globe's visible centre (see .tc-fight-slot). */}
+        <div className="tc-fight-slot">
+          <FightTheClock />
+        </div>
 
         <Slideout
           open={panel.open}
