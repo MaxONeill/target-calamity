@@ -14,6 +14,7 @@
     "db:migrate": "tsx --env-file-if-exists=.env server/db/migrate.ts",
     "ingest": "tsx --env-file-if-exists=.env server/ingestion/worker.ts",
     "ingest:once": "tsx --env-file-if-exists=.env server/ingestion/worker.ts --once",
+    "backfill:domains": "tsx --env-file-if-exists=.env server/ingestion/backfillDomains.ts",
     "fetch:elevation": "node scripts/fetch-elevation.mjs"
   },
   "dependencies": {
