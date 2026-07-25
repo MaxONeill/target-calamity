@@ -1,5 +1,6 @@
 import type { ClockConfidence, ClockModel } from '../../lib/clock/clockModel.js';
 import { formatYear } from './format.js';
+import { WhyPanel } from './WhyPanel.js';
 
 const CONFIDENCE_LABEL: Record<ClockConfidence, string> = {
   indeterminate: 'INDETERMINATE',
@@ -49,13 +50,19 @@ function TargetHeadline({ model }: { model: ClockModel }): JSX.Element {
         <span className="tc-clock-horizon-unit">TARGET</span>
       </div>
 
+      {hasBaseline && model.band ? (
+        <div className="tc-clock-range">
+          likely {formatYear(model.band.p25)} – {formatYear(model.band.p75)}
+        </div>
+      ) : null}
+
       <div className="tc-clock-window">
         {!hasBaseline || baselineTargetYear === null ? (
           'no dated tipping points in view — baseline indeterminate'
         ) : (
           <>
-            tipping-point baseline {formatYear(baselineTargetYear)}
-            {shiftYears === 0 ? (
+            tipping-point anchor {formatYear(baselineTargetYear)}
+            {Math.abs(shiftYears) < 0.05 ? (
               ' · unshifted (balanced)'
             ) : (
               <>
@@ -134,6 +141,8 @@ export function ClockDerivation({
       </div>
 
       <TargetHeadline model={model} />
+
+      <WhyPanel model={model} />
 
       {!model.hasBaseline ? (
         <div className="tc-clock-indeterminate" role="status">

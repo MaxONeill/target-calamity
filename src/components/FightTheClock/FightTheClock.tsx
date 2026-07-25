@@ -196,8 +196,8 @@ export function FightTheClock(): JSX.Element {
               <div className="tc-fight__body">
                 <p className="tc-fight__intro">
                   Something has to be done, and it&apos;ll take out-of-the-box thinking.
-                  We may not know what exactly to do, but we know it&apos;ll be easier
-                  together. Spread the word and let&apos;s see who steps up.
+                  We may not know exactly what to do, but we know it&apos;ll be easier
+                  together. <b>The first step is showing up</b>.
                 </p>
 
                 <div className="tc-fight__share-field">

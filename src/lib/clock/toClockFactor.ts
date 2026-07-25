@@ -28,5 +28,10 @@ export function toClockFactor(pin: FieldPin | GlobalFactor): ClockFactorInput {
     tippingPoint = built;
   }
 
-  return { effect: pin.effect, significance: pin.significance, tippingPoint };
+  return {
+    effect: pin.effect,
+    significance: pin.significance,
+    domains: pin.domains,
+    tippingPoint,
+  };
 }

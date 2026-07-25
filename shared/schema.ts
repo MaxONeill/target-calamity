@@ -14,6 +14,14 @@
  * bypasses the DB is still rejected before it reaches the shader or the feed.
  */
 import { z } from 'zod';
+import { DOMAINS } from './domains.js';
+
+/**
+ * Causal domain tag (see `shared/domains.ts`). Server-derived from a factor's
+ * text and carried on the lean field set so the Clock can link forces to the
+ * tipping points they act on without shipping the full description.
+ */
+export const DomainSchema = z.enum(DOMAINS);
 
 /* -------------------------------------------------------------------------- */
 /* Enumerations                                                               */
@@ -160,6 +168,8 @@ export const FieldPinSchema = z.object({
    * to include it. Absent on most pins.
    */
   tippingPoint: TippingPointSchema.optional(),
+  /** Causal domains this factor acts in, server-derived. Drives the Clock warp. */
+  domains: z.array(DomainSchema),
 });
 
 /**
@@ -174,6 +184,8 @@ export const GlobalFactorSchema = z.object({
   effect: z.number().gte(-1).lte(1),
   significance: z.number().gte(0).lte(1),
   tippingPoint: TippingPointSchema.optional(),
+  /** Causal domains this factor acts in, server-derived. Drives the Clock warp. */
+  domains: z.array(DomainSchema),
 });
 
 /**

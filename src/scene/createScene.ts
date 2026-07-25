@@ -24,7 +24,7 @@ const GLOBE_DETAIL = 100;
  * the outline. 1.006 clears ~320 m of coastal terrain while staying close enough
  * to the surface that the lines still read as sitting on it.
  */
-const COASTLINE_LIFT = 1.006;
+const COASTLINE_LIFT = 1.007;
 
 /**
  * Builds the three.js instrument and returns the handle React drives it through.

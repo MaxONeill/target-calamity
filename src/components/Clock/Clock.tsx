@@ -1,28 +1,19 @@
 import { useMemo, useState } from 'react';
-import {
-  deriveClock,
-  type ClockFactorInput,
-  type ClockHorizonConfig,
-} from '../../lib/clock/clockModel.js';
+import { deriveClock, type ClockFactorInput } from '../../lib/clock/clockModel.js';
 import { ExplainerModal } from '../ExplainerModal/index.js';
 import { ClockCompact } from './ClockCompact.js';
 import { ClockDerivation } from './ClockDerivation.js';
-import { resolveHorizon } from './horizon.js';
+import { currentYearFraction, resolveElasticity } from './horizon.js';
 import { useAmbientTick } from './useAmbientTick.js';
 import { useCountdown } from './useCountdown.js';
 import './Clock.css';
 
 export interface ClockProps {
   /**
-   * The factor set to aggregate. `Factor[]` from the shared contract satisfies
-   * this structurally. Pending factors are excluded inside the model.
+   * The factor set to aggregate. `FieldPin`/`GlobalFactor` satisfy this
+   * structurally. Pending factors are excluded inside the model.
    */
   factors: readonly ClockFactorInput[];
-  /**
-   * How far net polarity may shift the tipping-point baseline, in years.
-   * Defaults to the env-configured operator estimate.
-   */
-  horizon?: ClockHorizonConfig;
   className?: string;
 }
 
@@ -35,11 +26,14 @@ export interface ClockProps {
  * fabricated instant. The compact widget carries the live time; clicking it
  * discloses how that time was derived.
  */
-export function Clock({ factors, horizon, className }: ClockProps): JSX.Element {
-  const activeHorizon = useMemo(() => horizon ?? resolveHorizon(), [horizon]);
+export function Clock({ factors, className }: ClockProps): JSX.Element {
+  const elasticity = useMemo(() => resolveElasticity(), []);
+  // The reference year updates only on remount; the runway warp does not need
+  // sub-year precision, and the live countdown ticks off the target separately.
+  const nowYear = useMemo(() => currentYearFraction(), []);
   const model = useMemo(
-    () => deriveClock(factors, activeHorizon),
-    [factors, activeHorizon],
+    () => deriveClock(factors, { nowYear, elasticity }),
+    [factors, nowYear, elasticity],
   );
 
   const { remaining, overdue } = useCountdown(model);
