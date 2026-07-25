@@ -76,96 +76,98 @@ function rangeLabel(tp: TippingPoint): string {
   return '';
 }
 
-/** Shared header/metrics block; used by both the full and the minimal views. */
-function DetailHead({
+/** Name + zone/verification badges. The top of the stack. */
+function DetailHeader({
   name,
-  effect,
-  significance,
   spatialPath,
   zoneLevel,
   verificationState,
 }: {
   name: string;
-  effect: number;
-  significance: number;
   spatialPath: string;
   zoneLevel: string | null;
   verificationState: 'verified' | 'pending' | null;
+}): JSX.Element {
+  return (
+    <div className="tc-details__head">
+      <h2 className="tc-details__name" id="tc-details-title">
+        {name}
+      </h2>
+      <div className="tc-details__badges">
+        <span className="tc-badge tc-badge--zone" title={spatialPath}>
+          {zoneLevel ?? spatialPath}
+        </span>
+        {verificationState === 'pending' ? (
+          <span className="tc-badge tc-badge--pending" title="Machine-extracted; awaiting review.">
+            Pending
+          </span>
+        ) : verificationState === 'verified' ? (
+          <span className="tc-badge tc-badge--verified" title="Reviewed and verified.">
+            Verified
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/** The EFF (ratio) and SIG bars. */
+function DetailMetrics({
+  effect,
+  significance,
+}: {
+  effect: number;
+  significance: number;
 }): JSX.Element {
   const polarity = polarityOf(effect);
   const effectMagnitudePct = Math.min(Math.abs(effect), 1) * 50;
   const significancePct = Math.min(Math.max(significance, 0), 1) * 100;
   return (
-    <>
-      <div className="tc-details__head">
-        <h2 className="tc-details__name" id="tc-details-title">
-          {name}
-        </h2>
-        <div className="tc-details__badges">
-          <span className="tc-badge tc-badge--zone" title={spatialPath}>
-            {zoneLevel ?? spatialPath}
-          </span>
-          {verificationState === 'pending' ? (
+    <div className="tc-details__metrics">
+      <div className="tc-metric">
+        <span className="tc-metric__label">EFF</span>
+        <div className="tc-effectbar" aria-hidden="true">
+          <span className="tc-effectbar__center" />
+          {polarity === 'calamity' ? (
             <span
-              className="tc-badge tc-badge--pending"
-              title="Machine-extracted; awaiting review."
-            >
-              Pending
-            </span>
-          ) : verificationState === 'verified' ? (
-            <span className="tc-badge tc-badge--verified" title="Reviewed and verified.">
-              Verified
-            </span>
+              className="tc-effectbar__fill tc-effectbar__fill--neg"
+              style={{ width: `${effectMagnitudePct}%` }}
+            />
+          ) : polarity === 'humanity' ? (
+            <span
+              className="tc-effectbar__fill tc-effectbar__fill--pos"
+              style={{ width: `${effectMagnitudePct}%` }}
+            />
           ) : null}
         </div>
+        <span
+          className={[
+            'tc-metric__value',
+            polarity === 'calamity' ? 'tc-metric__value--calamity' : '',
+            polarity === 'humanity' ? 'tc-metric__value--humanity' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          title={
+            polarity === 'calamity'
+              ? 'Calamity — systemic decay vector'
+              : polarity === 'humanity'
+                ? 'Humanity — resilient counter-measure'
+                : 'Neutral'
+          }
+        >
+          {formatEffect(effect)}
+        </span>
       </div>
 
-      <div className="tc-details__metrics">
-        <div className="tc-metric">
-          <span className="tc-metric__label">EFF</span>
-          <div className="tc-effectbar" aria-hidden="true">
-            <span className="tc-effectbar__center" />
-            {polarity === 'calamity' ? (
-              <span
-                className="tc-effectbar__fill tc-effectbar__fill--neg"
-                style={{ width: `${effectMagnitudePct}%` }}
-              />
-            ) : polarity === 'humanity' ? (
-              <span
-                className="tc-effectbar__fill tc-effectbar__fill--pos"
-                style={{ width: `${effectMagnitudePct}%` }}
-              />
-            ) : null}
-          </div>
-          <span
-            className={[
-              'tc-metric__value',
-              polarity === 'calamity' ? 'tc-metric__value--calamity' : '',
-              polarity === 'humanity' ? 'tc-metric__value--humanity' : '',
-            ]
-              .filter(Boolean)
-              .join(' ')}
-            title={
-              polarity === 'calamity'
-                ? 'Calamity — systemic decay vector'
-                : polarity === 'humanity'
-                  ? 'Humanity — resilient counter-measure'
-                  : 'Neutral'
-            }
-          >
-            {formatEffect(effect)}
-          </span>
+      <div className="tc-metric">
+        <span className="tc-metric__label">SIG</span>
+        <div className="tc-sigbar" aria-hidden="true">
+          <span className="tc-sigbar__fill" style={{ width: `${significancePct}%` }} />
         </div>
-
-        <div className="tc-metric">
-          <span className="tc-metric__label">SIG</span>
-          <div className="tc-sigbar" aria-hidden="true">
-            <span className="tc-sigbar__fill" style={{ width: `${significancePct}%` }} />
-          </div>
-          <span className="tc-metric__value">{significance.toFixed(2)}</span>
-        </div>
+        <span className="tc-metric__value">{significance.toFixed(2)}</span>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -282,22 +284,12 @@ export function FactorDetails({ factor, pin, onClose }: FactorDetailsProps): JSX
 
       {factor !== null ? (
         <div className="tc-details__body">
-          <DetailHead
+          <DetailHeader
             name={factor.name}
-            effect={factor.effect}
-            significance={factor.significance}
             spatialPath={factor.spatialPath}
             zoneLevel={factor.zoneLevel}
             verificationState={factor.verificationState}
           />
-
-          {factor.reputabilityScore !== undefined ? (
-            <ReputabilityBlock
-              score={factor.reputabilityScore}
-              reasoning={factor.reputabilityReasoning}
-              state={factor.verificationState}
-            />
-          ) : null}
 
           {factor.tippingPoint ? <TippingPointBlock tp={factor.tippingPoint} /> : null}
 
@@ -307,6 +299,8 @@ export function FactorDetails({ factor, pin, onClose }: FactorDetailsProps): JSX
               <p className="tc-details__desc">{factor.description}</p>
             </section>
           ) : null}
+
+          <DetailMetrics effect={factor.effect} significance={factor.significance} />
 
           {/* SOURCES — a plain list: publisher + the link itself, nothing else. */}
           {factor.citations.length > 0 ? (
@@ -346,18 +340,24 @@ export function FactorDetails({ factor, pin, onClose }: FactorDetailsProps): JSX
             </div>
           )}
 
+          {factor.reputabilityScore !== undefined ? (
+            <ReputabilityBlock
+              score={factor.reputabilityScore}
+              reasoning={factor.reputabilityReasoning}
+              state={factor.verificationState}
+            />
+          ) : null}
         </div>
       ) : pin ? (
         <div className="tc-details__body">
-          <DetailHead
+          <DetailHeader
             name="Selected pin"
-            effect={pin.effect}
-            significance={pin.significance}
             spatialPath={`${pin.lat.toFixed(2)}, ${pin.lon.toFixed(2)}`}
             zoneLevel={null}
             verificationState={null}
           />
           {pin.tippingPoint ? <TippingPointBlock tp={pin.tippingPoint} /> : null}
+          <DetailMetrics effect={pin.effect} significance={pin.significance} />
           <div className="tc-details__loading">
             Full record and sources are loading or unavailable — this factor's card
             has not yet reached the feed. Its metrics are shown from the field set.
