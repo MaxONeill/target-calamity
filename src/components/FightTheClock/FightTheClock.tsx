@@ -4,28 +4,47 @@ import {
   useId,
   useRef,
   useState,
-  type ChangeEvent,
-  type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
 import './FightTheClock.css';
 
-interface PledgeForm {
-  name: string;
-  email: string;
-  canDo: string;
-  holdsBack: string;
-}
-
-const EMPTY: PledgeForm = { name: '', email: '', canDo: '', holdsBack: '' };
+/**
+ * The link people share and rally around.
+ * TODO: point at the canonical public URL once the domain is live.
+ */
+const SHARE_URL = 'https://targetcalamity.com';
+const SHARE_TITLE = 'Fight the Clock';
+/** The copyable one-liner shown in the share field. */
+const SHARE_TEXT = `${SHARE_TITLE}: ${SHARE_URL}`;
 
 /**
- * Address shown in the privacy notice for data-deletion requests. Must be a real
- * inbox someone monitors — it is the opt-out path people are entitled to.
- * TODO: replace with the project's actual contact address.
+ * Invite to the community server.
+ * TODO: replace with the real Discord invite.
  */
-const CONTACT_EMAIL = 'contact@example.com';
+const DISCORD_URL = 'https://discord.gg/REPLACE_ME';
+
+/**
+ * Share targets, each a platform share-intent URL. Chosen for a grassroots
+ * organizing audience: activism (X, Bluesky, Reddit), messaging (WhatsApp,
+ * Telegram), professional (LinkedIn), broad reach (Facebook), and email as the
+ * universal fallback. The native Web Share API is offered on top when available.
+ */
+const SHARE_TARGETS: ReadonlyArray<{ name: string; color: string; href: string }> = (() => {
+  const url = encodeURIComponent(SHARE_URL);
+  const title = encodeURIComponent(SHARE_TITLE);
+  const textUrl = encodeURIComponent(`${SHARE_TITLE} ${SHARE_URL}`);
+  return [
+    { name: 'X', color: '#000000', href: `https://twitter.com/intent/tweet?url=${url}&text=${title}` },
+    { name: 'Facebook', color: '#1877F2', href: `https://www.facebook.com/sharer/sharer.php?u=${url}` },
+    { name: 'LinkedIn', color: '#0A66C2', href: `https://www.linkedin.com/sharing/share-offsite/?url=${url}` },
+    { name: 'Reddit', color: '#FF4500', href: `https://www.reddit.com/submit?url=${url}&title=${title}` },
+    { name: 'WhatsApp', color: '#25D366', href: `https://api.whatsapp.com/send?text=${textUrl}` },
+    { name: 'Telegram', color: '#26A5E4', href: `https://t.me/share/url?url=${url}&text=${title}` },
+    { name: 'Bluesky', color: '#1185FE', href: `https://bsky.app/intent/compose?text=${textUrl}` },
+    { name: 'Email', color: '#6b7280', href: `mailto:?subject=${title}&body=${textUrl}` },
+  ];
+})();
 
 const FOCUSABLE_SELECTOR = [
   'a[href]',
@@ -37,37 +56,38 @@ const FOCUSABLE_SELECTOR = [
 ].join(',');
 
 /**
- * A call-to-action that opens a short pledge form: who you are and how you can
- * help push the Clock back.
+ * A call-to-action that opens a share + join dialog: copy the link, push it to a
+ * social platform, or jump into the Discord.
  *
- * The submission is only logged for now — wiring it to a form-collection service
- * is a later step. The trigger is positioned by its parent slot; the dialog is
- * portalled to the body so it is unaffected by that positioning.
+ * It collects nothing, so there is no data-handling surface — the trigger is
+ * positioned by its parent slot; the dialog is portalled to the body.
  */
 export function FightTheClock(): JSX.Element {
   const [open, setOpen] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [form, setForm] = useState<PledgeForm>(EMPTY);
+  const [copied, setCopied] = useState(false);
+  const [canNativeShare, setCanNativeShare] = useState(false);
 
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
-  const firstFieldRef = useRef<HTMLInputElement>(null);
+  const urlRef = useRef<HTMLInputElement>(null);
   const titleId = useId();
 
-  const close = useCallback(() => setOpen(false), []);
+  useEffect(() => {
+    setCanNativeShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function');
+  }, []);
 
-  const openForm = useCallback(() => {
-    setForm(EMPTY);
-    setSubmitted(false);
+  const close = useCallback(() => setOpen(false), []);
+  const openShare = useCallback(() => {
+    setCopied(false);
     setOpen(true);
   }, []);
 
-  // Move focus into the dialog on open, lock body scroll so the backdrop reads
-  // as a true modal layer, and restore focus to the trigger on close.
+  // Focus into the dialog on open, lock body scroll, restore focus on close.
   useEffect(() => {
     if (!open) return;
     const previouslyFocused = document.activeElement as HTMLElement | null;
-    firstFieldRef.current?.focus();
+    urlRef.current?.focus();
+    urlRef.current?.select();
 
     const { body } = document;
     const previousOverflow = body.style.overflow;
@@ -78,6 +98,20 @@ export function FightTheClock(): JSX.Element {
       (triggerRef.current ?? previouslyFocused)?.focus();
     };
   }, [open]);
+
+  const onCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(SHARE_TEXT);
+      setCopied(true);
+    } catch {
+      // Clipboard blocked — the field is selectable as a manual fallback.
+      urlRef.current?.select();
+    }
+  }, []);
+
+  const onNativeShare = useCallback(() => {
+    void navigator.share?.({ title: SHARE_TITLE, url: SHARE_URL }).catch(() => {});
+  }, []);
 
   // Escape closes; Tab is trapped so focus cannot leave the dialog.
   const onDialogKeyDown = useCallback(
@@ -116,27 +150,13 @@ export function FightTheClock(): JSX.Element {
     [close],
   );
 
-  const update =
-    (field: keyof PledgeForm) =>
-    (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void => {
-      const { value } = e.target;
-      setForm((prev) => ({ ...prev, [field]: value }));
-    };
-
-  const onSubmit = (e: FormEvent): void => {
-    e.preventDefault();
-    // TODO: POST to a form-collection service once one is chosen. For now, log.
-    console.log('[fight-the-clock] pledge submitted', { ...form });
-    setSubmitted(true);
-  };
-
   return (
     <>
       <button
         ref={triggerRef}
         type="button"
         className="tc-fight__trigger"
-        onClick={openForm}
+        onClick={openShare}
         aria-haspopup="dialog"
       >
         Fight the Clock
@@ -173,108 +193,68 @@ export function FightTheClock(): JSX.Element {
                 </button>
               </div>
 
-              {submitted ? (
-                <div className="tc-fight__thanks" role="status">
-                  <p className="tc-fight__thanks-text">
-                    Thank you — your pledge was recorded.
-                  </p>
-                  <button type="button" className="tc-fight__submit" onClick={close}>
-                    Close
+              <div className="tc-fight__body">
+                <p className="tc-fight__intro">
+                  Something has to be done, and it&apos;ll take out-of-the-box thinking.
+                  We may not know what exactly to do, but we know it&apos;ll be easier
+                  together. Spread the word and let&apos;s see who steps up.
+                </p>
+
+                <div className="tc-fight__share-field">
+                  <input
+                    ref={urlRef}
+                    className="tc-fight__url"
+                    type="text"
+                    readOnly
+                    value={SHARE_TEXT}
+                    aria-label="Shareable link"
+                    onFocus={(e) => e.currentTarget.select()}
+                  />
+                  <button type="button" className="tc-fight__copy" onClick={onCopy}>
+                    {copied ? 'Copied' : 'Copy'}
                   </button>
                 </div>
-              ) : (
-                <form className="tc-fight__form" onSubmit={onSubmit}>
-                  <p className="tc-fight__intro">
-                    Something has to be done, and it&apos;ll take out-of-the-box
-                    thinking. We may not know what exactly to do, but we know it&apos;ll
-                    be easier together. Let&apos;s see who steps up and go from there.
-                  </p>
 
-                  <label className="tc-fight__field">
-                    <span className="tc-fight__label">Name</span>
-                    <input
-                      ref={firstFieldRef}
-                      className="tc-fight__input"
-                      type="text"
-                      value={form.name}
-                      onChange={update('name')}
-                      autoComplete="name"
-                    />
-                  </label>
+                <ul className="tc-fight__targets">
+                  {canNativeShare ? (
+                    <li>
+                      <button
+                        type="button"
+                        className="tc-fight__target tc-fight__target--native"
+                        onClick={onNativeShare}
+                      >
+                        Share…
+                      </button>
+                    </li>
+                  ) : null}
+                  {SHARE_TARGETS.map((target) => (
+                    <li key={target.name}>
+                      <a
+                        className="tc-fight__target"
+                        style={{ backgroundColor: target.color }}
+                        href={target.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`Share on ${target.name}`}
+                      >
+                        {target.name}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
 
-                  <label className="tc-fight__field">
-                    <span className="tc-fight__label">Email</span>
-                    <input
-                      className="tc-fight__input"
-                      type="email"
-                      required
-                      value={form.email}
-                      onChange={update('email')}
-                      autoComplete="email"
-                    />
-                  </label>
-
-                  <label className="tc-fight__field">
-                    <span className="tc-fight__label">What can you do?</span>
-                    <textarea
-                      className="tc-fight__textarea"
-                      rows={3}
-                      value={form.canDo}
-                      onChange={update('canDo')}
-                      placeholder="Skills, time, resources, reach…"
-                    />
-                  </label>
-
-                  <label className="tc-fight__field">
-                    <span className="tc-fight__label">What holds you back?</span>
-                    <textarea
-                      className="tc-fight__textarea"
-                      rows={3}
-                      value={form.holdsBack}
-                      onChange={update('holdsBack')}
-                      placeholder="What stops you from acting today?"
-                    />
-                  </label>
-
-                  <div className="tc-fight__notice">
-                    <span className="tc-fight__notice-line">
-                      We&apos;ll only use this to contact you about the project — never
-                      sold or shared.
-                    </span>
-                    <details className="tc-fight__privacy">
-                      <summary className="tc-fight__privacy-summary">Privacy</summary>
-                      <div className="tc-fight__privacy-body">
-                        <p>
-                          <strong>What we collect:</strong> your name, email, and the
-                          answers above.
-                        </p>
-                        <p>
-                          <strong>Why:</strong> only to reach out about this project and
-                          coordinate who&apos;s helping — nothing else. We don&apos;t sell
-                          or share it.
-                        </p>
-                        <p>
-                          <strong>Removal:</strong> ask us to delete your details at any
-                          time at{' '}
-                          <a className="tc-fight__privacy-link" href={`mailto:${CONTACT_EMAIL}`}>
-                            {CONTACT_EMAIL}
-                          </a>
-                          .
-                        </p>
-                      </div>
-                    </details>
-                  </div>
-
-                  <div className="tc-fight__actions">
-                    <button type="button" className="tc-fight__cancel" onClick={close}>
-                      Cancel
-                    </button>
-                    <button type="submit" className="tc-fight__submit">
-                      Send
-                    </button>
-                  </div>
-                </form>
-              )}
+                <div className="tc-fight__join">
+                  <h3 className="tc-fight__join-title">Join the Conversation</h3>
+                  <a
+                    className="tc-fight__discord"
+                    href={DISCORD_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Join our Discord
+                  </a>
+                </div>
+              </div>
             </div>
           </div>,
           document.body,
