@@ -137,9 +137,10 @@
   pointer-events: none;
 }
 .tc-clock[data-expanded='true'] .tc-clock-expander {
-  /* Bound to the viewport so a long derivation (Why panel open) scrolls inside
-     the panel instead of running off the bottom of the screen. */
-  max-height: min(1400px, calc(100dvh - 150px));
+  /* Bounded so opening the Why panel scrolls INSIDE the panel rather than growing
+     it down over the bottom controls (the Fight the Clock button). The reserve
+     accounts for the panel's ~130px top offset plus ~110px of bottom controls. */
+  max-height: min(640px, calc(100dvh - 240px));
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
