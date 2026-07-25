@@ -52,13 +52,16 @@ export function Clock({ factors, horizon, className }: ClockProps): JSX.Element 
       aria-label="The Clock — modeled projection"
       data-expanded={expanded}
     >
-      <ClockCompact
-        remaining={remaining}
-        hasBaseline={model.hasBaseline}
-        overdue={overdue}
-        expanded={expanded}
-        onToggle={() => setExpanded((open) => !open)}
-      />
+      <div className="tc-clock-window-group">
+        <span className="tc-clock-window-label">Course-correction window:</span>
+        <ClockCompact
+          remaining={remaining}
+          hasBaseline={model.hasBaseline}
+          overdue={overdue}
+          expanded={expanded}
+          onToggle={() => setExpanded((open) => !open)}
+        />
+      </div>
 
       <div className="tc-clock-expander" role="group" aria-hidden={!expanded}>
         <ClockDerivation

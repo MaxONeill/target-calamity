@@ -28,6 +28,8 @@ export interface SidebarProps {
   onLoadMore: () => void;
   hasMore: boolean;
   loading: boolean;
+  /** Opens the submission form. Wired to the persistent footer row. */
+  onOpenSubmit: () => void;
 }
 
 const SORT_LABELS: Record<SortMode, string> = {
@@ -44,6 +46,7 @@ export function Sidebar({
   onLoadMore,
   hasMore,
   loading,
+  onOpenSubmit,
 }: SidebarProps): JSX.Element {
   const scrollRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -228,6 +231,17 @@ export function Sidebar({
           </div>
         )}
       </div>
+
+      <footer className="tc-sidebar__footer">
+        <button
+          type="button"
+          className="tc-sidebar__submit"
+          onClick={onOpenSubmit}
+          title="Propose a factor (one per day, no account needed)"
+        >
+          Submit Factor
+        </button>
+      </footer>
     </aside>
   );
 }

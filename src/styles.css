@@ -182,6 +182,13 @@ body {
   color: var(--tc-ink);
   white-space: nowrap;
 }
+.tc-brand-alpha {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #d9a441; /* amber/yellow — pre-release marker */
+  white-space: nowrap;
+}
 
 .tc-status {
   display: flex;
@@ -191,33 +198,6 @@ body {
   letter-spacing: 0.1em;
   color: var(--tc-ink-dim);
   white-space: nowrap;
-}
-.tc-status-sep {
-  color: var(--tc-ink-faint);
-}
-.tc-status-label--follow {
-  color: var(--tc-humanity);
-}
-/* Coastline overlay toggle — reads as a status label, acts as a button. */
-.tc-status-toggle {
-  font: inherit;
-  font-size: 10.5px;
-  letter-spacing: 0.1em;
-  color: var(--tc-ink-dim);
-  background: transparent;
-  border: 1px solid var(--tc-ink-faint);
-  border-radius: 3px;
-  padding: 1px 6px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.tc-status-toggle:hover {
-  color: var(--tc-ink);
-  border-color: var(--tc-ink-dim);
-}
-.tc-status-toggle[aria-pressed='true'] {
-  color: #5fd0d8;
-  border-color: #5fd0d8;
 }
 .tc-status-dot {
   width: 7px;

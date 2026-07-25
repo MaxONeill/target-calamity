@@ -161,6 +161,43 @@
   border: 2px solid var(--tc-bg);
 }
 
+/* Persistent submit row — pinned below the scrolling feed, always visible. */
+.tc-sidebar__footer {
+  flex: 0 0 auto;
+  border-top: 1px solid var(--tc-border);
+  background: var(--tc-panel);
+}
+.tc-sidebar__submit {
+  display: block;
+  width: 100%;
+  padding: 9px 12px;
+  font-family: var(--tc-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--tc-text);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+.tc-sidebar__submit:hover {
+  background: var(--tc-panel-2);
+  color: var(--tc-humanity);
+}
+.tc-sidebar__submit:focus-visible {
+  outline: none;
+  background: var(--tc-panel-2);
+  color: var(--tc-humanity);
+  box-shadow: inset 0 0 0 1px var(--tc-border-bright);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tc-sidebar__submit {
+    transition: none;
+  }
+}
+
 .tc-sidebar__list {
   list-style: none;
   margin: 0;

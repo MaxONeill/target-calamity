@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { Clock } from './components/Clock/index.js';
 import { FactorDetails } from './components/FactorDetails/index.js';
 import { Sidebar } from './components/Sidebar/index.js';
@@ -27,8 +27,8 @@ import type { SceneHandle } from './scene/types.js';
 export function App(): JSX.Element {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<SceneHandle | null>(null);
-  const [landVisible, setLandVisible] = useState(true);
-  const [following, setFollowing] = useState(false);
+  // Coastlines stay on; the toggle was removed from the top bar.
+  const landVisible = true;
 
   const feed = useFactorFeed();
   const { fieldPins, globalFactors, reloadField } = useFieldPins();
@@ -43,7 +43,6 @@ export function App(): JSX.Element {
       const coords = coordsRef.current?.get(id);
       if (coords) {
         sceneRef.current?.alignToLatLon(coords.lat, coords.lon);
-        setFollowing(true);
       }
 
       if (options?.scrollIntoView) {
@@ -72,7 +71,9 @@ export function App(): JSX.Element {
       sceneRef.current?.setHighlighted(id);
       document.body.style.cursor = id ? 'pointer' : '';
     }, []),
-    onInterrupt: useCallback(() => setFollowing(false), []),
+    // The scene drops its own alignment lock on manual input; nothing on the
+    // React side needs to react, so this is a no-op.
+    onInterrupt: useCallback(() => {}, []),
   });
 
   const streamStatus = useFactorStream({
@@ -109,15 +110,7 @@ export function App(): JSX.Element {
       <div className="tc-globe-mount" ref={mountRef} aria-hidden="true" />
 
       <div className="tc-overlay">
-        <StatusBar
-          streamStatus={streamStatus}
-          pinCount={fieldPins.length}
-          landVisible={landVisible}
-          onToggleLand={() => setLandVisible((visible) => !visible)}
-          submitOpen={panel.mode === 'submit'}
-          onOpenSubmit={panel.openSubmit}
-          following={following}
-        />
+        <StatusBar streamStatus={streamStatus} />
 
         <div className="tc-clock-slot">
           <Clock factors={clockFactors} />
@@ -151,6 +144,7 @@ export function App(): JSX.Element {
               onLoadMore={feed.loadMore}
               hasMore={feed.hasMore}
               loading={feed.loading}
+              onOpenSubmit={panel.openSubmit}
             />
           )}
         </Slideout>

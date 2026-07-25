@@ -42,6 +42,19 @@
 
 /* ------------------------------ compact widget ---------------------------- */
 
+.tc-clock-window-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.tc-clock-window-label {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--tc-text-dim); /* small gray caption */
+  padding-left: 2px;
+}
+
 .tc-clock-compact {
   display: flex;
   align-items: center;
