@@ -96,6 +96,12 @@
   gap: 14px;
   padding: 18px;
 }
+.tc-fight__intro {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #a9b4c2;
+}
 .tc-fight__field {
   display: flex;
   flex-direction: column;
@@ -127,6 +133,62 @@
 .tc-fight__input::placeholder,
 .tc-fight__textarea::placeholder {
   color: #4e586a;
+}
+
+/* Layered privacy notice: a short line at the point of collection, with the
+   full detail one click away behind the disclosure. */
+.tc-fight__notice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #7c8798;
+}
+.tc-fight__privacy {
+  font-size: 11px;
+}
+.tc-fight__privacy-summary {
+  display: inline-block;
+  cursor: pointer;
+  color: #6fb7c9;
+  letter-spacing: 0.04em;
+  list-style: none;
+}
+.tc-fight__privacy-summary::-webkit-details-marker {
+  display: none;
+}
+.tc-fight__privacy-summary::before {
+  content: '▸ ';
+  color: #4e586a;
+}
+.tc-fight__privacy[open] .tc-fight__privacy-summary::before {
+  content: '▾ ';
+}
+.tc-fight__privacy-summary:focus-visible {
+  outline: none;
+  text-decoration: underline;
+}
+.tc-fight__privacy-body {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid #232a36;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.25);
+}
+.tc-fight__privacy-body p {
+  margin: 0 0 8px;
+  color: #a9b4c2;
+}
+.tc-fight__privacy-body p:last-child {
+  margin-bottom: 0;
+}
+.tc-fight__privacy-body strong {
+  color: #c6d0dc;
+  font-weight: 600;
+}
+.tc-fight__privacy-link {
+  color: #6fb7c9;
 }
 
 .tc-fight__actions {

@@ -20,6 +20,13 @@ interface PledgeForm {
 
 const EMPTY: PledgeForm = { name: '', email: '', canDo: '', holdsBack: '' };
 
+/**
+ * Address shown in the privacy notice for data-deletion requests. Must be a real
+ * inbox someone monitors — it is the opt-out path people are entitled to.
+ * TODO: replace with the project's actual contact address.
+ */
+const CONTACT_EMAIL = 'contact@example.com';
+
 const FOCUSABLE_SELECTOR = [
   'a[href]',
   'button:not([disabled])',
@@ -177,6 +184,12 @@ export function FightTheClock(): JSX.Element {
                 </div>
               ) : (
                 <form className="tc-fight__form" onSubmit={onSubmit}>
+                  <p className="tc-fight__intro">
+                    Something has to be done, and it&apos;ll take out-of-the-box
+                    thinking. We may not know what exactly to do, but we know it&apos;ll
+                    be easier together. Let&apos;s see who steps up and go from there.
+                  </p>
+
                   <label className="tc-fight__field">
                     <span className="tc-fight__label">Name</span>
                     <input
@@ -222,6 +235,35 @@ export function FightTheClock(): JSX.Element {
                       placeholder="What stops you from acting today?"
                     />
                   </label>
+
+                  <div className="tc-fight__notice">
+                    <span className="tc-fight__notice-line">
+                      We&apos;ll only use this to contact you about the project — never
+                      sold or shared.
+                    </span>
+                    <details className="tc-fight__privacy">
+                      <summary className="tc-fight__privacy-summary">Privacy</summary>
+                      <div className="tc-fight__privacy-body">
+                        <p>
+                          <strong>What we collect:</strong> your name, email, and the
+                          answers above.
+                        </p>
+                        <p>
+                          <strong>Why:</strong> only to reach out about this project and
+                          coordinate who&apos;s helping — nothing else. We don&apos;t sell
+                          or share it.
+                        </p>
+                        <p>
+                          <strong>Removal:</strong> ask us to delete your details at any
+                          time at{' '}
+                          <a className="tc-fight__privacy-link" href={`mailto:${CONTACT_EMAIL}`}>
+                            {CONTACT_EMAIL}
+                          </a>
+                          .
+                        </p>
+                      </div>
+                    </details>
+                  </div>
 
                   <div className="tc-fight__actions">
                     <button type="button" className="tc-fight__cancel" onClick={close}>
