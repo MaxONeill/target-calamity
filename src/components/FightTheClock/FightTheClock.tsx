@@ -6,6 +6,7 @@ import {
   useState,
   type ChangeEvent,
   type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
 import './FightTheClock.css';
@@ -18,6 +19,15 @@ interface PledgeForm {
 }
 
 const EMPTY: PledgeForm = { name: '', email: '', canDo: '', holdsBack: '' };
+
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'textarea:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
 
 /**
  * A call-to-action that opens a short pledge form: who you are and how you can
@@ -33,13 +43,11 @@ export function FightTheClock(): JSX.Element {
   const [form, setForm] = useState<PledgeForm>(EMPTY);
 
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const firstFieldRef = useRef<HTMLInputElement>(null);
   const titleId = useId();
 
-  const close = useCallback(() => {
-    setOpen(false);
-    triggerRef.current?.focus();
-  }, []);
+  const close = useCallback(() => setOpen(false), []);
 
   const openForm = useCallback(() => {
     setForm(EMPTY);
@@ -47,18 +55,59 @@ export function FightTheClock(): JSX.Element {
     setOpen(true);
   }, []);
 
+  // Move focus into the dialog on open, lock body scroll so the backdrop reads
+  // as a true modal layer, and restore focus to the trigger on close.
   useEffect(() => {
     if (!open) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
     firstFieldRef.current?.focus();
-    const onKeyDown = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        close();
-      }
+
+    const { body } = document;
+    const previousOverflow = body.style.overflow;
+    body.style.overflow = 'hidden';
+
+    return () => {
+      body.style.overflow = previousOverflow;
+      (triggerRef.current ?? previouslyFocused)?.focus();
     };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [open, close]);
+  }, [open]);
+
+  // Escape closes; Tab is trapped so focus cannot leave the dialog.
+  const onDialogKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLDivElement>) => {
+      if (event.key === 'Escape') {
+        event.stopPropagation();
+        close();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+      const focusable = Array.from(
+        dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+      ).filter((el) => el.offsetParent !== null || el === document.activeElement);
+      if (focusable.length === 0) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (event.shiftKey) {
+        if (active === first || active === dialog) {
+          event.preventDefault();
+          last?.focus();
+        }
+      } else if (active === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    },
+    [close],
+  );
 
   const update =
     (field: keyof PledgeForm) =>
@@ -95,10 +144,13 @@ export function FightTheClock(): JSX.Element {
             }}
           >
             <div
+              ref={dialogRef}
               className="tc-fight__dialog"
               role="dialog"
               aria-modal="true"
               aria-labelledby={titleId}
+              tabIndex={-1}
+              onKeyDown={onDialogKeyDown}
             >
               <div className="tc-fight__head">
                 <h2 id={titleId} className="tc-fight__title">
