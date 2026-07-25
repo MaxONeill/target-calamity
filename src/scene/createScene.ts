@@ -17,8 +17,14 @@ import type { SceneCallbacks, SceneHandle } from './types.js';
  */
 const GLOBE_DETAIL = 100;
 
-/** Hairline offset keeping coastlines out of z-fighting without floating them. */
-const COASTLINE_LIFT = 1.001;
+/**
+ * Above-surface lift for the coastline lines. A vertex at height H metres sits
+ * at radius·(1 + H·exaggeration/EARTH_RADIUS), so at exaggeration 120 a lift of
+ * 1.001 only clears land below ~53 m — coastal relief above that pokes through
+ * the outline. 1.006 clears ~320 m of coastal terrain while staying close enough
+ * to the surface that the lines still read as sitting on it.
+ */
+const COASTLINE_LIFT = 1.006;
 
 /**
  * Builds the three.js instrument and returns the handle React drives it through.
