@@ -388,7 +388,7 @@ body {
 .tc-fight-slot {
   position: absolute;
   left: 50%;
-  bottom: 22px;
+  bottom: 52px; /* clears the bottom-left controls hint */
   transform: translateX(-50%);
   z-index: 2;
   pointer-events: auto;
