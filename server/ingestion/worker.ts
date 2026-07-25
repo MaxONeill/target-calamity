@@ -75,15 +75,56 @@ import { createLlmResolver } from './resolver.js';
  * not structurally biased toward Calamity. Overridable via `INGEST_TOPICS`
  * (newline- or comma-separated). Kept broad; the model narrows them per cycle.
  */
+/**
+ * The built-in research net, used when `INGEST_TOPICS` is unset. A wide, current
+ * sweep across the ecological, economic, social, and technological forces on the
+ * Calamity↔Humanity axis.
+ *
+ * Calamity (C, extractive/decay) and Humanity (H, connective/resilience) topics
+ * are INTERLEAVED, not grouped, for two reasons. The aggregate must not be
+ * structurally biased toward either pole; and the batch window rotates through
+ * the list a few topics at a time, so any contiguous window has to stay roughly
+ * balanced — grouping would make an early window (and every non-rotating
+ * `ingest:once`, which always starts at index 0) pull one pole only.
+ *
+ * Phrased as recency-biased search queries; no hard-coded year, so they do not
+ * go stale. Each domain pairs a decay query with its counter-force so both poles
+ * of the same arena are probed.
+ */
 const DEFAULT_TOPICS: readonly string[] = [
-  // Calamity-leaning
-  'latest climate tipping point and cryosphere findings this month',
-  'newest data on biodiversity loss, deforestation, and ecosystem collapse',
-  'recent developments in economic inequality and wealth concentration',
-  'current AI-driven labour disruption, misinformation, and institutional risk',
-  // Humanity-leaning
-  'recent breakthroughs in clean energy deployment and investment',
-  'new progress on conflict resolution, public health, and human rights',
+  // Climate system & energy
+  'latest climate tipping point and cryosphere findings: ice sheets, AMOC, permafrost', // C
+  'recent breakthroughs in clean energy deployment, storage, and grid electrification', // H
+  'newest data on greenhouse-gas and methane emission trends and remaining carbon budget', // C
+  'recent progress in climate policy, climate finance commitments, and emissions cuts', // H
+  // Biosphere & land
+  'newest data on biodiversity loss, deforestation, and ecosystem collapse', // C
+  'recent progress in reforestation, rewilding, and habitat protection', // H
+  'recent findings on soil degradation, desertification, and food-system fragility', // C
+  'recent progress in regenerative agriculture and global food security', // H
+  // Oceans & freshwater
+  'recent findings on ocean warming, acidification, coral bleaching, and fisheries decline', // C
+  'recent gains in marine protected areas and ocean conservation', // H
+  'latest findings on freshwater depletion, drought, and aquifer stress', // C
+  'recent progress in water access, sanitation, and drought resilience', // H
+  // Economy & inequality
+  'latest data on economic inequality and wealth concentration', // C
+  'recent progress on global poverty reduction and access to education', // H
+  'recent findings on pollution harms: plastics, PFAS, and air quality', // C
+  'recent progress in pollution cleanup, circular economy, and materials innovation', // H
+  // Health
+  'newest data on antimicrobial resistance and emerging pandemic risk', // C
+  'recent public-health advances: disease control, vaccination, and mortality gains', // H
+  // Society, governance & conflict
+  'recent developments in democratic backsliding, authoritarianism, and armed conflict', // C
+  'recent conflict-resolution, peace processes, and human-rights progress', // H
+  'recent findings on forced displacement and climate migration', // C
+  'recent gains in climate adaptation and community resilience', // H
+  // Technology & institutions
+  'current AI-driven labour disruption, misinformation, and institutional risk', // C
+  'recent advances using AI and technology for scientific and medical breakthroughs', // H
+  'latest reporting on critical-infrastructure fragility and cyber threats', // C
+  'recent milestones in energy efficiency and industrial decarbonization', // H
 ];
 
 const DEFAULT_INTERVAL_HOURS = 6;
