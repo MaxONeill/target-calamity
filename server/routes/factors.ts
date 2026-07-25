@@ -20,7 +20,12 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { sql } from 'kysely';
 import type { RawBuilder } from 'kysely';
 import { z } from 'zod';
-import { FeedResponseSchema, SortModeSchema, ViewportSchema } from '../../shared/schema.js';
+import {
+  FactorByIdResponseSchema,
+  FeedResponseSchema,
+  SortModeSchema,
+  ViewportSchema,
+} from '../../shared/schema.js';
 import type { Factor, FeedResponse, Viewport } from '../../shared/types.js';
 import type { Database } from '../db.js';
 import {
@@ -35,6 +40,9 @@ import { SEED_FACTORS } from '../../shared/seed.js';
 
 /** Feed page size. */
 const FEED_PAGE_SIZE = 50;
+
+/** Guards the `:id` param so a non-uuid never reaches a `::uuid` cast. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Magnitude mode is a bounded top-N snapshot, not deep pagination (:
@@ -225,6 +233,19 @@ async function magnitudeFeedDb(db: Database, viewport: Viewport): Promise<FeedRe
   return { factors: rows.map((r) => mapFactorRow(r.factor)), nextCursor: null };
 }
 
+/** One factor by id, with its citations. Null when no such row exists. */
+async function factorByIdDb(db: Database, id: string): Promise<Factor | null> {
+  const { rows } = await sql<{ factor: Factor }>`
+    SELECT ${FACTOR_JSON} AS factor
+    FROM factors f
+    ${CITATIONS_LATERAL}
+    WHERE f.id = ${id}::uuid
+    LIMIT 1
+  `.execute(db);
+  const row = rows[0];
+  return row ? mapFactorRow(row.factor) : null;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Seed mode (no DATABASE_URL)                                                 */
 /* -------------------------------------------------------------------------- */
@@ -334,4 +355,27 @@ export default async function factorsRoutes(fastify: FastifyInstance): Promise<v
 
   fastify.get('/api/factors', handler);
   fastify.get('/api/feed', handler); // shared-contract alias
+
+  // One factor by id, with citations. The detail view calls this when a selected
+  // pin or ring arc is not in the loaded feed pages, so it can show the full
+  // record instead of lean field metrics.
+  fastify.get('/api/factors/:id', async (req: FastifyRequest, reply: FastifyReply) => {
+    const { id } = req.params as { id: string };
+    if (!UUID_RE.test(id)) {
+      reply.code(400).send({ error: 'invalid factor id' });
+      return undefined;
+    }
+
+    const ctx = fastify.appCtx;
+    const factor =
+      ctx.mode === 'db'
+        ? await factorByIdDb(ctx.db, id)
+        : SEED_FACTORS.find((f) => f.id === id) ?? null;
+
+    if (!factor) {
+      reply.code(404).send({ error: 'factor not found' });
+      return undefined;
+    }
+    return FactorByIdResponseSchema.parse({ factor });
+  });
 }

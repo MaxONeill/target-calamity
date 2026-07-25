@@ -10,6 +10,7 @@ import { useFactorFeed } from './hooks/useFactorFeed.js';
 import { useFactorStream } from './hooks/useFactorStream.js';
 import { useFieldPins } from './hooks/useFieldPins.js';
 import { useScene } from './hooks/useScene.js';
+import { useSelectedFactor } from './hooks/useSelectedFactor.js';
 import { useSlideoutPanel } from './hooks/useSlideoutPanel.js';
 import { toClockFactor } from './lib/clock/toClockFactor.js';
 import type { SceneHandle } from './scene/types.js';
@@ -79,14 +80,13 @@ export function App(): JSX.Element {
     onFieldInvalidated: reloadField,
   });
 
-  const selectedFactor = useMemo(
-    () =>
-      panel.selectedId ? feed.factors.find((f) => f.id === panel.selectedId) ?? null : null,
-    [panel.selectedId, feed.factors],
-  );
+  // The full record for the selected factor: the feed row when it is loaded,
+  // otherwise fetched by id on demand (pins and ring arcs are usually not on the
+  // first feed page once the set is large).
+  const selectedFactor = useSelectedFactor(panel.selectedId, feed.factors);
 
-  // Falls back to the lean field pin when a picked factor's card has not paged
-  // into the feed yet, so the detail panel shows metrics rather than nothing.
+  // While the full record is still resolving, fall back to the lean field pin so
+  // the panel shows metrics rather than nothing.
   const selectedPin = useMemo(
     () =>
       panel.selectedId && !selectedFactor

@@ -267,6 +267,15 @@ export const FeedResponseSchema = z.object({
   nextCursor: z.string().nullable(),
 });
 
+/**
+ * Response of `GET /api/factors/:id` — one fully-loaded factor with its
+ * citations. Lets the detail view resolve a selected pin or ring arc whose card
+ * has not been paged into the feed, instead of falling back to lean field data.
+ */
+export const FactorByIdResponseSchema = z.object({
+  factor: FactorSchema,
+});
+
 /* -------------------------------------------------------------------------- */
 /* Anonymous submission — POST /api/factors/submit                   */
 /* -------------------------------------------------------------------------- */

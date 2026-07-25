@@ -19,6 +19,7 @@ import type {
   CursorSchema,
   FeedRequestSchema,
   FeedResponseSchema,
+  FactorByIdResponseSchema,
   FactorSubmissionSchema,
   SubmissionOutcomeSchema,
   SubmissionResponseSchema,
@@ -48,6 +49,7 @@ export type Cursor = z.infer<typeof CursorSchema>;
 
 export type FeedRequest = z.infer<typeof FeedRequestSchema>;
 export type FeedResponse = z.infer<typeof FeedResponseSchema>;
+export type FactorByIdResponse = z.infer<typeof FactorByIdResponseSchema>;
 
 /**
  * The ONLY fields an anonymous submitter may send. Note what is absent:
