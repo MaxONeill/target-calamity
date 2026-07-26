@@ -1,0 +1,22 @@
+# Railway configuration for the DATABASE service only.
+#
+# This file exists because the repo-root railway.toml is written for the web
+# service, and Railway applies whichever config it finds to the service being
+# deployed. Without this override the database inherits the web service's
+# buildCommand/startCommand and dies with "npm could not be found" — the
+# Postgres image has no Node in it.
+#
+# Set this service's Root Directory to `db` in Railway so this file is the one
+# that gets read.
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# No startCommand on purpose: the Postgres image's own entrypoint must run, so
+# it can initdb on first boot and then exec the server. Any command here
+# replaces it.
+restartPolicyType = "on_failure"
+# A database is single-writer with one volume attached. Never scale this out.
+numReplicas = 1

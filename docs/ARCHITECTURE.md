@@ -288,11 +288,14 @@ The countdown target is derived in two stages:
 
 1. **Baseline** — the significance-weighted mean of central tipping years across
    factors that carry one. Nearer, heavier dated thresholds dominate.
-2. **Shift** — net polarity moves that baseline sooner (Calamity) or later
-   (Humanity), bounded by an operator-set `maxShiftYears`.
+2. **Shift** — net force moves each threshold's central estimate *within* its own
+   published earliest/latest band: sooner (Calamity) or later (Humanity), damped
+   by evidence mass.
 
-That bound is an **operator estimate**, read from `VITE_CLOCK_MAX_SHIFT_YEARS`.
-It is not a figure from any source and must never be presented as one.
+The bound is therefore the published band itself, not a configured number. At
+full force and full evidence the estimate reaches `earliest` or `latest` and
+stops; the band never moves. This is why there is no operator-set shift knob —
+the countdown cannot travel past a year some source actually published.
 
 With **no** tipping-point factors there is no baseline: the model reports
 `hasBaseline: false` and the UI suppresses the countdown rather than counting

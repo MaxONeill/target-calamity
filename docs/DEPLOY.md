@@ -10,12 +10,21 @@ Railway deploy.
 The schema needs `pgvector` **and** `PostGIS` **and** `ltree`. Railway's default
 Postgres image does **not** include PostGIS, so deploy our own image instead:
 
-1. New project → **Empty Service** → **Deploy from Dockerfile**, pointing at
-   `db/Dockerfile` (it's `pgvector/pgvector:pg17` + PostGIS + ltree).
+1. Add a service from this repo and set its **Root Directory** to `db`. That
+   makes Railway read `db/railway.toml`, which selects the Dockerfile builder
+   (`pgvector/pgvector:pg17` + PostGIS + ltree) and sets **no** start command.
+   This step is load-bearing: with the repo-root `railway.toml` in effect the
+   database inherits the web service's `npm start` and fails to boot with
+   *"The executable 'npm' could not be found"* — the Postgres image has no Node.
 2. Add a **Volume** mounted at `/var/lib/postgresql/data` so data survives
-   redeploys.
+   redeploys, and set `PGDATA=/var/lib/postgresql/data/pgdata`. Railway volumes
+   are ext4 and arrive containing `lost+found`; the Postgres entrypoint refuses
+   to `initdb` into a non-empty directory that has no `PG_VERSION`, so the data
+   must live in a subdirectory the image creates itself. Local `docker compose`
+   needs no such setting because Docker named volumes start genuinely empty.
 3. Set the service's env vars — `POSTGRES_USER`, `POSTGRES_PASSWORD`,
-   `POSTGRES_DB` — to match the `DATABASE_URL` you'll give the web service.
+   `POSTGRES_DB` — to match the `DATABASE_URL` you'll give the web service, plus
+   `TZ=UTC` and `PGTZ=UTC` (the pagination cursor depends on ordering).
 
 The extensions are enabled per-database by the migrations (`CREATE EXTENSION …`),
 which the web service runs on start — nothing to do by hand.
@@ -34,10 +43,11 @@ which the web service runs on start — nothing to do by hand.
 
 | Var | Value | Notes |
 | --- | --- | --- |
-| `DATABASE_URL` | `postgres://user:pass@<pg-service>:5432/db` | Reference the Postgres service. Its presence switches the app from seed mode to DB mode. |
-| `SUBMISSION_SALT` | a long random secret | **Fatal if missing in DB mode.** Generate once: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`. Rotating it resets all bans / rate-limit windows. |
+| `DATABASE_URL` | `postgresql://${{db.POSTGRES_USER}}:${{db.POSTGRES_PASSWORD}}@${{db.RAILWAY_PRIVATE_DOMAIN}}:5432/${{db.POSTGRES_DB}}` | Reference the Postgres service by its exact name. Use the **private** domain: `server/db/migrate.ts` builds a `Pool` with no `ssl` option, and the public TCP proxy expects TLS. Its presence switches the app from seed mode to DB mode. |
+| `SUBMISSION_SALT` | a long random secret | **Fatal if missing in DB mode.** Generate once with `openssl rand -base64 32`. Use a different value per environment — sharing one makes a leaked dev secret enough to reverse production's IP digests. Rotating it resets all bans / rate-limit windows. |
 | `TRUST_PROXY` | `1` | Railway sits behind a proxy; this makes the first `X-Forwarded-For` hop the real client IP for submission rate-limiting. Wrong (`0`) collapses every client onto the proxy address. |
-| `NODE_ENV` | `production` | |
+| `NODE_ENV` | `production` | Load-bearing at runtime: it's what makes `embeddings.ts` throw instead of silently falling back to the offline stub when `FIREWORKS_API_KEY` is absent. |
+| `NPM_CONFIG_INCLUDE` | `dev` | Required **because** of `NODE_ENV=production`, which otherwise makes npm skip `devDependencies` — where `typescript` and `vite` live. Without it the build fails with `sh: 1: tsc: not found`. |
 
 `PORT` is injected by Railway automatically — the server binds to it.
 

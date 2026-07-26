@@ -6,11 +6,12 @@ viable course-correction as a single headline "Clock."
 
 The Clock's countdown is **anchored to the factor set's own dated tipping
 points**: the baseline is the significance-weighted mean of the central tipping
-years across the factors that carry one, and net polarity then shifts that
-baseline sooner (Calamity) or later (Humanity), bounded by an **operator-set**
-`maxShiftYears` estimate. With **no** tipping-point factors there is no baseline
-and the countdown is **suppressed**, not invented. The shift bound is a
-configured estimate, never a figure quoted from a source.
+years across the factors that carry one, and net force then shifts each threshold
+sooner (Calamity) or later (Humanity) **within its own published earliest/latest
+band**. The bound is that published band, not a configured number, so the
+countdown can never travel past a year an actual source put in print. With **no**
+tipping-point factors there is no baseline and the countdown is **suppressed**,
+not invented.
 
 Every point on the globe is shaded by a two-field accumulation of nearby
 **factors**: signed *effect* (Calamity ↔ Humanity) weighted by *significance*.

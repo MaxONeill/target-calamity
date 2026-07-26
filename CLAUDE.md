@@ -97,8 +97,9 @@ These are product requirements, not preferences:
 
 - **Never fabricate to fill a gap.** No tipping-point factors means
   `hasBaseline: false` and a suppressed countdown, not a default target.
-- `maxShiftYears` (via `VITE_CLOCK_MAX_SHIFT_YEARS`) is an **operator estimate**,
-  not a figure from any source. Do not present it as one.
+- The Clock's shift is interpolation *inside* each threshold's published
+  earliest/latest band — it never moves the band. Do not reintroduce an operator
+  knob that lets the countdown travel past what a source actually published.
 - Paraphrased citations must never render as quotes; `verbatim` defaults to
   `false` so unknown provenance is treated as paraphrase.
 - Known gaps are documented rather than papered over — `verbatim` is the model's
