@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react';
+﻿import { useCallback, useMemo, useRef } from 'react';
 import { Clock } from './components/Clock/index.js';
 import { FactorDetails } from './components/FactorDetails/index.js';
 import { FightTheClock } from './components/FightTheClock/index.js';
@@ -15,6 +15,7 @@ import { useSelectedFactor } from './hooks/useSelectedFactor.js';
 import { useSlideoutPanel } from './hooks/useSlideoutPanel.js';
 import { useSwipe, type SwipeGesture } from './hooks/useSwipe.js';
 import { toClockFactor, toClockProjection } from './lib/clock/toClockFactor.js';
+import { withDisplayWeight } from './lib/displayWeight.js';
 import type { SceneHandle } from './scene/types.js';
 
 /**
@@ -41,7 +42,7 @@ export function App(): JSX.Element {
   // Touch gestures for the panel. Opening is restricted to a right-edge strip
   // rather than the whole screen: a horizontal drag anywhere else is an orbit,
   // and the strip sits above the canvas so the globe never sees the gesture at
-  // all. Closing is unambiguous — the swipe has to start on the open panel.
+  // all. Closing is unambiguous â€” the swipe has to start on the open panel.
   const onSwipe = useCallback(
     ({ direction, target }: SwipeGesture) => {
       const node = target instanceof Element ? target : null;
@@ -54,6 +55,17 @@ export function App(): JSX.Element {
     [panel],
   );
   useSwipe(appRef, { onSwipe });
+
+  // Display-only re-weighting for the GPU. Scoring produces sound per-item
+  // judgements but a narrow spread, so a globe tinted straight from
+  // `significance` shows far less variation than the judgements contain.
+  //
+  // The Clock deliberately keeps the RAW values (see clockFactors below):
+  // significance is `p` in its first-crossing model, and a corpus-relative
+  // number would assert a certainty no source gave, as well as making a
+  // factor's weight depend on what else happens to have been ingested.
+  const scenePins = useMemo(() => withDisplayWeight(fieldPins), [fieldPins]);
+  const sceneGlobalFactors = useMemo(() => withDisplayWeight(globalFactors), [globalFactors]);
 
   const coordsRef = useFactorCoords(fieldPins, feed.factors);
 
@@ -78,8 +90,10 @@ export function App(): JSX.Element {
   useScene({
     mountRef,
     sceneRef,
-    fieldPins,
-    globalFactors,
+    // Display weights, not raw scores — the GPU is the only consumer that wants
+    // a corpus-relative number.
+    fieldPins: scenePins,
+    globalFactors: sceneGlobalFactors,
     selectedId: panel.selectedId,
     landVisible,
     onPickFactor: useCallback(
@@ -184,3 +198,4 @@ export function App(): JSX.Element {
 }
 
 export default App;
+
