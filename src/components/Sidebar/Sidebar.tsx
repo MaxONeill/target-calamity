@@ -81,7 +81,9 @@ export function Sidebar({
       setFocusedIndex(clamped);
       const node = cardRefs.current[clamped];
       if (node) {
-        node.focus();
+        // preventScroll so focus does not pan an ancestor; the explicit call
+        // below is the scroll we actually want, bounded to the list.
+        node.focus({ preventScroll: true });
         node.scrollIntoView({ block: 'nearest' });
       }
     },

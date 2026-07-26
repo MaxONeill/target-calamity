@@ -91,7 +91,13 @@ body {
 .tc-app {
   position: fixed;
   inset: 0;
-  overflow: hidden;
+  /* `clip`, not `hidden`. Both suppress the scrollbar, but `hidden` still makes
+     this a SCROLL CONTAINER that focus() and scrollIntoView() can pan — and the
+     closed slideout sits at translateX(100%), well outside the box. Focusing
+     anything inside it therefore scrolled the entire app sideways, top bar
+     included. `clip` is not scrollable at all, so the whole class of bug is
+     impossible here rather than fixed one call site at a time. */
+  overflow: clip;
   background:
     radial-gradient(ellipse 120% 90% at 50% 40%, rgba(30, 34, 52, 0.35), transparent 70%),
     var(--tc-bg);

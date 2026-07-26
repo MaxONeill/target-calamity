@@ -241,7 +241,15 @@ export function FactorDetails({ factor, pin, onClose }: FactorDetailsProps): JSX
   // Escape closes; focus the panel on open so keyboard users land inside it.
   useEffect(() => {
     if (!open) return;
-    panelRef.current?.focus();
+    // preventScroll is load-bearing, not a nicety. Selecting a pin mounts this
+    // panel while the slideout is still parked at translateX(100%), i.e. fully
+    // off-screen. A plain focus() makes the browser scroll the element into
+    // view, and it does that by scrolling the nearest scrollable ancestor —
+    // .tc-app, whose `overflow: hidden` suppresses the scrollbar but still
+    // permits programmatic scrolling. The whole app container slid sideways,
+    // carrying the top bar with it, then snapped back when the panel finished
+    // its transition and the scroll offset was clamped to 0.
+    panelRef.current?.focus({ preventScroll: true });
     const onKeyDown = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
         e.stopPropagation();
