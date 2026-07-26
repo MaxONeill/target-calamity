@@ -105,14 +105,35 @@ function bandOf(score: number): string {
  * signal: if the model cannot order six statements whose order is definitional,
  * its ordering of the real factors is not worth writing to the database.
  */
+export type RankingResult =
+  | { ok: true; scores: Map<string, number> }
+  | { ok: false; reason: string };
+
 export function scoresFromRanking(
   ranked: readonly string[],
   factorIds: readonly string[],
-): Map<string, number> | null {
+): RankingResult {
   const expected = new Set<string>([...factorIds, ...ANCHORS.map((a) => a.id)]);
-  if (ranked.length !== expected.size) return null;
-  if (new Set(ranked).size !== ranked.length) return null;
-  for (const id of ranked) if (!expected.has(id)) return null;
+
+  // Each failure is named rather than collapsed into "unusable". A rejected
+  // batch costs a re-run, so knowing WHICH way the ranking broke is the
+  // difference between fixing the prompt, the batch size, or the anchors.
+  const unknown = ranked.filter((id) => !expected.has(id));
+  if (unknown.length > 0) {
+    return { ok: false, reason: `invented ${unknown.length} id(s): ${unknown.slice(0, 3).join(', ')}` };
+  }
+  const seen = new Set<string>();
+  const dupes = ranked.filter((id) => (seen.has(id) ? true : (seen.add(id), false)));
+  if (dupes.length > 0) {
+    return { ok: false, reason: `duplicated ${dupes.length} id(s): ${dupes.slice(0, 3).join(', ')}` };
+  }
+  if (ranked.length !== expected.size) {
+    const missing = [...expected].filter((id) => !seen.has(id));
+    return {
+      ok: false,
+      reason: `omitted ${missing.length} of ${expected.size} id(s): ${missing.slice(0, 3).join(', ')}`,
+    };
+  }
 
   const anchorScore = new Map(ANCHORS.map((a) => [a.id, a.score]));
   const anchorPositions: { index: number; score: number }[] = [];
@@ -120,12 +141,21 @@ export function scoresFromRanking(
     const score = anchorScore.get(id);
     if (score !== undefined) anchorPositions.push({ index, score });
   });
-  if (anchorPositions.length !== ANCHORS.length) return null;
+  if (anchorPositions.length !== ANCHORS.length) {
+    return { ok: false, reason: 'not all reference anchors were ranked' };
+  }
 
   // Anchors must descend: the ranking is most-significant-first and their true
   // order is known. Out of order means the ranking is noise.
   for (let i = 1; i < anchorPositions.length; i++) {
-    if (anchorPositions[i]!.score >= anchorPositions[i - 1]!.score) return null;
+    if (anchorPositions[i]!.score >= anchorPositions[i - 1]!.score) {
+      return {
+        ok: false,
+        reason:
+          `reference anchors out of order at position ${anchorPositions[i]!.index} ` +
+          `(${anchorPositions[i - 1]!.score} then ${anchorPositions[i]!.score})`,
+      };
+    }
   }
 
   const out = new Map<string, number>();
@@ -149,7 +179,7 @@ export function scoresFromRanking(
     const t = span === 0 ? 0.5 : (index - below.index) / span;
     out.set(id, below.score + t * (above.score - below.score));
   });
-  return out;
+  return { ok: true, scores: out };
 }
 
 const RANK_SYSTEM =
@@ -187,7 +217,14 @@ async function rowsToScore(db: Database, force: boolean): Promise<Row[]> {
      -- sitting at 0.90 precisely because pending rows were never re-scored.
      WHERE verification_state <> 'rejected'
        AND (${force} OR significance_scale IS NULL)
-     ORDER BY significance DESC, id ASC
+     -- Ordered by id, NOT by significance. Ordering by the value being computed
+     -- makes batch composition depend on the previous run's output: a factor
+     -- lands beside different neighbours each time, gets ranked against a
+     -- different comparison set, and scores differently — which reorders the
+     -- next run again. Across three runs AMOC moved 0.95 → 0.94 → 0.54 on
+     -- unchanged evidence. A stable key breaks the loop and makes a re-run
+     -- reproducible.
+     ORDER BY id ASC
   `.execute(db);
   return rows;
 }
@@ -258,6 +295,12 @@ export async function backfillSignificance(
           // Anchors spread through the list rather than grouped at either end,
           // so their positions do not hint at an ordering before the model has
           // done the work.
+          // SHORT ids, never UUIDs. Asking the model to echo back 36-character
+          // UUIDs made it truncate them to their first segment ("819e2ab2") or
+          // drop items rather than reproduce them — three consecutive batches
+          // were rejected for invented or omitted ids until this changed.
+          // F1..Fn are trivially copyable and mapped back locally.
+          const shortId = new Map<string, Row>();
           const items: { id: string; text: string }[] = [];
           const stride = Math.max(1, Math.ceil(batch.length / (ANCHORS.length + 1)));
           let anchorIdx = 0;
@@ -266,8 +309,9 @@ export async function backfillSignificance(
               const a = ANCHORS[anchorIdx++]!;
               items.push({ id: a.id, text: `[REFERENCE] ${a.text}` });
             }
+            shortId.set(`F${i + 1}`, row);
             items.push({
-              id: row.id,
+              id: `F${i + 1}`,
               text: `${row.name} â€” ${row.description.slice(0, 400)} (scope: ${row.spatial_path})`,
             });
           });
@@ -285,21 +329,33 @@ export async function backfillSignificance(
             schemaName: 'SignificanceRanking',
           });
 
-          const scores = out ? scoresFromRanking(out.ranked, batch.map((r) => r.id)) : null;
-          if (!scores) {
+          if (!out) {
+            rejected += 1;
+            logger.warn(
+              `[significance] batch ${batchIndex + 1}: model returned no parseable ` +
+                `ranking — ${batch.length} factor(s) left unscored.`,
+            );
+            continue;
+          }
+          const result = scoresFromRanking(
+            out.ranked,
+            [...shortId.keys()],
+          );
+          if (!result.ok) {
             // Rather than fall back to an absolute score â€” the very thing this
             // replaces â€” an unusable ranking leaves the batch untouched. Those
             // rows stay unscored and a re-run picks them up.
             rejected += 1;
             logger.warn(
-              `[significance] batch ${batchIndex + 1} produced an unusable ranking ` +
-                `(missing, duplicated, or anchors out of order) â€” left unscored.`,
+              `[significance] batch ${batchIndex + 1} rejected: ${result.reason} ` +
+                `(returned ${out.ranked.length}, expected ${batch.length + ANCHORS.length}) — ` +
+                `${batch.length} factor(s) left unscored.`,
             );
             continue;
           }
 
-          for (const row of batch) {
-            const next = scores.get(row.id);
+          for (const [key, row] of shortId) {
+            const next = result.scores.get(key);
             if (next === undefined) continue;
             const band = bandOf(next);
             await sql`
@@ -340,5 +396,7 @@ if (invokedDirectly) {
     process.exitCode = 1;
   });
 }
+
+
 
 
