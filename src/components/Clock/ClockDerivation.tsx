@@ -134,10 +134,6 @@ export function ClockDerivation({
 
       <div className="tc-clock-statusline">
         <span className="tc-clock-tag">MODELED PROJECTION</span>
-        <span className="tc-clock-sep">·</span>
-        <span className="tc-clock-tag tc-clock-tag-muted">
-          ESTIMATE, NOT A MEASUREMENT
-        </span>
       </div>
 
       <TargetHeadline model={model} />

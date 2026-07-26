@@ -60,9 +60,9 @@ function hostOf(url: string): string {
   }
 }
 
-/** Whole years render bare ("2050"); fractional keep one decimal ("2048.3"). */
+/** Years render to the nearest whole year: 2048.3 → "2048". */
 function fmtYear(year: number): string {
-  return Number.isInteger(year) ? String(year) : year.toFixed(1);
+  return String(Math.round(year));
 }
 
 /** The tipping-point range as "2027–2035", "≤ 2060", "≥ 2025", or "" when unbounded. */

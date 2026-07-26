@@ -35,7 +35,13 @@ export function splitDuration(ms: number): CountdownParts {
   return { years, days, hours, minutes, seconds: rem - minutes * 60 };
 }
 
-/** Formats a decimal year: whole years as "2050", fractional as "2048.3". */
+/**
+ * Formats a decimal year to the nearest whole year: 2048.3 → "2048".
+ *
+ * The model works in fractional years because it interpolates between published
+ * bounds, but a tenth of a year is far below the precision any source actually
+ * carries, so rendering it implied accuracy that is not there.
+ */
 export function formatYear(year: number): string {
-  return Number.isInteger(year) ? String(year) : year.toFixed(1);
+  return String(Math.round(year));
 }

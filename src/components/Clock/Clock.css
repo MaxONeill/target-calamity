@@ -25,7 +25,9 @@
   position: relative;
   box-sizing: border-box;
   width: max-content;
-  max-width: 480px;
+  /* `100%` keeps `max-content` from growing past the slot on a phone; without it
+     the widest child sets the width and the Clock overhangs the viewport. */
+  max-width: min(480px, 100%);
   color: var(--tc-text);
   font-family: var(--tc-mono);
   font-variant-numeric: tabular-nums;
@@ -113,8 +115,11 @@
   position: relative;
   box-sizing: border-box;
   width: 100%;
-  min-width: 340px;
-  max-width: 480px;
+  /* The 340px floor moved to the CONTENT (below). Holding it here made the panel
+     itself wider than a narrow viewport, pushing the whole Clock off-screen
+     instead of scrolling. */
+  min-width: 0;
+  max-width: 100%;
   padding: 20px 22px 16px;
   background: linear-gradient(180deg, var(--tc-panel), var(--tc-panel-2));
   border: 1px solid var(--tc-line-strong);
@@ -145,6 +150,10 @@
   transform: translateY(0);
   pointer-events: auto;
   overflow-y: auto;
+  /* Never sideways. The derivation reflows to whatever width it is given (see
+     the narrow-viewport rules at the end of this file); a horizontal scrollbar
+     would mean it had failed to. */
+  overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: var(--tc-line-strong) transparent;
 }
@@ -180,14 +189,6 @@
   color: var(--tc-accent);
 }
 
-.tc-clock-tag-muted {
-  color: var(--tc-text-faint);
-}
-
-.tc-clock-sep {
-  color: var(--tc-text-faint);
-}
-
 /* -------------------------------- primary --------------------------------- */
 
 .tc-clock-primary {
@@ -204,19 +205,19 @@
 }
 
 .tc-clock-horizon-approx {
-  font-size: 26px;
+  font-size: 32;
   color: var(--tc-text-faint);
 }
 
 .tc-clock-horizon-value {
-  font-size: 58px;
+  font-size: 32px;
   font-weight: 600;
   color: var(--tc-text);
-  letter-spacing: 0.01em;
+  letter-spacing: 0.04em;
 }
 
 .tc-clock-horizon-unit {
-  font-size: 16px;
+  font-size: 11px;
   color: var(--tc-text-dim);
   letter-spacing: 0.2em;
 }
@@ -381,7 +382,9 @@
 
 .tc-clock-derivation {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* minmax(0, 1fr) rather than 1fr: grid items floor at min-content by default,
+     so a long metric label would widen the track past the panel. */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1px;
   margin: 16px 0 0;
   background: var(--tc-line);
@@ -524,5 +527,26 @@
 .tc-clock-sound[aria-pressed='true'] {
   color: var(--tc-accent);
   border-color: var(--tc-accent);
+}
+
+/* ---------------------------- narrow viewports ---------------------------- */
+
+/* The panel gets whatever width the viewport allows and the content reflows to
+   it. Nothing here may reintroduce a horizontal scrollbar: `overflow-x: hidden`
+   on the expander means anything that refuses to reflow is silently clipped,
+   which is worse than a scrollbar, so widths must be fluid all the way down. */
+@media (max-width: 560px) {
+  /* Two side-by-side metrics stop being legible well before they stop fitting. */
+  .tc-clock-derivation {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tc-clock-expander {
+    padding-left: 14px;
+    padding-right: 14px;
+    /* Long unbroken tokens — source domains, factor labels — would otherwise
+       set a min-content floor wider than the panel. */
+    overflow-wrap: anywhere;
+  }
 }
 
