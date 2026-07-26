@@ -70,21 +70,82 @@ export interface ReputabilityOptions {
 /* Live scoring                                                               */
 /* -------------------------------------------------------------------------- */
 
-/** Live output contract (zod v4 — source of truth for grammar AND validation). */
+/**
+ * Live output contract (zod v4 — source of truth for grammar AND validation).
+ *
+ * TWO axes, not one. The original schema asked for a single number rating "how
+ * much a careful analyst should trust that this source establishes that claim",
+ * which silently multiplies credibility by quote-fit — and that biases the whole
+ * corpus toward news.
+ *
+ * A news article states its entire claim in its lead sentence, so the extracted
+ * quote fits perfectly and the score stays high. A paper states a threshold in a
+ * table, a figure caption, or across a results section, so ANY single quote
+ * supports the claim only partially and the score collapses. The observed
+ * result: a Nature article scored 0.15 and was rejected while researchgate.net —
+ * a repost aggregator — passed, and just 1 of 99 ingested factors cited primary
+ * literature at all.
+ *
+ * Separating the axes lets a strong publisher with a partial quote survive,
+ * while stopping a perfect quote from carrying an aggregator over the bar.
+ */
 const ScoreSchema = z.object({
-  score: z.number(),
+  /** Primacy and editorial standards of the publisher, independent of the quote. */
+  sourceCredibility: z.number(),
+  /** How completely this particular quote backs this particular claim. */
+  claimSupport: z.number(),
   reasoning: z.string(),
 });
 
+/**
+ * Credibility dominates because it is the axis we can observe reliably.
+ *
+ * Claim support is measured from ONE extracted sentence, which under-represents
+ * a primary source almost by construction — the number usually lives in a table
+ * the extractor never quoted. Credibility, by contrast, is a property of the
+ * publisher and is judged well from the URL alone. Weighting them equally would
+ * reproduce the bias this split exists to remove.
+ *
+ * The weights are a stated policy, not a tuned constant: they are here, in the
+ * open, testable, rather than buried in a prompt's wording.
+ */
+const CREDIBILITY_WEIGHT = 0.7;
+const SUPPORT_WEIGHT = 0.3;
+
+/**
+ * Support below this means the quote does not back the claim at all — a mis-cite
+ * or a hallucinated quote. No publisher's reputation should rescue that, so the
+ * combined score is floored to zero rather than blended.
+ */
+const SUPPORT_FLOOR = 0.15;
+
+/** Combine the two axes into the single score callers gate on. */
+export function combineScores(sourceCredibility: number, claimSupport: number): number {
+  if (claimSupport < SUPPORT_FLOOR) return 0;
+  return CREDIBILITY_WEIGHT * sourceCredibility + SUPPORT_WEIGHT * claimSupport;
+}
+
 const SCORING_SYSTEM =
-  'You are a source-credibility rater for a fact-tracking system. Given a source ' +
-  '(URL, publisher, supporting quote) and the claim it is cited for, rate how much ' +
-  'a careful analyst should trust that this source establishes that claim. Return ' +
-  'score in [0,1]: ~0.9+ for primary/peer-reviewed/official-statistics sources; ' +
-  '~0.7-0.85 for established mainstream outlets; ~0.4-0.6 for weaker secondary or ' +
-  'aggregator sources; <0.4 for anonymous blogs, social posts, or sources that do ' +
-  'not actually support the claim. Consider primacy, editorial standards, and ' +
-  'whether the quote genuinely backs the claim. Explain briefly in reasoning.';
+  'You rate sources for a fact-tracking system. Given a source (URL, publisher, ' +
+  'supporting quote) and the claim it is cited for, return TWO INDEPENDENT ' +
+  'scores in [0,1]. Do not let one influence the other. ' +
+  'sourceCredibility rates the PUBLISHER alone, ignoring the quote entirely: ' +
+  '~0.9+ for peer-reviewed journals, official statistics agencies, and primary ' +
+  'scientific assessments (Nature, Science, PNAS, IPCC, Copernicus/EGU journals, ' +
+  'NOAA, NASA, WMO, national statistics offices); ~0.7-0.85 for established ' +
+  'mainstream outlets and reputable NGO or institutional reports; ~0.4-0.6 for ' +
+  'REPOST AGGREGATORS that host other people\'s papers without editorial ' +
+  'responsibility (ResearchGate, Academia.edu, Scribd, content farms) even when ' +
+  'the hosted paper is genuine — cite the publisher, not the mirror; <0.4 for ' +
+  'anonymous blogs, social posts, and SEO content. ' +
+  'claimSupport rates ONLY whether this quote backs this claim: 1.0 if it states ' +
+  'it outright, ~0.5-0.8 if it supports part of it or supports it in context, ' +
+  'and <0.15 ONLY if the quote is irrelevant to the claim or contradicts it. ' +
+  'PARTIAL SUPPORT IS NORMAL AND EXPECTED for primary literature: a paper states ' +
+  'its threshold in a table or figure, so an extracted sentence often gestures at ' +
+  'the finding rather than containing the number. Do not mark that down as though ' +
+  'the source were unreliable — that is a property of quoting a paper, not a ' +
+  'defect in the paper. Explain both scores briefly in reasoning.';
 
 function scoringPrompt(input: SourceToScore): string {
   return (
@@ -254,9 +315,15 @@ export async function scoreSource(
       );
       return scoreSourceOffline(input);
     }
+    const credibility = clamp01(out.sourceCredibility);
+    const support = clamp01(out.claimSupport);
     return {
-      score: clamp01(out.score),
-      reasoning: out.reasoning.trim() || '(model gave no reasoning)',
+      score: clamp01(combineScores(credibility, support)),
+      // Both axes go into the persisted audit trail: "0.62" is not reviewable,
+      // "credible publisher, weak quote" is — and it names which half to fix.
+      reasoning:
+        `[credibility ${credibility.toFixed(2)} · support ${support.toFixed(2)}] ` +
+        (out.reasoning.trim() || '(model gave no reasoning)'),
       provenance: 'live',
     };
   } catch (err) {

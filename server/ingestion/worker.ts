@@ -91,6 +91,36 @@ import { createLlmResolver } from './resolver.js';
  * go stale. Each domain pairs a decay query with its counter-force so both poles
  * of the same arena are probed.
  */
+/**
+ * ASSESSMENT sweep — the same domains, aimed at a different GENRE of document.
+ *
+ * The news sweep below is phrased "latest / recent / newest", which retrieves
+ * news. Thresholds are not published in news; they are published in assessments
+ * and reviews. The evidence was one-sided: of 99 ingested factors, exactly ONE
+ * cited IPCC, Nature, Science, PNAS or Copernicus, and every dated threshold in
+ * the set traced back to the single topic that happened to mention ice sheets,
+ * AMOC and permafrost by name.
+ *
+ * These name no element on purpose. Listing "Greenland, Barents, boreal forest"
+ * would cap discovery at whatever the author thought of and bake their priors
+ * into the data — the same mistake as a fixed vocabulary for `quantity`. Naming
+ * the genre instead retrieves documents that ENUMERATE thresholds, and one such
+ * review surfaces a dozen elements nobody had to anticipate.
+ *
+ * Run with a higher candidate cap than the news sweep: a review paper naming
+ * sixteen tipping elements is worth sixteen factors, and the default cap of six
+ * would silently discard the rest — the discovery bottleneck sits downstream of
+ * retrieval, not in it.
+ */
+export const ASSESSMENT_TOPICS: readonly string[] = [
+  'peer-reviewed assessments of irreversible thresholds and points of no return in the climate system and cryosphere',
+  'scientific reviews identifying critical thresholds and regime shifts in ocean and marine systems',
+  'assessment literature on ecosystem collapse thresholds in forests, biodiversity, and land systems',
+  'published critical thresholds for freshwater, aquifer depletion, and food-system failure',
+  'research identifying thresholds beyond which public-health or antimicrobial-resistance harm becomes irreversible',
+  'scholarship on thresholds of institutional, economic, or societal breakdown from which recovery is not observed',
+];
+
 const DEFAULT_TOPICS: readonly string[] = [
   // Climate system & energy
   'latest climate tipping point and cryosphere findings: ice sheets, AMOC, permafrost', // C
@@ -131,6 +161,23 @@ const DEFAULT_INTERVAL_HOURS = 6;
 const DEFAULT_BATCH_TOPICS = 3;
 const DEFAULT_MAX_CANDIDATES = 6;
 
+/**
+ * Candidate cap for the assessment sweep. Higher than the news default because
+ * the documents are different: a news item carries one finding, a review carries
+ * a table of them. Capping both at six throws away most of what makes the
+ * assessment genre worth retrieving.
+ */
+const DEFAULT_ASSESSMENT_MAX_CANDIDATES = 20;
+
+/**
+ * A topic plus how many candidates it may yield. Genres differ in density, so
+ * the cap travels with the query rather than being one global number.
+ */
+export interface Sweep {
+  topic: string;
+  maxCandidates: number;
+}
+
 /** Parse `INGEST_TOPICS` (comma/newline separated) or fall back to the defaults. */
 function topicsFromEnv(env: NodeJS.ProcessEnv): string[] {
   const raw = env.INGEST_TOPICS?.trim();
@@ -141,6 +188,35 @@ function topicsFromEnv(env: NodeJS.ProcessEnv): string[] {
     .filter((t) => t.length > 0);
   return parsed.length > 0 ? parsed : [...DEFAULT_TOPICS];
 }
+
+/**
+ * Interleave one assessment sweep into each news batch.
+ *
+ * Not appended to the same list: with 22 news topics rotating 3 at a time, an
+ * assessment topic would surface about every seventh cycle, and the threshold
+ * intake would stay as starved as it already was. One per batch guarantees the
+ * genre is probed every cycle regardless of where the news window sits.
+ *
+ * An explicit `INGEST_TOPICS` suppresses this — an operator who names topics
+ * gets exactly those, with no silent additions.
+ */
+function sweepsForCycle(env: NodeJS.ProcessEnv, newsBatch: string[]): Sweep[] {
+  const maxCandidates = positiveIntEnv(env.INGEST_MAX_CANDIDATES, DEFAULT_MAX_CANDIDATES);
+  const news: Sweep[] = newsBatch.map((topic) => ({ topic, maxCandidates }));
+
+  if (env.INGEST_TOPICS?.trim()) return news;
+
+  const assessmentMax = positiveIntEnv(
+    env.INGEST_ASSESSMENT_MAX_CANDIDATES,
+    DEFAULT_ASSESSMENT_MAX_CANDIDATES,
+  );
+  const pick = ASSESSMENT_TOPICS[assessmentCursor % ASSESSMENT_TOPICS.length]!;
+  assessmentCursor++;
+  return [...news, { topic: pick, maxCandidates: assessmentMax }];
+}
+
+/** Rotates the assessment sweep independently of the news window. */
+let assessmentCursor = 0;
 
 function positiveIntEnv(value: string | undefined, fallback: number): number {
   const n = value ? Number.parseInt(value, 10) : NaN;
@@ -272,15 +348,19 @@ export async function runIngestOnce(
   }
 
   const batchSize = positiveIntEnv(env.INGEST_BATCH_TOPICS, DEFAULT_BATCH_TOPICS);
-  const maxCandidates = positiveIntEnv(
-    env.INGEST_MAX_CANDIDATES,
-    DEFAULT_MAX_CANDIDATES,
-  );
-  const topics = boundedBatch(topicsFromEnv(env), batchSize);
+  const sweeps = sweepsForCycle(env, boundedBatch(topicsFromEnv(env), batchSize));
+  const topics = sweeps.map((s) => s.topic);
   cycleCounter++;
 
+  // The cap travels with the topic: an assessment review is worth many more
+  // candidates than a news item, and one global number starves whichever genre
+  // it was not tuned for.
+  const capFor = new Map(sweeps.map((s) => [s.topic, s.maxCandidates]));
   const research: ResearchFn = (topic) =>
-    researchFactors(topic, { maxCandidates, logger });
+    researchFactors(topic, {
+      maxCandidates: capFor.get(topic) ?? DEFAULT_MAX_CANDIDATES,
+      logger,
+    });
   const gate = buildReputabilityGate(logger, { logger });
 
   const { db, pool } = createDatabase(connectionString);

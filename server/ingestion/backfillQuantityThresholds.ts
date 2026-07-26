@@ -24,19 +24,29 @@
  * the data. That is the cost of not storing negatives, and it is bounded by
  * --limit.
  */
+import { createHash } from 'node:crypto';
 import { realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { sql } from 'kysely';
 import * as z from 'zod/v4';
 import { createDatabase, type Database } from '../db.js';
 import {
+  firecrawlSearch,
+  hasRetrievalCredentials,
+  publisherFromUrl,
+  type RetrievedDocument,
+} from './firecrawlClient.js';
+import {
   getLlmClient,
   hasLiveCredentials,
   ingestModel,
   structuredCompletion,
 } from './llmClient.js';
+import { scoreSource, REPUTABILITY_VERIFY_THRESHOLD } from './reputability.js';
+import { renderSourceBlocks } from './websearch.js';
 
-const CONCURRENCY = 4;
+/** Serial, not concurrent: each row now costs a retrieval as well as a turn. */
+const CONCURRENCY = 2;
 
 const QuantityJudgementSchema = z.object({
   /** False when the sources state no measurable threshold for this factor. */
@@ -49,27 +59,40 @@ const QuantityJudgementSchema = z.object({
   highValue: z.number().nullable(),
   /** Crossing it ends the possibility of correction. Same test as closesWindow. */
   closesWindow: z.boolean(),
+  /** 1-based index of the SOURCE block the threshold was read from. */
+  sourceIndex: z.number(),
+  /** The sentence in the source that states the threshold. Never paraphrased. */
+  quote: z.string(),
   reasoning: z.string(),
 });
 
 const JUDGE_SYSTEM =
-  'You identify whether a factor has a TIPPING THRESHOLD stated against a ' +
-  'measurable quantity — how the tipping-point literature usually publishes one. ' +
-  'Examples: "the Greenland ice sheet destabilises at about 1.5 degC of warming ' +
-  'above pre-industrial", "AMOC collapse becomes likely around 4 degC", "Amazon ' +
-  'dieback beyond 20-25% deforested". ' +
-  'Set found=true ONLY if a real, published threshold exists for THIS factor. ' +
+  'You extract a TIPPING THRESHOLD stated against a measurable quantity, FROM THE ' +
+  'RETRIEVED SOURCES BELOW — how the tipping-point literature usually publishes ' +
+  'one. Examples of the form: "the Greenland ice sheet destabilises at about ' +
+  '1.5 degC of warming above pre-industrial", "Amazon dieback beyond 20-25% ' +
+  'deforested". ' +
+  'Set found=true ONLY when a source in front of you STATES the threshold. Do not ' +
+  'answer from background knowledge: a number you recall but cannot point at in a ' +
+  'source is exactly what this must not produce, because it anchors a countdown ' +
+  'that claims every input is traceable to a citation. ' +
   'quantity is what is measured, value/unit where the threshold sits, ' +
   'lowValue/highValue the published range (null if none), and baseline the ' +
   'reference the value is measured against (e.g. "pre-industrial (1850-1900)"), ' +
-  'null if none is stated. NEVER guess a baseline: the same quantity on two ' +
-  'baselines can differ enough to move a date by decades. ' +
+  'null if the source does not state one. NEVER guess a baseline: the same ' +
+  'quantity on two baselines can differ enough to move a date by decades. ' +
+  'sourceIndex is the SOURCE block the threshold came from, and quote is the ' +
+  'sentence stating it, copied verbatim. ' +
   'closesWindow is TRUE only if crossing it means human action can NO LONGER ' +
   'restore the prior state — self-sustaining or irreversible on a policy ' +
   'timescale. Severity is not the test; irreversibility is. ' +
-  'Set found=false for ongoing pressures, counter-forces, and anything whose ' +
-  'threshold you would have to invent. Most factors have none, and saying so is ' +
-  'the correct answer. Give one sentence of reasoning either way.';
+  'Set found=false when the sources give no threshold for THIS factor. Most ' +
+  'factors have none, and saying so is the correct answer.';
+
+/** Aimed at the assessment literature, where thresholds are stated. */
+function thresholdQuery(name: string): string {
+  return `${name} tipping point threshold assessment published critical value`;
+}
 
 interface Row {
   id: string;
@@ -89,10 +112,19 @@ async function candidateRows(db: Database): Promise<Row[]> {
   return rows;
 }
 
+/**
+ * Persist the threshold AND the source it was read from.
+ *
+ * The citation is the point of this backfill. A threshold anchors the countdown,
+ * so it is the last thing that should be the one input without provenance —
+ * `label` names the source inline for the Why panel, and the citation row puts
+ * it in the same audit trail as every other claim.
+ */
 async function writeThreshold(
   db: Database,
   id: string,
   verdict: z.infer<typeof QuantityJudgementSchema>,
+  doc: RetrievedDocument,
 ): Promise<void> {
   const quantityThreshold: Record<string, unknown> = {
     quantity: verdict.quantity.trim().slice(0, 300),
@@ -108,7 +140,14 @@ async function writeThreshold(
     quantityThreshold.highValue = verdict.highValue;
   }
 
-  const tippingPoint: Record<string, unknown> = { quantityThreshold };
+  const publisher = publisherFromUrl(doc.url, doc.title);
+  const tippingPoint: Record<string, unknown> = {
+    quantityThreshold,
+    label: `${verdict.value} ${verdict.unit.trim()} ${verdict.quantity.trim()} (${publisher})`.slice(
+      0,
+      500,
+    ),
+  };
   // Only the affirmative judgement is stored; absent already means "does not
   // anchor", so writing false would grow the row for no signal.
   if (verdict.closesWindow) tippingPoint.closesWindow = true;
@@ -118,6 +157,18 @@ async function writeThreshold(
        SET tipping_point = ${sql.val(JSON.stringify(tippingPoint))}::jsonb
      WHERE id = ${id}::uuid
        AND tipping_point IS NULL
+  `.execute(db);
+
+  // content_hash is the per-finding idempotency key, so re-running never
+  // duplicates a citation for the same source+quote.
+  const quote = verdict.quote.trim().slice(0, 2000);
+  // Hashed here, not in SQL: this schema deliberately does not install pgcrypto
+  // (gen_random_uuid is core from PG13), so digest() does not exist.
+  const contentHash = createHash('sha256').update(`${doc.url}|${quote}`).digest('hex');
+  await sql`
+    INSERT INTO citations (factor_id, source_url, publisher, quote_snippet, content_hash)
+    VALUES (${id}::uuid, ${doc.url}, ${publisher}, ${quote}, ${contentHash})
+    ON CONFLICT DO NOTHING
   `.execute(db);
 }
 
@@ -129,11 +180,12 @@ export async function backfillQuantityThresholds(
     logger.warn('[quantities] no DATABASE_URL — nothing to backfill, exiting.');
     return;
   }
-  if (!hasLiveCredentials()) {
+  if (!hasLiveCredentials() || !hasRetrievalCredentials()) {
     logger.warn(
-      '[quantities] no FIREWORKS_API_KEY — a published threshold cannot be ' +
-        'recalled deterministically, and inventing one would date the Clock off a ' +
-        'number no source states. Exiting.',
+      '[quantities] needs BOTH FIREWORKS_API_KEY and FIRECRAWL_API_KEY. The ' +
+        'threshold must be READ from a retrieved source, not recalled: a number ' +
+        'nobody can point at in a citation would anchor the countdown while the ' +
+        'product claims every input is traceable. Exiting.',
     );
     return;
   }
@@ -166,15 +218,24 @@ export async function backfillQuantityThresholds(
       while (cursor < rows.length) {
         const row = rows[cursor++]!;
         try {
+          const docs = await firecrawlSearch(
+            thresholdQuery(row.name),
+            process.env.FIRECRAWL_API_KEY as string,
+            { maxResults: 6 },
+          );
+          done += 1;
+          if (docs.length === 0) continue;
+
           const verdict = await structuredCompletion({
             client,
             model,
             system: JUDGE_SYSTEM,
-            user: `NAME: ${row.name}\n\nDESCRIPTION: ${row.description}`,
+            user:
+              `FACTOR: ${row.name}\n\nDESCRIPTION: ${row.description}\n\n` +
+              renderSourceBlocks(docs),
             schema: QuantityJudgementSchema,
             schemaName: 'QuantityThresholdJudgement',
           });
-          done += 1;
           if (!verdict || !verdict.found) continue;
           if (
             !Number.isFinite(verdict.value) ||
@@ -185,13 +246,39 @@ export async function backfillQuantityThresholds(
             continue;
           }
 
-          await writeThreshold(db, row.id, verdict);
+          // A source index naming no retrieved document means the threshold was
+          // recalled rather than read. That is the exact failure this rewrite
+          // exists to stop, so it is dropped rather than stored unsourced.
+          const doc = docs[verdict.sourceIndex - 1];
+          if (!doc) {
+            logger.warn(
+              `[quantities] "${row.name.slice(0, 40)}" cited source ${verdict.sourceIndex}, ` +
+                `which does not exist — dropped as unsourced.`,
+            );
+            continue;
+          }
+
+          const score = await scoreSource({
+            url: doc.url,
+            publisher: publisherFromUrl(doc.url, doc.title),
+            claim: `${row.name} crosses a threshold at ${verdict.value} ${verdict.unit} ${verdict.quantity}`,
+            quoteSnippet: verdict.quote,
+          });
+          if (score.score < REPUTABILITY_VERIFY_THRESHOLD) {
+            logger.warn(
+              `[quantities] rejected ${doc.url} for "${row.name.slice(0, 32)}" ` +
+                `(reputability ${score.score.toFixed(2)})`,
+            );
+            continue;
+          }
+
+          await writeThreshold(db, row.id, verdict, doc);
           found += 1;
           if (verdict.closesWindow) anchors += 1;
           logger.info(
             `[quantities] ${verdict.closesWindow ? 'ANCHOR ' : '—      '} ` +
-              `${verdict.value} ${verdict.unit} ${verdict.quantity.slice(0, 40)} ` +
-              `· ${row.name.slice(0, 40)}`,
+              `${verdict.value} ${verdict.unit} ${verdict.quantity.slice(0, 34)} ` +
+              `· ${row.name.slice(0, 34)} · ${publisherFromUrl(doc.url, doc.title)}`,
           );
         } catch (err) {
           done += 1;

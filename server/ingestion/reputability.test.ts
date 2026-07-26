@@ -10,6 +10,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   scoreSource,
   scoreSourceOffline,
+  combineScores,
   REPUTABILITY_VERIFY_THRESHOLD,
   type SourceToScore,
 } from './reputability.js';
@@ -92,5 +93,29 @@ describe('scoreSource — no-credential fallback', () => {
     const result = await scoreSource(input);
     expect(result.provenance).toBe('offline-stub');
     expect(result).toEqual(scoreSourceOffline(input));
+  });
+});
+
+describe('combineScores — credibility and claim support are separate axes', () => {
+  // Regression: one conflated score rejected a Nature article at 0.15 while
+  // researchgate.net passed, leaving 1 of 99 factors citing primary literature.
+  // A paper states its threshold in a table, so any ONE extracted quote supports
+  // the claim only partially — a property of quoting a paper, not a defect in it.
+  it('lets a primary source with a partial quote clear the bar', () => {
+    expect(combineScores(0.95, 0.4)).toBeGreaterThanOrEqual(REPUTABILITY_VERIFY_THRESHOLD);
+  });
+
+  it('does not let a perfect quote carry a repost aggregator over it', () => {
+    // ResearchGate hosting a real paper is still a mirror, not a publisher.
+    expect(combineScores(0.45, 1.0)).toBeLessThan(REPUTABILITY_VERIFY_THRESHOLD);
+  });
+
+  it('floors to zero when the quote does not support the claim at all', () => {
+    // A mis-cite or hallucinated quote is not rescued by the publisher name.
+    expect(combineScores(1.0, 0.05)).toBe(0);
+  });
+
+  it('weights credibility above support, the noisier axis', () => {
+    expect(combineScores(0.9, 0.5)).toBeGreaterThan(combineScores(0.5, 0.9));
   });
 });
