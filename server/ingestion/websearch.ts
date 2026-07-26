@@ -230,7 +230,25 @@ const EXTRACTION_SYSTEM =
   'present in the notes — do not invent sources or figures. effect is a SIGNED ' +
   'number in [-1, 1]: negative = Calamity (systemic decay), positive = Humanity ' +
   '(resilient counter-measure); its MAGNITUDE reflects how decisive the force is. ' +
-  'significance is in [0, 1] (weight/confidence). lat/lon are WGS84 degrees. ' +
+  'significance is in [0, 1] and measures HOW MUCH OF THE SYSTEM THIS MOVES — ' +
+  'not how newsworthy it is, and NOT how confident you are (source confidence is ' +
+  'scored separately). Anchor it to the scale of the system affected: ' +
+  '0.90-1.00 planetary, altering an Earth-system subsystem — global climate, ' +
+  'ocean circulation, a major biome, the global food or energy supply; ' +
+  '0.70-0.85 continental or multi-national, or a globally dominant sector; ' +
+  '0.40-0.65 one country, one sector, or one biome region; ' +
+  '0.15-0.35 sub-national, a single species, or a single ecosystem; ' +
+  'below 0.15 a single site or one organisation. ' +
+  'Worked contrast, because this is the error to avoid: global coral-reef ' +
+  'collapse is 0.9+ (a planetary biome), while a national single-species ' +
+  'recovery such as the Iberian lynx is ~0.25 — a real and welcome success, but ' +
+  'it moves one species in one country. They must NOT score alike. ' +
+  'A finding about one country scores in the national band UNLESS that country ' +
+  'demonstrably moves a global system (e.g. Chinese or US emissions), in which ' +
+  'case say so in the description. ' +
+  'Use the WHOLE range. Most findings are not planetary; scores below 0.5 are ' +
+  'normal and expected, and a corpus where everything scores 0.7-0.9 is a ' +
+  'corpus that has stopped discriminating. lat/lon are WGS84 degrees. ' +
   'PREFER a real, defensible location: the centre of the affected region, the ' +
   'basin, biome, ice sheet, or country the sources actually discuss (e.g. an ' +
   'AMOC finding belongs in the North Atlantic, an ice-sheet finding in ' +

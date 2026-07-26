@@ -21,6 +21,7 @@
     "backfill:quantities": "tsx --env-file-if-exists=.env server/ingestion/backfillQuantityThresholds.ts",
     "resolve:quantities": "tsx --env-file-if-exists=.env server/ingestion/resolveQuantities.ts",
     "report:coverage": "tsx --env-file-if-exists=.env server/ingestion/coverageReport.ts",
+    "backfill:significance": "tsx --env-file-if-exists=.env server/ingestion/backfillSignificance.ts",
     "fetch:elevation": "node scripts/fetch-elevation.mjs"
   },
   "dependencies": {
