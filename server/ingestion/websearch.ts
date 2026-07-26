@@ -168,6 +168,13 @@ const ExtractionTippingPointSchema = z.object({
   earliestYear: z.number().optional(),
   latestYear: z.number().optional(),
   label: z.string().optional(),
+  /**
+   * Required, not optional: an optional field is absent from the grammar's
+   * `required` set, so the constrained decoder would skip it and every threshold
+   * would arrive unjudged — which the Clock treats as "does not anchor",
+   * silently suppressing the countdown. Forcing the decision is the point.
+   */
+  closesWindow: z.boolean(),
 });
 
 const ExtractionCandidateSchema = z.object({
@@ -222,9 +229,20 @@ const EXTRACTION_SYSTEM =
   '(e.g. a projected AMOC-collapse, ice-sheet-collapse, or ice-free-Arctic year), ' +
   'else emit null. centralYear is the best-estimate year; a CONTESTED or RANGED ' +
   'estimate STILL counts — use the midpoint as centralYear and the bounds as ' +
-  'earliestYear/latestYear, with a short label naming the source. Use null ONLY ' +
+  'earliestYear/latestYear, with a short label naming the source. A threshold ' +
+  'ALREADY CROSSED counts too: use the year it was crossed, even if it is in the ' +
+  'past. Use null ONLY ' +
   'when the sources genuinely give no projected year — most factors are ongoing ' +
   'pressures, not dated thresholds. NEVER invent or guess a year to avoid null. ' +
+  'closesWindow is REQUIRED inside tippingPoint and decides whether this ' +
+  'threshold anchors the countdown. Set it TRUE only if crossing this threshold ' +
+  'means human action can NO LONGER restore the prior state — the change becomes ' +
+  'self-sustaining or irreversible on a policy timescale (e.g. an ice-sheet or ' +
+  'AMOC collapse, rainforest dieback past the point of self-recovery). Set it ' +
+  'FALSE for a dated event that is severe but still correctable, reversible, or ' +
+  'merely a projection of accumulating damage (e.g. a species-loss or ' +
+  'pollution-tonnage milestone, an economic or demographic threshold). If the ' +
+  'sources do not support the stronger claim, answer FALSE. ' +
   'domains is REQUIRED (an array, possibly empty): the causal domains this factor ' +
   'acts in, chosen ONLY from ' +
   DOMAINS.map((d) => `${d} (${DOMAIN_LABELS[d]})`).join(', ') +
@@ -327,6 +345,10 @@ function normalizeTippingPoint(
   }
   const label = raw.label?.trim();
   if (label) tp.label = label.slice(0, 500);
+  // Persist only the affirmative judgement. Writing `false` explicitly would be
+  // indistinguishable downstream from `absent`, and absent already means "does
+  // not anchor" — so storing it buys nothing and grows every row.
+  if (raw.closesWindow === true) tp.closesWindow = true;
   return tp;
 }
 

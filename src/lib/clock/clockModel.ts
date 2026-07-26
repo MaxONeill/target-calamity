@@ -55,6 +55,11 @@ export interface TippingPoint {
   readonly earliestYear?: number;
   readonly latestYear?: number;
   readonly label?: string;
+  /**
+   * Crossing this ends the possibility of correction. Only these anchor the
+   * Clock; see `closesWindow` in shared/schema.ts. Absent → false.
+   */
+  readonly closesWindow?: boolean;
 }
 
 /**
@@ -106,6 +111,12 @@ export interface ThresholdContribution {
   /** Years the force moved it (signed; < 0 = sooner). */
   readonly shiftYears: number;
   readonly drivingDomains: readonly Domain[];
+  /**
+   * Whether this threshold anchors the countdown, i.e. crossing it closes the
+   * course-correction window. Non-anchoring thresholds are still shown — they
+   * are real dated evidence — but they do not move the target year.
+   */
+  readonly anchors: boolean;
 }
 
 /** Interquartile band of the arrival-time mixture. */
@@ -129,9 +140,12 @@ export interface ClockModel {
   readonly hasEvidence: boolean;
 
   /* --------------------------- tipping-point anchor ----------------------- */
+  /** Window-closing thresholds — what the countdown actually rests on. */
   readonly tippingPointCount: number;
+  /** Every dated threshold in view, anchoring or not. Always ≥ the above. */
+  readonly datedThresholdCount: number;
   readonly hasBaseline: boolean;
-  /** Median of the UN-warped arrival mixture (the pure anchor), or null. */
+  /** Median of the UN-warped first-crossing distribution, or null. */
   readonly baselineTargetYear: number | null;
   readonly baselineEarliestYear: number | null;
   readonly baselineLatestYear: number | null;
@@ -189,29 +203,80 @@ interface ArrivalDist {
   a: number;
   c: number;
   b: number;
-  /** Normalized weight (Σ = 1 across the set). */
-  w: number;
+  /**
+   * Probability this threshold is real and relevant — the factor's significance,
+   * read in its natural [0, 1] sense. NOT a normalized mixture weight: each
+   * threshold is an independent way for the window to close, not a share of one.
+   */
+  p: number;
 }
 
-/** Significance-weighted mixture CDF over arrival years. */
-function mixtureCdf(dists: readonly ArrivalDist[], y: number): number {
-  let sum = 0;
-  for (const d of dists) sum += d.w * triangularCdf(y, d.a, d.c, d.b);
-  return sum;
+/**
+ * CDF of the FIRST crossing among the anchors:
+ *
+ *     F(y) = 1 − Π (1 − pᵢ · Fᵢ(y))
+ *
+ * The window closes when the earliest window-closing threshold is crossed, not
+ * when some average of them is. That distinction is the whole point of this
+ * model: a median over catalogued thresholds has no referent — nobody
+ * experiences "the median tipping point" — whereas "the first crossing after
+ * which correction no longer restores the system" is a claim you can defend in
+ * a sentence and audit against sources.
+ *
+ * It also behaves correctly under new evidence. Finding a LATER threshold barely
+ * moves the estimate; finding an EARLIER one pulls it in, which is exactly when
+ * a course-correction horizon should move. A weighted median instead lurched
+ * whenever an anchor entered or left, because it hopped between clusters.
+ *
+ * ASSUMPTION: independence. Real thresholds are positively correlated, and
+ * correlation makes the true first crossing LATER than this. The model is
+ * therefore biased early — the conservative direction for a planning horizon,
+ * but a real limitation and not to be presented as neutral.
+ */
+function firstCrossingCdf(dists: readonly ArrivalDist[], y: number): number {
+  let survival = 1;
+  for (const d of dists) survival *= 1 - d.p * triangularCdf(y, d.a, d.c, d.b);
+  return 1 - survival;
 }
 
-/** Invert the mixture CDF at `level` by bisection over the support. */
-function quantile(dists: readonly ArrivalDist[], level: number): number {
+/**
+ * Ceiling of {@link firstCrossingCdf} as y → ∞. Below 1 whenever any anchor is
+ * less than fully significant: thin evidence cannot assert certainty.
+ */
+function firstCrossingCeiling(dists: readonly ArrivalDist[]): number {
+  let survival = 1;
+  for (const d of dists) survival *= 1 - d.p;
+  return 1 - survival;
+}
+
+/**
+ * Invert the first-crossing CDF at `level`.
+ *
+ * Returns null when the curve never reaches `level` — the evidence does not
+ * support asserting the window has closed by ANY year at that confidence. The
+ * countdown then suppresses rather than naming a year it cannot support, which
+ * is the same rule as having no anchors at all, arrived at by the math instead
+ * of by a special case.
+ */
+function firstCrossingQuantile(
+  dists: readonly ArrivalDist[],
+  level: number,
+): number | null {
+  if (dists.length === 0) return null;
+  if (firstCrossingCeiling(dists) < level) return null;
+
   let lo = Infinity;
   let hi = -Infinity;
   for (const d of dists) {
     if (d.a < lo) lo = d.a;
     if (d.b > hi) hi = d.b;
   }
-  if (!Number.isFinite(lo) || hi <= lo) return Number.isFinite(lo) ? lo : 0;
+  if (!Number.isFinite(lo)) return null;
+  if (hi <= lo) return lo;
+
   for (let i = 0; i < 60; i++) {
     const mid = (lo + hi) / 2;
-    if (mixtureCdf(dists, mid) < level) lo = mid;
+    if (firstCrossingCdf(dists, mid) < level) lo = mid;
     else hi = mid;
   }
   return (lo + hi) / 2;
@@ -233,6 +298,8 @@ interface ThresholdRaw {
   earliestPub: number | undefined;
   latestPub: number | undefined;
   domains: readonly Domain[];
+  /** Anchors the countdown. Absent on the source data → false. */
+  closesWindow: boolean;
 }
 
 /** Median of a non-empty list (linear-interpolated). */
@@ -300,8 +367,27 @@ export function deriveClock(factors: readonly ClockFactorInput[]): ClockModel {
       }
     }
 
-    // Threshold-bearing factors additionally anchor the countdown.
-    const tp = f.tippingPoint;
+    // Threshold-bearing factors additionally anchor the countdown — but only
+    // ADVERSE ones.
+    //
+    // The countdown measures how long the window for course-correction stays
+    // open, so its anchors must be thresholds you are counting DOWN to. A
+    // beneficial milestone is a dated event you are counting FORWARD to, and
+    // admitting one inverts the model twice over: it drags the aggregate target
+    // earlier (good news shortening the window), and the per-threshold shift
+    // renders as Calamity red because the model reads "sooner" as "worse".
+    //
+    // A real case: "China's record clean energy deployment" (effect +0.85)
+    // carries Ember's 2028 projection for clean electricity meeting all demand
+    // growth. It was the nearest AND heaviest threshold in the set, so it pulled
+    // the whole countdown in.
+    //
+    // Polarity is taken from the carrying factor's own `effect` rather than a
+    // new schema field: it is already required, already validated, and a factor
+    // that helps does not carry a deadline. Only `effect > 0` is excluded —
+    // neutral factors (documented opposing forces) can still carry a genuine
+    // adverse threshold, and dropping those would lose real deadlines.
+    const tp = effect > 0 ? undefined : f.tippingPoint;
     if (tp && Number.isFinite(tp.centralYear) && significance > 0) {
       const central = tp.centralYear;
       thresholdsRaw.push({
@@ -315,6 +401,9 @@ export function deriveClock(factors: readonly ClockFactorInput[]): ClockModel {
           ? Math.max(tp.latestYear as number, central)
           : undefined,
         domains,
+        // Strict `=== true`: absent, null, or anything non-boolean means nobody
+        // has judged it, and an unjudged threshold must not drive the headline.
+        closesWindow: tp.closesWindow === true,
       });
     }
   }
@@ -340,10 +429,12 @@ export function deriveClock(factors: readonly ClockFactorInput[]): ClockModel {
     acc.weight > 0 ? clamp(acc.weightedEffect / acc.weight, -1, 1) : 0;
 
   /* --------------------------- warp each threshold ------------------------ */
-  const warpedDists: ArrivalDist[] = [];
-  const baselineDists: ArrivalDist[] = [];
+  // Anchor sets hold ONLY window-closing thresholds. Every dated threshold is
+  // still warped and reported for display; the distinction is what the countdown
+  // is allowed to rest on.
+  const anchorWarped: ArrivalDist[] = [];
+  const anchorBaseline: ArrivalDist[] = [];
   const thresholds: ThresholdContribution[] = [];
-  const totalTippingSig = thresholdsRaw.reduce((s, t) => s + t.significance, 0);
 
   let baselineEarliestYear: number | null = null;
   let baselineLatestYear: number | null = null;
@@ -374,10 +465,6 @@ export function deriveClock(factors: readonly ClockFactorInput[]): ClockModel {
     const room = force < 0 ? t.central - earliest : latest - t.central;
     const warpedCentral = clamp(t.central + force * room * mass, earliest, latest);
 
-    const wNorm = totalTippingSig > 0 ? t.significance / totalTippingSig : 0;
-    baselineDists.push({ a: earliest, c: t.central, b: latest, w: wNorm });
-    warpedDists.push({ a: earliest, c: warpedCentral, b: latest, w: wNorm });
-
     thresholds.push({
       label: t.label,
       significance: t.significance,
@@ -385,7 +472,13 @@ export function deriveClock(factors: readonly ClockFactorInput[]): ClockModel {
       warpedYear: warpedCentral,
       shiftYears: warpedCentral - t.central,
       drivingDomains: [...driving],
+      anchors: t.closesWindow,
     });
+
+    if (!t.closesWindow) continue;
+
+    anchorBaseline.push({ a: earliest, c: t.central, b: latest, p: t.significance });
+    anchorWarped.push({ a: earliest, c: warpedCentral, b: latest, p: t.significance });
 
     baselineEarliestYear =
       baselineEarliestYear === null ? earliest : Math.min(baselineEarliestYear, earliest);
@@ -393,16 +486,21 @@ export function deriveClock(factors: readonly ClockFactorInput[]): ClockModel {
       baselineLatestYear === null ? latest : Math.max(baselineLatestYear, latest);
   }
 
-  const hasBaseline = warpedDists.length > 0 && totalTippingSig > 0;
-  const baselineTargetYear = hasBaseline ? quantile(baselineDists, 0.5) : null;
-  const targetYear = hasBaseline ? quantile(warpedDists, 0.5) : null;
-  const band: ClockBand | null = hasBaseline
-    ? {
-        p25: quantile(warpedDists, 0.25),
-        p50: targetYear as number,
-        p75: quantile(warpedDists, 0.75),
-      }
-    : null;
+  const targetYear = firstCrossingQuantile(anchorWarped, 0.5);
+  const baselineTargetYear = firstCrossingQuantile(anchorBaseline, 0.5);
+  // Null target = the anchors' combined probability never reaches even odds, so
+  // there is no year we can claim the window has closed by. Suppress.
+  const hasBaseline = targetYear !== null;
+
+  const p25 = firstCrossingQuantile(anchorWarped, 0.25);
+  const p75 = firstCrossingQuantile(anchorWarped, 0.75);
+  // p75 can be absent while the median exists — a single moderately-significant
+  // anchor tops out below 0.75. Report no band rather than inventing an edge.
+  const band: ClockBand | null =
+    targetYear !== null && p25 !== null && p75 !== null
+      ? { p25, p50: targetYear, p75 }
+      : null;
+
   const shiftYears =
     baselineTargetYear !== null && targetYear !== null ? targetYear - baselineTargetYear : 0;
 
@@ -430,8 +528,11 @@ export function deriveClock(factors: readonly ClockFactorInput[]): ClockModel {
     (a, b) => Math.abs(b.netForce * b.weight) - Math.abs(a.netForce * a.weight),
   );
 
-  // Nearest, heaviest threshold first — the Why panel reads top-down.
-  thresholds.sort((a, b) => a.warpedYear - b.warpedYear);
+  // Anchors first, then by year — the Why panel reads top-down, and what the
+  // countdown rests on should be what a reader sees first.
+  thresholds.sort((a, b) =>
+    a.anchors === b.anchors ? a.warpedYear - b.warpedYear : a.anchors ? -1 : 1,
+  );
 
   return {
     contributingCount,
@@ -442,7 +543,8 @@ export function deriveClock(factors: readonly ClockFactorInput[]): ClockModel {
     humanityBuffer,
     netPolarity,
     hasEvidence,
-    tippingPointCount: thresholdsRaw.length,
+    tippingPointCount: anchorWarped.length,
+    datedThresholdCount: thresholdsRaw.length,
     hasBaseline,
     baselineTargetYear,
     baselineEarliestYear,

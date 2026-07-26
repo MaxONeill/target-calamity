@@ -73,6 +73,21 @@ export const TippingPointSchema = z.object({
   latestYear: z.number().optional(),
   /** Short provenance label, e.g. "AMOC collapse (Ditlevsen & Ditlevsen 2023)". */
   label: z.string().optional(),
+  /**
+   * Does crossing this threshold close the course-correction window — i.e. does
+   * human action stop being able to restore the prior state once it is passed?
+   *
+   * Only thresholds where this is TRUE anchor the Clock. A dated threshold that
+   * is merely severe (a coral-reef loss projection, a demographic milestone) is
+   * still real evidence and still displayed, but the timeline the product claims
+   * to give is about when correction stops being sufficient, so it must rest on
+   * thresholds that answer that question.
+   *
+   * `.optional()` because rows predating the field carry no judgement. Absent is
+   * treated as FALSE — a threshold no one has assessed must not silently drive
+   * the headline. `server/ingestion/backfillWindowClosers.ts` fills them in.
+   */
+  closesWindow: z.boolean().optional(),
 });
 
 /**

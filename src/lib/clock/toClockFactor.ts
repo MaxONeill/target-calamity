@@ -15,16 +15,24 @@ export function toClockFactor(pin: FieldPin | GlobalFactor): ClockFactorInput {
   let tippingPoint: TippingPoint | null = null;
 
   if (source) {
+    // Every optional field must be copied explicitly. A field omitted here is
+    // dropped SILENTLY — the result stays structurally assignable, so nothing
+    // fails to compile and unit tests that build ClockFactorInput directly still
+    // pass, while the running app quietly loses the value. `closesWindow`
+    // decides whether a threshold anchors the countdown at all, so losing it
+    // would suppress the Clock outright.
     const built: {
       centralYear: number;
       earliestYear?: number;
       latestYear?: number;
       label?: string;
+      closesWindow?: boolean;
     } = { centralYear: source.centralYear };
 
     if (source.earliestYear !== undefined) built.earliestYear = source.earliestYear;
     if (source.latestYear !== undefined) built.latestYear = source.latestYear;
     if (source.label !== undefined) built.label = source.label;
+    if (source.closesWindow !== undefined) built.closesWindow = source.closesWindow;
     tippingPoint = built;
   }
 

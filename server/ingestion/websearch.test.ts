@@ -177,6 +177,7 @@ describe('normalizeCandidate — citations resolve to REAL retrieved sources', (
           earliestYear: 2025,
           latestYear: 2095,
           label: 'AMOC collapse (Ditlevsen & Ditlevsen 2023)',
+          closesWindow: true,
         },
         sources: [{ sourceIndex: 1, quoteSnippet: 'q', verbatim: true }],
       },
@@ -187,7 +188,22 @@ describe('normalizeCandidate — citations resolve to REAL retrieved sources', (
       earliestYear: 2025,
       latestYear: 2095,
       label: 'AMOC collapse (Ditlevsen & Ditlevsen 2023)',
+      closesWindow: true,
     });
+  });
+
+  it('drops closesWindow when the model answers false', () => {
+    // Absent already means "does not anchor", so a stored `false` would be
+    // redundant. Only the affirmative judgement is persisted.
+    const c = normalizeCandidate(
+      {
+        ...base,
+        tippingPoint: { centralYear: 2050, closesWindow: false },
+        sources: [{ sourceIndex: 1, quoteSnippet: 'q', verbatim: true }],
+      },
+      docs,
+    );
+    expect(c!.tippingPoint).toEqual({ centralYear: 2050 });
   });
 
   it('omits the tipping point when the model returns null', () => {
