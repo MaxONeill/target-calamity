@@ -504,6 +504,8 @@ interface ThresholdRaw {
   domains: readonly Domain[];
   /** Anchors the countdown. Absent on the source data → false. */
   closesWindow: boolean;
+  /** "1.5 degC — global warming", when the threshold was stated that way. */
+  quantityLabel: string | null;
   /** How the year was obtained — surfaced so the derivation stays inspectable. */
   dating: ThresholdDating;
   /**
@@ -615,6 +617,9 @@ export function deriveClock(
         latestPub: dated.latest,
         dating: dated.dating,
         forcesApply: dated.forcesApply,
+        quantityLabel: tp.quantityThreshold
+          ? `${tp.quantityThreshold.value} ${tp.quantityThreshold.unit} — ${tp.quantityThreshold.quantity}`
+          : null,
         domains,
         // Strict `=== true`: absent, null, or anything non-boolean means nobody
         // has judged it, and an unjudged threshold must not drive the headline.
@@ -688,7 +693,10 @@ export function deriveClock(
       : t.central;
 
     thresholds.push({
-      label: t.label,
+      // A quantity-stated threshold usually has no prose label — the source
+      // stated a number, not a name. Falling back to that number is derived
+      // display text, not invented data, and beats rendering "Unlabelled".
+      label: t.label ?? t.quantityLabel,
       significance: t.significance,
       baselineYear: t.central,
       warpedYear: warpedCentral,
