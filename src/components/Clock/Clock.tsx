@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { useSwipe, type SwipeGesture } from '../../hooks/useSwipe.js';
 import { deriveClock, type ClockFactorInput } from '../../lib/clock/clockModel.js';
 import { ExplainerModal } from '../ExplainerModal/index.js';
 import { ClockCompact } from './ClockCompact.js';
@@ -32,8 +33,21 @@ export function Clock({ factors, className }: ClockProps): JSX.Element {
   const { soundEnabled, toggleSound, setModalOpen } = useAmbientTick();
   const [expanded, setExpanded] = useState(false);
 
+  const rootRef = useRef<HTMLElement>(null);
+  // Swipe down discloses the derivation, swipe up hides it. Gestures that begin
+  // inside the expander are left alone: it scrolls vertically, and stealing
+  // those would make the derivation unreadable on a phone.
+  const onSwipe = useCallback(({ direction, target }: SwipeGesture) => {
+    const node = target instanceof Element ? target : null;
+    if (node?.closest('.tc-clock-expander')) return;
+    if (direction === 'down') setExpanded(true);
+    else if (direction === 'up') setExpanded(false);
+  }, []);
+  useSwipe(rootRef, { onSwipe });
+
   return (
     <section
+      ref={rootRef}
       className={className ? `tc-clock ${className}` : 'tc-clock'}
       aria-label="The Clock — modeled projection"
       data-expanded={expanded}

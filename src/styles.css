@@ -144,12 +144,13 @@ body {
   inset: 0;
   z-index: 1;
   display: grid;
-  grid-template-columns: 1fr;
-  grid-template-rows: var(--tc-topbar-h) 1fr auto;
+  /* minmax(0, 1fr), not 1fr: `1fr` is `minmax(auto, 1fr)`, so a wide grid item
+     can push the track past the container. On a phone the Clock is that item. */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: var(--tc-topbar-h) 1fr;
   grid-template-areas:
     "topbar"
-    "clock"
-    "hint";
+    "clock";
   pointer-events: none;
 }
 
@@ -339,6 +340,26 @@ body {
   pointer-events: none;
 }
 
+/* Right-edge catcher for the swipe-to-open gesture. Deliberately above the
+   canvas so the swipe does not also orbit the globe, and below .tc-feed-tab
+   (z-index 2) so the tab stays tappable. Touch devices only — on a mouse this
+   would just be a dead strip that swallows drags near the right edge. */
+.tc-edge-swipe {
+  position: absolute;
+  top: var(--tc-topbar-h);
+  right: 0;
+  bottom: 0;
+  width: 24px;
+  z-index: 1;
+  pointer-events: auto;
+  touch-action: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .tc-edge-swipe {
+    display: none;
+  }
+}
+
 /* FEED tab — the always-available opener on the right edge when closed. */
 .tc-feed-tab {
   position: absolute;
@@ -376,18 +397,6 @@ body {
   font-size: 11px;
 }
 
-.tc-hint {
-  grid-area: hint;
-  pointer-events: none;
-  align-self: end;
-  justify-self: start;
-  margin: 0 16px 14px;
-  font-size: 10.5px;
-  letter-spacing: 0.06em;
-  color: var(--tc-ink-faint);
-  text-transform: uppercase;
-}
-
 /* Bottom-centre CTA. Centred over the full viewport, then shifted left by half
    the panel width when the slideout opens so it tracks the globe's visible
    centre (matching the .tc-globe-mount transform and its >=700px guard). */
@@ -417,5 +426,20 @@ body {
   }
   .tc-clock-slot {
     max-width: min(360px, 60vw);
+  }
+}
+
+/* Phones. 60vw leaves the Clock too narrow to read, so give it the viewport. */
+@media (max-width: 640px) {
+  :root {
+    /* Near-full width, but NOT 100vw. The collapse handle hangs off the panel's
+       outer-left edge (translate(-100%, ...)), so a full-width panel puts it at
+       a negative x and it becomes unreachable. This gutter is what keeps it
+       on-screen, and it doubles as a strip of globe to tap for dismissal. */
+    --tc-sidebar-w: calc(100vw - 40px);
+  }
+  .tc-clock-slot {
+    margin: 12px;
+    max-width: calc(100vw - 24px);
   }
 }

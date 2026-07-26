@@ -140,6 +140,17 @@ export class OrbitRig {
   #lastPointerX = 0;
   #lastPointerY = 0;
 
+  /**
+   * Every pointer currently down on the canvas, by id. One → orbit drag; two →
+   * pinch zoom. Touch needs the full set because a second finger must suspend
+   * the drag rather than be ignored, and lifting back to one must resume it
+   * from the surviving finger's position instead of jumping.
+   */
+  readonly #pointers = new Map<number, { x: number; y: number }>();
+
+  /** Distance between the two pinch pointers on the previous move, in px. */
+  #pinchLastDistance = 0;
+
   // Held movement keys and the internal keyboard-orbit rAF.
   readonly #heldKeys = new Set<string>();
   #keyRafId: number | null = null;
@@ -308,21 +319,44 @@ export class OrbitRig {
   // --- Internal: pointer drag --------------------------------------------
 
   readonly #onPointerDown = (event: PointerEvent): void => {
-    if (!this.#enabled || this.#dragging) return;
-    if (event.button !== 0) return; // primary button only
+    if (!this.#enabled) return;
+    // Primary button only for mouse/pen. Touch reports button 0 for every
+    // contact, so additional fingers pass this and reach the pinch branch.
+    if (event.button !== 0) return;
+    if (this.#pointers.has(event.pointerId)) return;
 
-    this.#dragging = true;
-    this.#activePointerId = event.pointerId;
-    this.#lastPointerX = event.clientX;
-    this.#lastPointerY = event.clientY;
+    this.#pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
-    this.#beginInteraction();
-
-    window.addEventListener('pointermove', this.#onPointerMove);
-    window.addEventListener('pointerup', this.#onPointerUp);
+    if (this.#pointers.size === 1) {
+      this.#dragging = true;
+      this.#activePointerId = event.pointerId;
+      this.#lastPointerX = event.clientX;
+      this.#lastPointerY = event.clientY;
+      this.#beginInteraction();
+      window.addEventListener('pointermove', this.#onPointerMove);
+      window.addEventListener('pointerup', this.#onPointerUp);
+      window.addEventListener('pointercancel', this.#onPointerUp);
+    } else if (this.#pointers.size === 2) {
+      // Second finger: stop orbiting and start pinching. Orbiting off one of
+      // two moving contacts spins the globe while the user is only zooming.
+      this.#dragging = false;
+      this.#activePointerId = null;
+      this.#pinchLastDistance = this.#pointerDistance();
+      this.#beginInteraction();
+    }
   };
 
   readonly #onPointerMove = (event: PointerEvent): void => {
+    const tracked = this.#pointers.get(event.pointerId);
+    if (!tracked) return;
+    tracked.x = event.clientX;
+    tracked.y = event.clientY;
+
+    if (this.#pointers.size >= 2) {
+      this.#pinchMove();
+      return;
+    }
+
     if (!this.#dragging || event.pointerId !== this.#activePointerId) return;
 
     const dx = event.clientX - this.#lastPointerX;
@@ -340,17 +374,65 @@ export class OrbitRig {
     this.#emitChange();
   };
 
+  /** Separation between the first two live pointers, in CSS pixels. */
+  #pointerDistance(): number {
+    const [a, b] = [...this.#pointers.values()];
+    if (!a || !b) return 0;
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  }
+
+  /**
+   * Pinch zoom. The radius scales by the INVERSE of the fingers' separation
+   * ratio, so spreading (separation grows) shortens the orbit distance and the
+   * globe comes toward you — matching the direct-manipulation expectation.
+   */
+  #pinchMove(): void {
+    const distance = this.#pointerDistance();
+    // A degenerate separation would divide by ~0 and fling the camera.
+    if (distance <= 0 || this.#pinchLastDistance <= 0) {
+      this.#pinchLastDistance = distance;
+      return;
+    }
+
+    const ratio = this.#pinchLastDistance / distance;
+    this.#pinchLastDistance = distance;
+    if (ratio === 1) return;
+
+    this.#spherical.radius = this.#clampDistance(this.#spherical.radius * ratio);
+    this.apply();
+    this.#emitChange();
+  }
+
   readonly #onPointerUp = (event: PointerEvent): void => {
-    if (event.pointerId !== this.#activePointerId) return;
-    this.#endDrag();
+    if (!this.#pointers.delete(event.pointerId)) return;
+
+    if (this.#pointers.size === 1) {
+      // Dropped from pinch back to one finger. Resume orbiting from the
+      // survivor's CURRENT position; seeding from the lifted finger's last
+      // coordinates would jump the globe by the gap between them.
+      const [id] = [...this.#pointers.keys()];
+      const survivor = id === undefined ? undefined : this.#pointers.get(id);
+      if (id !== undefined && survivor) {
+        this.#dragging = true;
+        this.#activePointerId = id;
+        this.#lastPointerX = survivor.x;
+        this.#lastPointerY = survivor.y;
+        this.#beginInteraction();
+      }
+      return;
+    }
+
+    if (this.#pointers.size === 0) this.#endDrag();
   };
 
   #endDrag(): void {
-    if (!this.#dragging) return;
+    this.#pointers.clear();
+    this.#pinchLastDistance = 0;
     this.#dragging = false;
     this.#activePointerId = null;
     window.removeEventListener('pointermove', this.#onPointerMove);
     window.removeEventListener('pointerup', this.#onPointerUp);
+    window.removeEventListener('pointercancel', this.#onPointerUp);
   }
 
   // --- Internal: wheel zoom ----------------------------------------------

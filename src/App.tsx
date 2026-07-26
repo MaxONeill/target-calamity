@@ -13,6 +13,7 @@ import { useFieldPins } from './hooks/useFieldPins.js';
 import { useScene } from './hooks/useScene.js';
 import { useSelectedFactor } from './hooks/useSelectedFactor.js';
 import { useSlideoutPanel } from './hooks/useSlideoutPanel.js';
+import { useSwipe, type SwipeGesture } from './hooks/useSwipe.js';
 import { toClockFactor } from './lib/clock/toClockFactor.js';
 import type { SceneHandle } from './scene/types.js';
 
@@ -31,9 +32,28 @@ export function App(): JSX.Element {
   // Coastlines stay on; the toggle was removed from the top bar.
   const landVisible = true;
 
+  const appRef = useRef<HTMLDivElement>(null);
+
   const feed = useFactorFeed();
   const { fieldPins, globalFactors, reloadField } = useFieldPins();
   const panel = useSlideoutPanel();
+
+  // Touch gestures for the panel. Opening is restricted to a right-edge strip
+  // rather than the whole screen: a horizontal drag anywhere else is an orbit,
+  // and the strip sits above the canvas so the globe never sees the gesture at
+  // all. Closing is unambiguous — the swipe has to start on the open panel.
+  const onSwipe = useCallback(
+    ({ direction, target }: SwipeGesture) => {
+      const node = target instanceof Element ? target : null;
+      if (direction === 'left' && !panel.open && node?.closest('.tc-edge-swipe')) {
+        panel.openFeed();
+      } else if (direction === 'right' && panel.open && node?.closest('#tc-slideout')) {
+        panel.closePanel();
+      }
+    },
+    [panel],
+  );
+  useSwipe(appRef, { onSwipe });
 
   const coordsRef = useFactorCoords(fieldPins, feed.factors);
 
@@ -107,19 +127,20 @@ export function App(): JSX.Element {
   );
 
   return (
-    <div className="tc-app" data-panel-open={panel.open}>
+    <div className="tc-app" data-panel-open={panel.open} ref={appRef}>
       <div className="tc-globe-mount" ref={mountRef} aria-hidden="true" />
 
       <div className="tc-overlay">
+        {/* Touch-only catcher for the edge swipe that opens the feed. It exists
+            to sit ABOVE the canvas, so the opening gesture does not also orbit
+            the globe. Hidden entirely for fine pointers. */}
+        <div className="tc-edge-swipe" aria-hidden="true" />
+
         <StatusBar streamStatus={streamStatus} />
 
         <div className="tc-clock-slot">
           <Clock factors={clockFactors} />
         </div>
-
-        <footer className="tc-hint">
-          <span>DRAG or WASDQE to orbit · WHEEL to zoom · CLICK a pin or card to align</span>
-        </footer>
 
         {/* Bottom-centre CTA. Shifts with the globe when the panel opens so it
             stays under the globe's visible centre (see .tc-fight-slot). */}
