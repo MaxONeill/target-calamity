@@ -1,7 +1,7 @@
-/**
+﻿/**
  * Tests for the OFFLINE STUB path of Phase A research (server/ingestion/websearch.ts).
  *
- * These never touch the network or the live API — they exercise the deterministic
+ * These never touch the network or the live API â€” they exercise the deterministic
  * offline stub and the no-credential fallback. The live path (Firecrawl retrieval
  * + typed extraction) is intentionally NOT called here.
  */
@@ -17,7 +17,7 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-describe('researchFactorsOffline — deterministic offline candidates', () => {
+describe('researchFactorsOffline â€” deterministic offline candidates', () => {
   it('is deterministic for a given topic', () => {
     expect(researchFactorsOffline('arctic sea ice record low')).toEqual(
       researchFactorsOffline('arctic sea ice record low'),
@@ -52,7 +52,7 @@ describe('researchFactorsOffline — deterministic offline candidates', () => {
   });
 });
 
-describe('researchFactors — no-credential fallback', () => {
+describe('researchFactors â€” no-credential fallback', () => {
   it('returns the offline stub when neither provider key is present', async () => {
     vi.stubEnv('FIREWORKS_API_KEY', '');
     vi.stubEnv('FIRECRAWL_API_KEY', '');
@@ -74,10 +74,10 @@ describe('researchFactors — no-credential fallback', () => {
 });
 
 /* -------------------------------------------------------------------------- */
-/*  — provenance assembly from Firecrawl results                        */
+/*  â€” provenance assembly from Firecrawl results                        */
 /* -------------------------------------------------------------------------- */
 
-describe('normalizeCandidate — citations resolve to REAL retrieved sources', () => {
+describe('normalizeCandidate â€” citations resolve to REAL retrieved sources', () => {
   const docs = [
     {
       url: 'https://nsidc.org/report',
@@ -178,6 +178,7 @@ describe('normalizeCandidate — citations resolve to REAL retrieved sources', (
           latestYear: 2095,
           label: 'AMOC collapse (Ditlevsen & Ditlevsen 2023)',
           closesWindow: true,
+          quantityThreshold: null,
         },
         sources: [{ sourceIndex: 1, quoteSnippet: 'q', verbatim: true }],
       },
@@ -192,13 +193,71 @@ describe('normalizeCandidate — citations resolve to REAL retrieved sources', (
     });
   });
 
+  it('keeps a threshold stated against a quantity instead of a year', () => {
+    // How the literature actually publishes tipping points. Requiring a year
+    // meant AMOC, Greenland and permafrost carried no threshold at all.
+    const c = normalizeCandidate(
+      {
+        ...base,
+        tippingPoint: {
+          centralYear: null,
+          closesWindow: true,
+          quantityThreshold: {
+            quantity: 'global mean surface temperature anomaly',
+            value: 1.5,
+            unit: 'degC',
+            baseline: 'pre-industrial (1850-1900)',
+            lowValue: 0.8,
+            highValue: 3.0,
+          },
+        },
+        sources: [{ sourceIndex: 1, quoteSnippet: 'q', verbatim: true }],
+      },
+      docs,
+    );
+    expect(c!.tippingPoint).toEqual({
+      closesWindow: true,
+      quantityThreshold: {
+        quantity: 'global mean surface temperature anomaly',
+        value: 1.5,
+        unit: 'degC',
+        baseline: 'pre-industrial (1850-1900)',
+        lowValue: 0.8,
+        highValue: 3.0,
+      },
+    });
+  });
+
+  it('drops a quantity threshold with no unit rather than dating it wrongly', () => {
+    const c = normalizeCandidate(
+      {
+        ...base,
+        tippingPoint: {
+          centralYear: null,
+          closesWindow: true,
+          quantityThreshold: {
+            quantity: 'warming',
+            value: 1.5,
+            unit: '   ',
+            baseline: null,
+            lowValue: null,
+            highValue: null,
+          },
+        },
+        sources: [{ sourceIndex: 1, quoteSnippet: 'q', verbatim: true }],
+      },
+      docs,
+    );
+    expect(c!.tippingPoint).toBeUndefined();
+  });
+
   it('drops closesWindow when the model answers false', () => {
     // Absent already means "does not anchor", so a stored `false` would be
     // redundant. Only the affirmative judgement is persisted.
     const c = normalizeCandidate(
       {
         ...base,
-        tippingPoint: { centralYear: 2050, closesWindow: false },
+        tippingPoint: { centralYear: 2050, closesWindow: false, quantityThreshold: null },
         sources: [{ sourceIndex: 1, quoteSnippet: 'q', verbatim: true }],
       },
       docs,
@@ -229,3 +288,4 @@ describe('renderSourceBlocks', () => {
     expect(out).toContain('desc B');
   });
 });
+

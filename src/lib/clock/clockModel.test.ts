@@ -5,9 +5,12 @@ import {
   yearToEpochMs,
   confidenceForCount,
   type ClockFactorInput,
+  type Projection,
+  type QuantityThreshold,
 } from './clockModel.js';
 
-const derive = (factors: ClockFactorInput[]) => deriveClock(factors);
+const derive = (factors: ClockFactorInput[], projections: Projection[] = []) =>
+  deriveClock(factors, projections);
 
 /** A neutral-effect factor carrying a window-closing threshold. */
 const closer = (centralYear: number, significance = 0.9): ClockFactorInput => ({
@@ -69,6 +72,165 @@ describe('deriveClock — anchor', () => {
     const one = derive([closer(2050)]);
     const many = derive([closer(2050), closer(2055), closer(2065)]);
     expect(many.baselineTargetYear!).toBeLessThanOrEqual(one.baselineTargetYear!);
+  });
+});
+
+describe('deriveClock — thresholds dated from a projection', () => {
+  // The tipping-point literature publishes degrees, not years: "Greenland
+  // destabilises at ~1.5 degC". Requiring a year excluded exactly the anchors
+  // this product exists for. The year is recovered by reading a published
+  // trajectory — a lookup across two cited sources, not an estimate.
+  const warming: Projection = {
+    id: 'p-warm',
+    quantity: 'global mean surface temperature anomaly',
+    unit: 'degC',
+    baseline: 'pre-industrial (1850-1900)',
+    assumesFutureAction: false, // a current-policies pathway
+    points: [
+      { year: 2020, value: 1.1 },
+      { year: 2050, value: 2.0 },
+      { year: 2100, value: 2.7 },
+    ],
+  };
+
+  const atWarming = (value: number, extra: Partial<QuantityThreshold> = {}): ClockFactorInput => ({
+    effect: -0.6,
+    significance: 0.9,
+    domains: [],
+    tippingPoint: {
+      closesWindow: true,
+      quantityThreshold: {
+        quantity: 'global mean surface temperature anomaly',
+        unit: 'degC',
+        baseline: 'pre-industrial (1850-1900)',
+        value,
+        ...extra,
+      },
+    },
+  });
+
+  it('interpolates the crossing year between the bracketing points', () => {
+    // 1.55 degC is halfway from 1.1 (2020) to 2.0 (2050) → 2035.
+    const m = derive([atWarming(1.55)], [warming]);
+    expect(m.thresholds).toHaveLength(1);
+    expect(m.thresholds[0]!.baselineYear).toBeCloseTo(2035, 0);
+    expect(m.thresholds[0]!.dating).toBe('projected');
+  });
+
+  it('handles a falling quantity, crossed from above', () => {
+    const ph: Projection = {
+      quantity: 'ocean surface pH',
+      unit: 'pH',
+      assumesFutureAction: false,
+      points: [
+        { year: 2020, value: 8.1 },
+        { year: 2100, value: 7.7 },
+      ],
+    };
+    const m = derive(
+      [
+        {
+          effect: -0.6,
+          significance: 0.9,
+          domains: [],
+          tippingPoint: {
+            closesWindow: true,
+            quantityThreshold: { quantity: 'ocean surface pH', unit: 'pH', value: 7.9 },
+          },
+        },
+      ],
+      [ph],
+    );
+    expect(m.thresholds[0]!.baselineYear).toBeCloseTo(2060, 0);
+  });
+
+  it('carries the SOURCE range through, rather than an assumed spread', () => {
+    const m = derive([atWarming(1.55, { lowValue: 1.1, highValue: 2.0 })], [warming]);
+    expect(m.assumedSpreadYears).toBeNull(); // no fallback spread was needed
+    expect(m.band).not.toBeNull();
+  });
+
+  it('refuses when the curve never reaches the value in its published span', () => {
+    // 3.5 degC is beyond the projection's last point. Extrapolating would be
+    // inventing a year, so the threshold is dropped entirely.
+    const m = derive([atWarming(3.5)], [warming]);
+    expect(m.datedThresholdCount).toBe(0);
+    expect(m.hasBaseline).toBe(false);
+  });
+
+  it('refuses when the baselines disagree', () => {
+    // Same quantity, same unit, ~0.6 degC apart. Matching these produces a
+    // confidently wrong year, which is worse than no anchor.
+    const m = derive([atWarming(1.55, { baseline: 'vs 1986-2005' })], [warming]);
+    expect(m.datedThresholdCount).toBe(0);
+  });
+
+  it('refuses when only one side states a baseline', () => {
+    // Destructured out rather than set to undefined: under
+    // exactOptionalPropertyTypes an explicit `undefined` is not the same as an
+    // absent key, and absent is what a source with no stated baseline gives us.
+    const { baseline: _omitted, ...noBaseline } = warming;
+    const m = derive([atWarming(1.55)], [noBaseline]);
+    expect(m.datedThresholdCount).toBe(0);
+  });
+
+  it('refuses when no projection covers the quantity', () => {
+    const m = derive([atWarming(1.55)], []);
+    expect(m.datedThresholdCount).toBe(0);
+  });
+});
+
+describe('deriveClock — forces vs scenario double-counting', () => {
+  const curve = (assumesFutureAction: boolean | undefined): Projection => ({
+    quantity: 'co2 concentration',
+    unit: 'ppm',
+    ...(assumesFutureAction === undefined ? {} : { assumesFutureAction }),
+    points: [
+      { year: 2020, value: 415 },
+      { year: 2100, value: 615 },
+    ],
+  });
+
+  const threshold: ClockFactorInput = {
+    effect: -0.6,
+    significance: 0.9,
+    domains: ['climate'],
+    tippingPoint: {
+      closesWindow: true,
+      quantityThreshold: { quantity: 'co2 concentration', unit: 'ppm', value: 500 },
+    },
+  };
+  const humanityForce: ClockFactorInput = {
+    effect: 0.9,
+    significance: 0.9,
+    domains: ['climate'],
+  };
+
+  it('applies forces to a no-further-action curve', () => {
+    const m = derive([threshold, humanityForce], [curve(false)]);
+    expect(m.thresholds[0]!.forcesApply).toBe(true);
+  });
+
+  it('withholds forces when the scenario already assumes future action', () => {
+    // A mitigation pathway has the clean-energy expansion baked in. Bending it
+    // with a clean-energy factor counts the same action twice.
+    const m = derive([threshold, humanityForce], [curve(true)]);
+    expect(m.thresholds[0]!.forcesApply).toBe(false);
+    expect(m.thresholds[0]!.shiftYears).toBe(0);
+    expect(m.thresholds[0]!.anchors).toBe(true); // still dated, still anchoring
+  });
+
+  it('treats an unlabelled scenario as assuming action', () => {
+    // Guessing permissively is what makes the Clock read later than any source
+    // supports, so an unlabelled curve gets the conservative treatment.
+    const m = derive([threshold, humanityForce], [curve(undefined)]);
+    expect(m.thresholds[0]!.forcesApply).toBe(false);
+  });
+
+  it('always applies forces to a directly published year', () => {
+    const m = derive([closer(2050), humanityForce], []);
+    expect(m.thresholds[0]!.dating).toBe('published');
+    expect(m.thresholds[0]!.forcesApply).toBe(true);
   });
 });
 

@@ -163,8 +163,24 @@ const ExtractionSourceSchema = z.object({
  * `TippingPointSchema`. The extraction prompt is instructed to emit this ONLY
  * when the sources give a concrete dated/near-dated threshold, else omit it.
  */
+/**
+ * A threshold stated against a measurable quantity instead of a year. Nullable
+ * (not optional) for the same reason as `tippingPoint` itself: an optional field
+ * is absent from the grammar's `required` set, so the constrained decoder would
+ * never emit one and the whole quantity path would be dead on arrival.
+ */
+const ExtractionQuantityThresholdSchema = z.object({
+  quantity: z.string(),
+  value: z.number(),
+  unit: z.string(),
+  baseline: z.string().nullable(),
+  lowValue: z.number().nullable(),
+  highValue: z.number().nullable(),
+});
+
 const ExtractionTippingPointSchema = z.object({
-  centralYear: z.number(),
+  centralYear: z.number().nullable(),
+  quantityThreshold: ExtractionQuantityThresholdSchema.nullable(),
   earliestYear: z.number().optional(),
   latestYear: z.number().optional(),
   label: z.string().optional(),
@@ -225,9 +241,23 @@ const EXTRACTION_SYSTEM =
   'Guinea and would place the factor there. spatialPath ' +
   "is 'global' for worldwide factors or 'global.<iso-ish-code>' for one country. " +
   'tippingPoint is REQUIRED on every factor: emit an object when the sources give ' +
-  'a projected year (or year-range) for a THIS-factor (near-)irreversible threshold ' +
-  '(e.g. a projected AMOC-collapse, ice-sheet-collapse, or ice-free-Arctic year), ' +
-  'else emit null. centralYear is the best-estimate year; a CONTESTED or RANGED ' +
+  'a THIS-factor (near-)irreversible threshold, else emit null. A threshold may be ' +
+  'stated EITHER as a year OR against a measurable quantity, and BOTH count. ' +
+  'Set centralYear when the sources give a year (e.g. a projected AMOC-collapse or ' +
+  'ice-free-Arctic year), else null. Set quantityThreshold when the sources instead ' +
+  'state the threshold against something measurable — this is how the literature ' +
+  'usually publishes it, e.g. "the Greenland ice sheet destabilises at about ' +
+  '1.5 degC of warming" or "Amazon dieback beyond 20-25% deforested" — else null. ' +
+  'For quantityThreshold: quantity is WHAT IS MEASURED in the source\'s own words, ' +
+  'value/unit is where the threshold sits, lowValue/highValue the published range ' +
+  '(null if none), and baseline is the reference the value is stated against ' +
+  '(e.g. "pre-industrial (1850-1900)"). Give baseline whenever the source states ' +
+  'one and null otherwise — NEVER guess it: "1.5 degC above pre-industrial" and ' +
+  '"1.5 degC above 1986-2005" differ by about 0.6 degC, and a wrong baseline dates ' +
+  'the threshold to a confidently wrong year. Emit at most ONE of centralYear or ' +
+  'quantityThreshold; prefer quantityThreshold when the source gives both, since a ' +
+  'stated quantity is what the science actually measured. centralYear is the ' +
+  'best-estimate year; a CONTESTED or RANGED ' +
   'estimate STILL counts — use the midpoint as centralYear and the bounds as ' +
   'earliestYear/latestYear, with a short label naming the source. A threshold ' +
   'ALREADY CROSSED counts too: use the year it was crossed, even if it is in the ' +
@@ -335,8 +365,33 @@ function normalizeSpatialPath(path: string): string {
 function normalizeTippingPoint(
   raw: z.infer<typeof ExtractionTippingPointSchema> | null | undefined,
 ): TippingPoint | null {
-  if (!raw || !Number.isFinite(raw.centralYear)) return null;
-  const tp: TippingPoint = { centralYear: raw.centralYear };
+  if (!raw) return null;
+
+  const hasYear = raw.centralYear !== null && Number.isFinite(raw.centralYear);
+  const q = raw.quantityThreshold;
+  const hasQuantity =
+    q !== null &&
+    Number.isFinite(q.value) &&
+    q.quantity.trim().length > 0 &&
+    q.unit.trim().length > 0;
+
+  // Neither form present → not a dated threshold, which is the common case.
+  if (!hasYear && !hasQuantity) return null;
+
+  const tp: TippingPoint = {};
+  if (hasYear) tp.centralYear = raw.centralYear as number;
+  if (hasQuantity) {
+    const qt: NonNullable<TippingPoint['quantityThreshold']> = {
+      quantity: q.quantity.trim().slice(0, 300),
+      value: q.value,
+      unit: q.unit.trim().slice(0, 60),
+    };
+    const baseline = q.baseline?.trim();
+    if (baseline) qt.baseline = baseline.slice(0, 300);
+    if (q.lowValue !== null && Number.isFinite(q.lowValue)) qt.lowValue = q.lowValue;
+    if (q.highValue !== null && Number.isFinite(q.highValue)) qt.highValue = q.highValue;
+    tp.quantityThreshold = qt;
+  }
   if (raw.earliestYear !== undefined && Number.isFinite(raw.earliestYear)) {
     tp.earliestYear = raw.earliestYear;
   }

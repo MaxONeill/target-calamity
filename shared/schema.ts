@@ -64,13 +64,61 @@ export const VerificationStateSchema = z.enum(['verified', 'pending']);
  * `ClockFactorInput` and the countdown can anchor to it. `.optional()` (not
  * `.nullable()`) keeps it clean under exactOptionalPropertyTypes.
  */
+/**
+ * A threshold expressed against a measurable quantity rather than a date.
+ *
+ * This exists because the tipping-point literature almost never publishes
+ * years. It publishes "the Greenland ice sheet destabilises at ~1.5 °C" or
+ * "Amazon dieback beyond 20–25% deforested". Requiring a year excluded exactly
+ * the anchors this product is about: AMOC, Greenland, West Antarctic and
+ * permafrost were all already in the factor set carrying no threshold at all,
+ * because the honest answer to "what year?" was null.
+ *
+ * The year is recovered by reading a published {@link ProjectionSchema} for the
+ * same quantity and finding when it reaches `value`. Nobody estimates a date;
+ * it is a lookup across two cited sources.
+ *
+ * `quantity` is deliberately free text. A fixed vocabulary would cap coverage at
+ * whatever was anticipated, and identity ("global temperature" vs "GMST anomaly")
+ * is the problem this codebase already solves for factors with embeddings plus a
+ * resolver.
+ */
+export const QuantityThresholdSchema = z.object({
+  /** What is measured, in the source's own words. Matched semantically. */
+  quantity: z.string().min(1),
+  /** Where the threshold sits on that quantity. */
+  value: z.number(),
+  /** Unit as published, e.g. "degC", "ppm", "percent". */
+  unit: z.string().min(1),
+  /**
+   * The reference the value is stated against, e.g. "pre-industrial (1850-1900)".
+   *
+   * Load-bearing, not decoration: "1.5 degC above pre-industrial" and "1.5 degC
+   * above 1986-2005" are the same quantity and unit roughly 0.6 degC apart.
+   * Dating a threshold against a projection on a different baseline yields a
+   * confidently wrong year, which is the worst failure this product has. A
+   * threshold whose baseline is unknown must not be dated at all.
+   */
+  baseline: z.string().optional(),
+  /** Lower/upper bounds of the published threshold range, same unit. */
+  lowValue: z.number().optional(),
+  highValue: z.number().optional(),
+});
+
 export const TippingPointSchema = z.object({
-  /** Best-estimate calendar year the threshold is crossed (e.g. 2050). */
-  centralYear: z.number(),
+  /**
+   * Best-estimate calendar year the threshold is crossed (e.g. 2050). Optional
+   * since migration 010: a threshold may instead be pinned to a quantity and
+   * dated from a projection. Exactly one of the two must be present — see the
+   * refinement below.
+   */
+  centralYear: z.number().optional(),
   /** Optional earliest credible year (lower bound of the published range). */
   earliestYear: z.number().optional(),
   /** Optional latest credible year (upper bound of the published range). */
   latestYear: z.number().optional(),
+  /** Threshold stated against a measurable quantity instead of a date. */
+  quantityThreshold: QuantityThresholdSchema.optional(),
   /** Short provenance label, e.g. "AMOC collapse (Ditlevsen & Ditlevsen 2023)". */
   label: z.string().optional(),
   /**
@@ -88,6 +136,56 @@ export const TippingPointSchema = z.object({
    * the headline. `server/ingestion/backfillWindowClosers.ts` fills them in.
    */
   closesWindow: z.boolean().optional(),
+}).refine(
+  (tp) => tp.centralYear !== undefined || tp.quantityThreshold !== undefined,
+  {
+    message:
+      'a tipping point must be dated either directly (centralYear) or by a ' +
+      'quantity threshold resolved against a projection',
+  },
+);
+
+/**
+ * A published trajectory for a measurable quantity over time. Dating a
+ * quantity-expressed threshold means reading one of these.
+ *
+ * A projection is ingested and gated exactly like a factor, but its blast radius
+ * is larger: a wrong factor nudges an aggregate, a wrong projection mis-dates
+ * EVERY threshold pinned to its quantity. It should clear a higher bar, not the
+ * same one.
+ */
+export const ProjectionSchema = z.object({
+  id: z.string().uuid(),
+  /** What is projected, in the source's own words. Matched semantically. */
+  quantity: z.string().min(1),
+  unit: z.string().min(1),
+  /** Reference the values are stated against. Must agree with the threshold's. */
+  baseline: z.string().optional(),
+  /**
+   * The scenario the source names — "current policies", "SSP2-4.5",
+   * "business as usual". Copied verbatim, never inferred.
+   *
+   * This decides whether the Clock's forces may bend the curve. A mitigation
+   * pathway already assumes future clean-energy expansion, so letting a
+   * clean-energy factor push it further counts the same action twice. A
+   * current-policies pathway assumes nothing new, so a factor describing new
+   * action is genuinely new information. See `assumesFutureAction`.
+   */
+  scenario: z.string().optional(),
+  /**
+   * True when the scenario bakes in action beyond what is already implemented.
+   * Forces do NOT bend such a curve — the overlap would be unquantifiable.
+   * Absent → treated as true, because an unlabelled projection cannot be shown
+   * to be assumption-free and guessing in the permissive direction is what
+   * produces a Clock that reads later than any source supports.
+   */
+  assumesFutureAction: z.boolean().optional(),
+  /** The curve, ascending by year. At least two points to interpolate between. */
+  points: z
+    .array(z.object({ year: z.number(), value: z.number() }))
+    .min(2),
+  sourceUrl: z.string().url(),
+  sourceTitle: z.string().optional(),
 });
 
 /**

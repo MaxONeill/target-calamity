@@ -177,13 +177,29 @@ function TippingPointBlock({ tp }: { tp: TippingPoint }): JSX.Element {
   return (
     <section className="tc-details__tipping" aria-label="Estimated tipping-point threshold">
       <div className="tc-details__section-head">Estimated tipping point</div>
-      <div className="tc-details__tipping-year">
-        <span className="tc-details__tipping-approx" aria-hidden="true">
-          ≈
-        </span>
-        <span className="tc-details__tipping-value">{fmtYear(tp.centralYear)}</span>
-        {range ? <span className="tc-details__tipping-range">({range})</span> : null}
-      </div>
+      {/* A threshold is stated EITHER as a year or against a measurable
+          quantity. The quantity form is dated from a published projection, so
+          showing the source's own words here keeps the derivation visible
+          rather than presenting a computed year as if it were published. */}
+      {tp.centralYear !== undefined ? (
+        <div className="tc-details__tipping-year">
+          <span className="tc-details__tipping-approx" aria-hidden="true">
+            ≈
+          </span>
+          <span className="tc-details__tipping-value">{fmtYear(tp.centralYear)}</span>
+          {range ? <span className="tc-details__tipping-range">({range})</span> : null}
+        </div>
+      ) : tp.quantityThreshold ? (
+        <div className="tc-details__tipping-year">
+          <span className="tc-details__tipping-value">
+            {tp.quantityThreshold.value} {tp.quantityThreshold.unit}
+          </span>
+          <span className="tc-details__tipping-range">
+            {tp.quantityThreshold.quantity}
+            {tp.quantityThreshold.baseline ? ` vs ${tp.quantityThreshold.baseline}` : ''}
+          </span>
+        </div>
+      ) : null}
       {tp.label ? <p className="tc-details__tipping-label">{tp.label}</p> : null}
       <p className="tc-details__tipping-note">
         A published, uncertain threshold estimate — not a measured deadline. It

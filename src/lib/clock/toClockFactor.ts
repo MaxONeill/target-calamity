@@ -1,5 +1,5 @@
 import type { FieldPin, GlobalFactor } from '../../../shared/types.js';
-import type { ClockFactorInput, TippingPoint } from './clockModel.js';
+import type { ClockFactorInput, QuantityThreshold, TippingPoint } from './clockModel.js';
 
 /**
  * Projects a field pin onto the Clock's input shape.
@@ -22,17 +22,34 @@ export function toClockFactor(pin: FieldPin | GlobalFactor): ClockFactorInput {
     // decides whether a threshold anchors the countdown at all, so losing it
     // would suppress the Clock outright.
     const built: {
-      centralYear: number;
+      centralYear?: number;
       earliestYear?: number;
       latestYear?: number;
       label?: string;
       closesWindow?: boolean;
-    } = { centralYear: source.centralYear };
+      quantityThreshold?: QuantityThreshold;
+    } = {};
 
+    if (source.centralYear !== undefined) built.centralYear = source.centralYear;
     if (source.earliestYear !== undefined) built.earliestYear = source.earliestYear;
     if (source.latestYear !== undefined) built.latestYear = source.latestYear;
     if (source.label !== undefined) built.label = source.label;
     if (source.closesWindow !== undefined) built.closesWindow = source.closesWindow;
+    if (source.quantityThreshold !== undefined) {
+      const q = source.quantityThreshold;
+      const qt: {
+        quantity: string;
+        value: number;
+        unit: string;
+        baseline?: string;
+        lowValue?: number;
+        highValue?: number;
+      } = { quantity: q.quantity, value: q.value, unit: q.unit };
+      if (q.baseline !== undefined) qt.baseline = q.baseline;
+      if (q.lowValue !== undefined) qt.lowValue = q.lowValue;
+      if (q.highValue !== undefined) qt.highValue = q.highValue;
+      built.quantityThreshold = qt;
+    }
     tippingPoint = built;
   }
 

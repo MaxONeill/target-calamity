@@ -50,10 +50,44 @@ import {
  * factor — most factors have none. `centralYear` is the best estimate; the
  * optional bounds carry the published uncertainty range.
  */
+/**
+ * A threshold stated against a measurable quantity rather than a year. Dated by
+ * reading a {@link Projection} for the same quantity — see `dateFromProjection`.
+ */
+export interface QuantityThreshold {
+  readonly quantity: string;
+  readonly value: number;
+  readonly unit: string;
+  /** Reference the value is stated against. Must match the projection's. */
+  readonly baseline?: string;
+  readonly lowValue?: number;
+  readonly highValue?: number;
+  /**
+   * The projection this was matched to, resolved SERVER-side (quantity identity
+   * is a semantic problem needing embeddings). When absent the model falls back
+   * to an exact quantity+unit match, which is enough for curated data but will
+   * miss "global temperature" vs "GMST anomaly".
+   */
+  readonly projectionId?: string;
+}
+
+/** A published trajectory for a quantity. Ascending by year, ≥ 2 points. */
+export interface Projection {
+  readonly id?: string;
+  readonly quantity: string;
+  readonly unit: string;
+  readonly baseline?: string;
+  /** Scenario assumes action beyond what is implemented. Absent → treated true. */
+  readonly assumesFutureAction?: boolean;
+  readonly points: readonly { readonly year: number; readonly value: number }[];
+}
+
 export interface TippingPoint {
-  readonly centralYear: number;
+  /** Present when the source published a year. Otherwise dated by quantity. */
+  readonly centralYear?: number;
   readonly earliestYear?: number;
   readonly latestYear?: number;
+  readonly quantityThreshold?: QuantityThreshold;
   readonly label?: string;
   /**
    * Crossing this ends the possibility of correction. Only these anchor the
@@ -102,6 +136,13 @@ export interface DomainForce {
   readonly factorCount: number;
 }
 
+/**
+ * How a threshold got its year.
+ *  - `published`  the source stated a year outright
+ *  - `projected`  stated against a quantity, dated from a published projection
+ */
+export type ThresholdDating = 'published' | 'projected';
+
 /** One threshold's contribution to the anchor, before and after the warp. */
 export interface ThresholdContribution {
   readonly label: string | null;
@@ -117,6 +158,10 @@ export interface ThresholdContribution {
    * are real dated evidence — but they do not move the target year.
    */
   readonly anchors: boolean;
+  /** Where the year came from. Shown so a reader can audit the derivation. */
+  readonly dating: ThresholdDating;
+  /** False when forces were withheld to avoid double-counting a scenario. */
+  readonly forcesApply: boolean;
 }
 
 /** Interquartile band of the arrival-time mixture. */
@@ -187,6 +232,165 @@ export function confidenceForCount(count: number): ClockConfidence {
 /* -------------------------------------------------------------------------- */
 /* Arrival-time distribution math (pure)                                      */
 /* -------------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Dating a quantity threshold from a published projection                    */
+/* -------------------------------------------------------------------------- */
+
+/** Loose key for the fallback match. Server-side resolution is semantic. */
+function quantityKey(quantity: string, unit: string): string {
+  return `${quantity.trim().toLowerCase()}|${unit.trim().toLowerCase()}`;
+}
+
+/**
+ * Find the projection a quantity threshold should be read against.
+ *
+ * Prefers the server-resolved `projectionId`. The string fallback is
+ * deliberately STRICT — exact quantity and unit after casing/space
+ * normalisation — because a loose match here is not a missing anchor, it is a
+ * confidently wrong year. Baselines must agree too: "1.5 degC above
+ * pre-industrial" and "1.5 degC above 1986-2005" are the same quantity and unit
+ * roughly 0.6 degC apart, so a mismatch (or an unknown on either side) refuses.
+ */
+function findProjection(
+  threshold: QuantityThreshold,
+  projections: readonly Projection[],
+): Projection | null {
+  if (threshold.projectionId !== undefined) {
+    const byId = projections.find((p) => p.id === threshold.projectionId);
+    if (!byId) return null;
+    return baselinesAgree(threshold.baseline, byId.baseline) ? byId : null;
+  }
+  const key = quantityKey(threshold.quantity, threshold.unit);
+  const match = projections.find((p) => quantityKey(p.quantity, p.unit) === key);
+  if (!match) return null;
+  return baselinesAgree(threshold.baseline, match.baseline) ? match : null;
+}
+
+/**
+ * Both stated and equal (case/space-insensitive), or both genuinely absent.
+ * An unknown baseline on either side refuses: a threshold nobody anchored to a
+ * reference cannot be safely read against a curve that has one.
+ */
+function baselinesAgree(a: string | undefined, b: string | undefined): boolean {
+  const norm = (s: string | undefined): string | null => {
+    const t = s?.trim().toLowerCase();
+    return t === undefined || t === '' ? null : t;
+  };
+  const left = norm(a);
+  const right = norm(b);
+  if (left === null && right === null) return true;
+  if (left === null || right === null) return false;
+  return left === right;
+}
+
+/**
+ * The year a projection first reaches `value`, by linear interpolation between
+ * the two bracketing points.
+ *
+ * Handles both directions: a rising quantity (warming, CO2) is crossed from
+ * below, a falling one (ocean pH, ice extent) from above. Returns null when the
+ * curve never reaches the value within its published span — extrapolating past
+ * the last point would be inventing a year, which is the one thing this model
+ * refuses to do.
+ */
+export function dateFromProjection(
+  projection: Projection,
+  value: number,
+): number | null {
+  const pts = [...projection.points]
+    .filter((p) => Number.isFinite(p.year) && Number.isFinite(p.value))
+    .sort((a, b) => a.year - b.year);
+  if (pts.length < 2) return null;
+
+  for (let i = 1; i < pts.length; i++) {
+    const prev = pts[i - 1]!;
+    const cur = pts[i]!;
+    const lo = Math.min(prev.value, cur.value);
+    const hi = Math.max(prev.value, cur.value);
+    if (value < lo || value > hi) continue;
+
+    const span = cur.value - prev.value;
+    // A flat segment straddling the value: it is reached at the segment start.
+    if (span === 0) return prev.year;
+    const t = (value - prev.value) / span;
+    return prev.year + t * (cur.year - prev.year);
+  }
+  return null;
+}
+
+/** A threshold reduced to years, however it was originally stated. */
+interface DatedThreshold {
+  central: number;
+  earliest: number | undefined;
+  latest: number | undefined;
+  dating: ThresholdDating;
+  forcesApply: boolean;
+}
+
+/**
+ * Reduce a tipping point to calendar years.
+ *
+ * A published year is used as-is. A quantity threshold is dated by reading its
+ * projection, and its published value range (`lowValue`/`highValue`) is dated
+ * the same way, so the uncertainty carried into the Clock is the SOURCE's
+ * uncertainty rather than an assumed spread.
+ *
+ * Note the bound ordering: on a falling quantity (ocean pH, ice extent) a lower
+ * threshold value is reached LATER, so the dated bounds arrive reversed and are
+ * sorted rather than assumed.
+ *
+ * Returns null when the threshold cannot be dated honestly — no matching
+ * projection, disagreeing baselines, or a curve that never reaches the value
+ * inside its published span. A threshold that cannot be dated is dropped, never
+ * estimated.
+ */
+function dateThreshold(
+  tp: TippingPoint,
+  projections: readonly Projection[],
+): DatedThreshold | null {
+  if (Number.isFinite(tp.centralYear)) {
+    const central = tp.centralYear as number;
+    return {
+      central,
+      earliest: Number.isFinite(tp.earliestYear ?? NaN)
+        ? Math.min(tp.earliestYear as number, central)
+        : undefined,
+      latest: Number.isFinite(tp.latestYear ?? NaN)
+        ? Math.max(tp.latestYear as number, central)
+        : undefined,
+      dating: 'published',
+      // A directly published year embeds no scenario, so nothing is duplicated.
+      forcesApply: true,
+    };
+  }
+
+  const qt = tp.quantityThreshold;
+  if (!qt || !Number.isFinite(qt.value)) return null;
+
+  const projection = findProjection(qt, projections);
+  if (!projection) return null;
+
+  const central = dateFromProjection(projection, qt.value);
+  if (central === null) return null;
+
+  const bounds = [qt.lowValue, qt.highValue]
+    .filter((v): v is number => Number.isFinite(v ?? NaN))
+    .map((v) => dateFromProjection(projection, v))
+    .filter((y): y is number => y !== null)
+    .sort((a, b) => a - b);
+
+  return {
+    central,
+    earliest: bounds.length > 0 ? Math.min(bounds[0]!, central) : undefined,
+    latest: bounds.length > 0 ? Math.max(bounds[bounds.length - 1]!, central) : undefined,
+    dating: 'projected',
+    // Absent → treated as assuming future action. An unlabelled scenario cannot
+    // be shown to be assumption-free, and guessing permissively is what makes
+    // the Clock read later than any source supports.
+    forcesApply: projection.assumesFutureAction === false,
+  };
+}
 
 /** Triangular CDF with support [a, b] and mode c. Robust at the c=a / c=b edges. */
 function triangularCdf(y: number, a: number, c: number, b: number): number {
@@ -300,6 +504,15 @@ interface ThresholdRaw {
   domains: readonly Domain[];
   /** Anchors the countdown. Absent on the source data → false. */
   closesWindow: boolean;
+  /** How the year was obtained — surfaced so the derivation stays inspectable. */
+  dating: ThresholdDating;
+  /**
+   * False when the projection that dated this threshold already assumes future
+   * action. Forces must not bend such a curve: a mitigation pathway has the
+   * clean-energy expansion baked in, so pushing it further with a clean-energy
+   * factor counts the same action twice.
+   */
+  forcesApply: boolean;
 }
 
 /** Median of a non-empty list (linear-interpolated). */
@@ -315,7 +528,10 @@ function median(values: number[]): number {
  * {@link ClockModel} — `hasBaseline === false` / `targetYear === null` rather
  * than a NaN or throw.
  */
-export function deriveClock(factors: readonly ClockFactorInput[]): ClockModel {
+export function deriveClock(
+  factors: readonly ClockFactorInput[],
+  projections: readonly Projection[] = [],
+): ClockModel {
   let contributingCount = 0;
   let pendingCount = 0;
   let rejectedCount = 0;
@@ -388,18 +604,17 @@ export function deriveClock(factors: readonly ClockFactorInput[]): ClockModel {
     // neutral factors (documented opposing forces) can still carry a genuine
     // adverse threshold, and dropping those would lose real deadlines.
     const tp = effect > 0 ? undefined : f.tippingPoint;
-    if (tp && Number.isFinite(tp.centralYear) && significance > 0) {
-      const central = tp.centralYear;
+    const dated = tp && significance > 0 ? dateThreshold(tp, projections) : null;
+    if (tp && dated) {
+      const central = dated.central;
       thresholdsRaw.push({
         label: tp.label ?? null,
         significance,
         central,
-        earliestPub: Number.isFinite(tp.earliestYear ?? NaN)
-          ? Math.min(tp.earliestYear as number, central)
-          : undefined,
-        latestPub: Number.isFinite(tp.latestYear ?? NaN)
-          ? Math.max(tp.latestYear as number, central)
-          : undefined,
+        earliestPub: dated.earliest,
+        latestPub: dated.latest,
+        dating: dated.dating,
+        forcesApply: dated.forcesApply,
         domains,
         // Strict `=== true`: absent, null, or anything non-boolean means nobody
         // has judged it, and an unjudged threshold must not drive the headline.
@@ -462,8 +677,15 @@ export function deriveClock(factors: readonly ClockFactorInput[]): ClockModel {
     // Move the estimate WITHIN the published band: Calamity toward `earliest`,
     // Humanity toward `latest`. At full force + full evidence it reaches the
     // bound; it can never move past it. The band itself does not move.
+    //
+    // Withheld when the dating projection already assumes future action: that
+    // curve has the mitigation baked in, so bending it with the same factors
+    // counts them twice. The threshold still anchors — it is dated, just not
+    // re-shifted — and `forcesApply: false` is reported so the panel can say so.
     const room = force < 0 ? t.central - earliest : latest - t.central;
-    const warpedCentral = clamp(t.central + force * room * mass, earliest, latest);
+    const warpedCentral = t.forcesApply
+      ? clamp(t.central + force * room * mass, earliest, latest)
+      : t.central;
 
     thresholds.push({
       label: t.label,
@@ -473,6 +695,8 @@ export function deriveClock(factors: readonly ClockFactorInput[]): ClockModel {
       shiftYears: warpedCentral - t.central,
       drivingDomains: [...driving],
       anchors: t.closesWindow,
+      dating: t.dating,
+      forcesApply: t.forcesApply,
     });
 
     if (!t.closesWindow) continue;
