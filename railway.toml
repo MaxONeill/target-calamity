@@ -1,0 +1,22 @@
+# Railway configuration for the web service (Fastify API + built client).
+#
+# The Postgres service is separate — deploy db/Dockerfile as its own Railway
+# service so pgvector + PostGIS + ltree are all present (Railway's default
+# Postgres image lacks PostGIS). See docs/DEPLOY.md.
+
+[build]
+builder = "nixpacks"
+# Typechecks the whole project, then builds the client into dist/. The server
+# is run from source via tsx (see the start command).
+buildCommand = "npm run build"
+
+[deploy]
+# Applies any pending migrations, then serves the API + client on $PORT.
+startCommand = "npm start"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 120
+restartPolicyType = "on_failure"
+# Single replica: the start command runs migrations, and concurrent migration
+# on multiple replicas would race. Move migrations to a release step before
+# scaling out.
+numReplicas = 1

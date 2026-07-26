@@ -11,7 +11,11 @@
  * vite.config.ts proxies `/api/*` here in dev, so there is no CORS surface.
  */
 import { randomUUID } from 'node:crypto';
+import { existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import Fastify from 'fastify';
+import fastifyStatic from '@fastify/static';
 import { createDatabase, type AppContext } from './db.js';
 import factorsRoutes from './routes/factors.js';
 import fieldRoutes from './routes/field.js';
@@ -19,7 +23,12 @@ import streamRoutes from './routes/stream.js';
 import submitRoutes from './routes/submit.js';
 import { readSubmissionSalt } from './submissions/identity.js';
 
-const API_PORT = Number(process.env.API_PORT ?? 3001);
+// Railway (and most PaaS) inject the bind port as $PORT. Fall back to API_PORT
+// for local dev, then a default.
+const API_PORT = Number(process.env.PORT ?? process.env.API_PORT ?? 3001);
+
+/** The built client, served in production. `<repo>/dist`, two levels up from server/. */
+const CLIENT_DIST = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const DATABASE_URL = process.env.DATABASE_URL;
 
 const app = Fastify({
@@ -92,6 +101,31 @@ await app.register(factorsRoutes);
 await app.register(fieldRoutes);
 await app.register(streamRoutes);
 await app.register(submitRoutes, { salt: submissionSalt });
+
+/* -------------------------------------------------------------------------- */
+/* Static client (production)                                                 */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * In production the Fastify server also serves the built client, so the whole
+ * app is one origin and there is no CORS surface (matching the dev proxy). In
+ * dev the client is served by Vite, so this is skipped when `dist/` is absent.
+ * The API routes above are registered first and win; the SPA fallback returns
+ * `index.html` only for non-API GETs so client-side routes resolve.
+ */
+if (existsSync(CLIENT_DIST)) {
+  await app.register(fastifyStatic, { root: CLIENT_DIST, wildcard: false });
+  app.setNotFoundHandler((request, reply) => {
+    if (request.method !== 'GET' || request.url.startsWith('/api/')) {
+      reply.code(404).send({ error: 'not found' });
+      return;
+    }
+    reply.sendFile('index.html');
+  });
+  app.log.info('Serving built client from dist/');
+} else {
+  app.log.info('No dist/ — API only (client served by Vite in dev)');
+}
 
 /* -------------------------------------------------------------------------- */
 /* Lifecycle                                                                  */
