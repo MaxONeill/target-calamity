@@ -123,9 +123,12 @@ describe('normalizeProjection', () => {
 });
 
 describe('projectionQuery', () => {
-  it('asks for the trajectory of the requested quantity', () => {
+  it('asks for the requested quantity, aimed at pages carrying a series', () => {
+    // Milestone years and "table" on purpose: a query for the narrative returns
+    // explainers that state one endpoint, and one point cannot be interpolated.
     const q = projectionQuery({ quantity: 'ocean surface pH', unit: 'pH' });
     expect(q).toContain('ocean surface pH');
-    expect(q).toContain('projection');
+    expect(q).toContain('projected values');
+    expect(q).toContain('2100');
   });
 });

@@ -73,6 +73,13 @@ const EXTRACT_SYSTEM =
   'points in the requested unit, at whatever years the sources give (milestone ' +
   'years such as 2030/2050/2100 are typical). At least TWO points, ascending by ' +
   'year, or set found=false. ' +
+  'An OBSERVED present-day or recent value counts as a point, and is often what ' +
+  'makes a curve usable: a source giving today\'s level and a projected level for ' +
+  'one future year has given you two points. Take every year the source states. ' +
+  'Use ONE source block for the whole curve — the block whose numbers are most ' +
+  'complete. Do NOT stitch points from different sources together: two ' +
+  'publishers can use different baselines or scenarios, and silently mixing them ' +
+  'produces a curve neither of them published. ' +
   'NEVER interpolate, extrapolate, or invent a point the sources do not state: a ' +
   'wrong curve silently mis-dates every threshold that depends on it. ' +
   'baseline is the reference the values are measured against, e.g. ' +
@@ -90,9 +97,22 @@ const EXTRACT_SYSTEM =
   'Set found=false whenever the sources do not give a real trajectory for the ' +
   'requested quantity. Returning nothing is correct and expected.';
 
-/** The search query for a quantity's trajectory. */
+/**
+ * The search query for a quantity's trajectory.
+ *
+ * Aimed at pages that carry the NUMBERS, not the narrative. A first attempt used
+ * "<quantity> projection scenario to 2100" and returned explainer articles that
+ * state one endpoint — "current policies lead to 2.7 degC" — which is a single
+ * point and cannot be interpolated. Naming the milestone years and asking for a
+ * table biases retrieval toward scenario tables and data pages that publish a
+ * series.
+ */
 export function projectionQuery(request: QuantityRequest): string {
-  return [request.quantity, request.unit, 'projection scenario to 2100']
+  return [
+    request.quantity,
+    request.unit,
+    'projected values table 2030 2050 2100 scenario pathway data',
+  ]
     .filter(Boolean)
     .join(' ');
 }
@@ -178,6 +198,11 @@ export async function researchProjection(
 
   const apiKey = env.FIRECRAWL_API_KEY as string;
   const docs = await firecrawlSearch(projectionQuery(request), apiKey, {
+    // Wider than factor research by default. A curve has to come from ONE
+    // source, so the odds hinge on at least one retrieved page carrying a full
+    // series — more candidates is the lever, and this runs once per quantity
+    // rather than once per factor, so the cost stays bounded.
+    maxResults: opts.maxResults ?? 8,
     ...(opts.maxResults !== undefined ? { maxResults: opts.maxResults } : {}),
     ...(opts.maxContentChars !== undefined ? { maxContentChars: opts.maxContentChars } : {}),
   });

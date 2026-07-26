@@ -18,6 +18,7 @@
     "backfill:domains": "tsx --env-file-if-exists=.env server/ingestion/backfillDomains.ts",
     "backfill:closers": "tsx --env-file-if-exists=.env server/ingestion/backfillWindowClosers.ts",
     "ingest:projections": "tsx --env-file-if-exists=.env server/ingestion/fetchProjections.ts",
+    "backfill:quantities": "tsx --env-file-if-exists=.env server/ingestion/backfillQuantityThresholds.ts",
     "fetch:elevation": "node scripts/fetch-elevation.mjs"
   },
   "dependencies": {
