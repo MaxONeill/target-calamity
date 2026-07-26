@@ -10,6 +10,8 @@ import type {
   SortModeSchema,
   VerificationStateSchema,
   TippingPointSchema,
+  QuantityThresholdSchema,
+  ProjectionSchema,
   CitationSchema,
   FactorSchema,
   FieldPinSchema,
@@ -30,6 +32,8 @@ export type SortMode = z.infer<typeof SortModeSchema>;
 export type VerificationState = z.infer<typeof VerificationStateSchema>;
 
 export type TippingPoint = z.infer<typeof TippingPointSchema>;
+export type QuantityThreshold = z.infer<typeof QuantityThresholdSchema>;
+export type Projection = z.infer<typeof ProjectionSchema>;
 
 export type Citation = z.infer<typeof CitationSchema>;
 export type Factor = z.infer<typeof FactorSchema>;

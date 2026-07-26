@@ -36,15 +36,30 @@ function Thresholds({ model }: { model: ClockModel }): JSX.Element | null {
   if (model.thresholds.length === 0) return null;
   return (
     <div className="tc-why-section">
-      <div className="tc-why-heading">Anchoring thresholds</div>
+      <div className="tc-why-heading">Dated thresholds</div>
       <p className="tc-why-note">
-        Each dated threshold, and how far its driving forces moved it from the
-        published estimate.
+        Only thresholds whose crossing ends the possibility of correction anchor
+        the countdown. The rest are real dated evidence, but they are not what
+        the window is measured against.
       </p>
       <ul className="tc-why-list">
         {model.thresholds.map((t, i) => (
-          <li key={t.label ?? i} className="tc-why-threshold">
-            <span className="tc-why-row-label">{t.label ?? 'Unlabelled threshold'}</span>
+          <li key={t.label ?? i} className="tc-why-threshold" data-anchors={t.anchors}>
+            <span className="tc-why-row-label">
+              {t.label ?? 'Unlabelled threshold'}
+              {/* The derivation, stated rather than implied: whether this drives
+                  the countdown, where its year came from, and whether forces
+                  were withheld to avoid double-counting a scenario. */}
+              {t.anchors ? null : (
+                <span className="tc-why-row-meta"> · informs only</span>
+              )}
+              {t.dating === 'projected' ? (
+                <span className="tc-why-row-meta"> · dated from a projection</span>
+              ) : null}
+              {t.anchors && !t.forcesApply ? (
+                <span className="tc-why-row-meta"> · forces withheld (scenario already assumes action)</span>
+              ) : null}
+            </span>
             <span className="tc-why-threshold-years">
               {formatYear(t.baselineYear)}
               {Math.abs(t.shiftYears) >= 0.05 ? (

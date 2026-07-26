@@ -99,6 +99,54 @@ function fieldEpochOf(rows: readonly { updated_at: string }[]): string {
   return rows.reduce((max, r) => (r.updated_at > max ? r.updated_at : max), rows[0]!.updated_at);
 }
 
+/** Raw projections row. `points` is JSONB; the rest are plain columns. */
+interface ProjectionRow {
+  id: string;
+  quantity: string;
+  unit: string;
+  baseline: string | null;
+  scenario: string | null;
+  assumes_future_action: boolean | null;
+  points: { year: number; value: number }[];
+  source_url: string;
+  source_title: string | null;
+}
+
+/**
+ * Every projection, shaped for the wire.
+ *
+ * Unfiltered on purpose: a threshold is matched to a projection on the CLIENT
+ * (see `deriveClock`), so narrowing here to "only the ones currently referenced"
+ * would require running the match twice, in two languages, and any drift
+ * between them would silently drop an anchor. The set is small — one row per
+ * quantity, not per factor — so sending it whole is cheaper than the bug.
+ *
+ * SQL nulls are stripped rather than passed through: the schemas are
+ * `.optional()` and never `.nullable()`, per the project's read-path rule.
+ */
+async function projectionsDb(db: Database): Promise<FieldResponse['projections']> {
+  const { rows } = await sql<ProjectionRow>`
+    SELECT id, quantity, unit, baseline, scenario, assumes_future_action,
+           points, source_url, source_title
+      FROM projections
+     ORDER BY quantity ASC, id ASC
+  `.execute(db);
+
+  return rows.map((r) => ({
+    id: r.id,
+    quantity: r.quantity,
+    unit: r.unit,
+    points: r.points,
+    sourceUrl: r.source_url,
+    ...(r.baseline !== null ? { baseline: r.baseline } : {}),
+    ...(r.scenario !== null ? { scenario: r.scenario } : {}),
+    ...(r.assumes_future_action !== null
+      ? { assumesFutureAction: r.assumes_future_action }
+      : {}),
+    ...(r.source_title !== null ? { sourceTitle: r.source_title } : {}),
+  }));
+}
+
 async function fieldDb(db: Database): Promise<FieldResponse> {
   const { rows } = await sql<FieldRow>`
     SELECT id, name, description, spatial_path::text AS spatial_path,
@@ -114,6 +162,7 @@ async function fieldDb(db: Database): Promise<FieldResponse> {
   return {
     pins: toPins(rows),
     globalFactors: toGlobalFactors(rows),
+    projections: await projectionsDb(db),
     fieldEpoch: fieldEpochOf(rows),
   };
 }
@@ -146,6 +195,10 @@ function fieldSeed(): FieldResponse {
   return {
     pins: toPins(rows),
     globalFactors: toGlobalFactors(rows),
+    // Seed mode has no projections table. Seed thresholds are year-stated, so
+    // nothing in the curated set needs one — but the field MUST still carry the
+    // key, or the client's schema parse diverges between modes.
+    projections: [],
     fieldEpoch: fieldEpochOf(rows),
   };
 }

@@ -1,5 +1,44 @@
-import type { FieldPin, GlobalFactor } from '../../../shared/types.js';
-import type { ClockFactorInput, QuantityThreshold, TippingPoint } from './clockModel.js';
+import type {
+  FieldPin,
+  GlobalFactor,
+  Projection as WireProjection,
+} from '../../../shared/types.js';
+import type {
+  ClockFactorInput,
+  Projection,
+  QuantityThreshold,
+  TippingPoint,
+} from './clockModel.js';
+
+/**
+ * Projects a wire projection onto the Clock's input shape.
+ *
+ * Same `exactOptionalPropertyTypes` boundary as {@link toClockFactor}: the
+ * schema's `.optional()` yields `T | undefined`, the model uses `?: T`, and
+ * those are distinct types even though they mean the same thing. Rebuilt field
+ * by field rather than cast — and every optional MUST be listed, because one
+ * omitted here is dropped silently while everything still compiles.
+ *
+ * `assumesFutureAction` is the dangerous one to lose: absent means "assumes
+ * action", so dropping a `false` would withhold forces from a curve that should
+ * have received them.
+ */
+export function toClockProjection(p: WireProjection): Projection {
+  const built: {
+    id?: string;
+    quantity: string;
+    unit: string;
+    baseline?: string;
+    assumesFutureAction?: boolean;
+    points: readonly { readonly year: number; readonly value: number }[];
+  } = { id: p.id, quantity: p.quantity, unit: p.unit, points: p.points };
+
+  if (p.baseline !== undefined) built.baseline = p.baseline;
+  if (p.assumesFutureAction !== undefined) {
+    built.assumesFutureAction = p.assumesFutureAction;
+  }
+  return built;
+}
 
 /**
  * Projects a field pin onto the Clock's input shape.

@@ -1,6 +1,10 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useSwipe, type SwipeGesture } from '../../hooks/useSwipe.js';
-import { deriveClock, type ClockFactorInput } from '../../lib/clock/clockModel.js';
+import {
+  deriveClock,
+  type ClockFactorInput,
+  type Projection,
+} from '../../lib/clock/clockModel.js';
 import { ExplainerModal } from '../ExplainerModal/index.js';
 import { ClockCompact } from './ClockCompact.js';
 import { ClockDerivation } from './ClockDerivation.js';
@@ -14,6 +18,12 @@ export interface ClockProps {
    * structurally. Pending factors are excluded inside the model.
    */
   factors: readonly ClockFactorInput[];
+  /**
+   * Published trajectories used to date quantity-stated thresholds. Empty is
+   * valid and normal — such a threshold is simply not dated, and therefore not
+   * anchored, rather than being estimated.
+   */
+  projections?: readonly Projection[];
   className?: string;
 }
 
@@ -26,8 +36,11 @@ export interface ClockProps {
  * fabricated instant. The compact widget carries the live time; clicking it
  * discloses how that time was derived.
  */
-export function Clock({ factors, className }: ClockProps): JSX.Element {
-  const model = useMemo(() => deriveClock(factors), [factors]);
+export function Clock({ factors, projections, className }: ClockProps): JSX.Element {
+  const model = useMemo(
+    () => deriveClock(factors, projections ?? []),
+    [factors, projections],
+  );
 
   const { remaining, overdue } = useCountdown(model);
   const { soundEnabled, toggleSound, setModalOpen } = useAmbientTick();

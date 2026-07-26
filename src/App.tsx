@@ -14,7 +14,7 @@ import { useScene } from './hooks/useScene.js';
 import { useSelectedFactor } from './hooks/useSelectedFactor.js';
 import { useSlideoutPanel } from './hooks/useSlideoutPanel.js';
 import { useSwipe, type SwipeGesture } from './hooks/useSwipe.js';
-import { toClockFactor } from './lib/clock/toClockFactor.js';
+import { toClockFactor, toClockProjection } from './lib/clock/toClockFactor.js';
 import type { SceneHandle } from './scene/types.js';
 
 /**
@@ -35,7 +35,7 @@ export function App(): JSX.Element {
   const appRef = useRef<HTMLDivElement>(null);
 
   const feed = useFactorFeed();
-  const { fieldPins, globalFactors, reloadField } = useFieldPins();
+  const { fieldPins, globalFactors, projections, reloadField } = useFieldPins();
   const panel = useSlideoutPanel();
 
   // Touch gestures for the panel. Opening is restricted to a right-edge strip
@@ -126,6 +126,8 @@ export function App(): JSX.Element {
     [fieldPins, globalFactors],
   );
 
+  const clockProjections = useMemo(() => projections.map(toClockProjection), [projections]);
+
   return (
     <div className="tc-app" data-panel-open={panel.open} ref={appRef}>
       <div className="tc-globe-mount" ref={mountRef} aria-hidden="true" />
@@ -139,7 +141,7 @@ export function App(): JSX.Element {
         <StatusBar streamStatus={streamStatus} />
 
         <div className="tc-clock-slot">
-          <Clock factors={clockFactors} />
+          <Clock factors={clockFactors} projections={clockProjections} />
         </div>
 
         {/* Bottom-centre CTA. Shifts with the globe when the panel opens so it

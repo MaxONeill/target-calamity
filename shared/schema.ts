@@ -314,6 +314,16 @@ export const FieldResponseSchema = z.object({
    * dropping them here would silently distort the countdown.
    */
   globalFactors: z.array(GlobalFactorSchema),
+  /**
+   * Published trajectories referenced by the returned thresholds.
+   *
+   * Sent with the field rather than resolved server-side into a bare year, so
+   * the client can show HOW a threshold was dated. The product's claim is
+   * auditability; a computed year with its derivation stripped out is exactly
+   * the black box this is supposed to avoid. Empty when no threshold in view is
+   * quantity-stated.
+   */
+  projections: z.array(ProjectionSchema).default([]),
   fieldEpoch: z.string().datetime({ offset: true }),
 });
 

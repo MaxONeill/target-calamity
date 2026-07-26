@@ -336,6 +336,12 @@
   font-variant-numeric: tabular-nums;
   color: var(--tc-text);
 }
+/* A threshold that informs but does not anchor is dimmed, not hidden: it is
+   real dated evidence, it just is not what the countdown rests on. */
+.tc-why-threshold[data-anchors='false'] {
+  opacity: 0.62;
+}
+
 .tc-why-threshold {
   flex-wrap: wrap;
 }
