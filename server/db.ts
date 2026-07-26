@@ -174,6 +174,14 @@ export type Database = Kysely<DB>;
  */
 export function createDatabase(connectionString: string): { db: Database; pool: PgPool } {
   const pool = new Pool({ connectionString });
+  // `pg` emits 'error' on the pool when an IDLE client dies — a database
+  // restart, a failover, an idle-timeout killer. That is not tied to any
+  // in-flight query, so nothing else can catch it, and an unhandled 'error'
+  // event terminates the process. The pool discards the dead client on its own;
+  // this listener exists so the loss is logged instead of fatal.
+  pool.on('error', (err) => {
+    console.error('[db] idle client error (connection discarded, pool continues):', err);
+  });
   const db = new Kysely<DB>({ dialect: new PostgresDialect({ pool }) });
   return { db, pool };
 }

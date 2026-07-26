@@ -22,6 +22,14 @@ const NOTIFY_CHANNEL = 'factor_updates';
 /** Heartbeat interval — keeps proxies from closing an idle SSE connection. */
 const KEEPALIVE_MS = 15_000;
 
+/**
+ * Backoff for re-binding the LISTEN client after the database goes away.
+ * Doubles from MIN to MAX so a long outage settles into a slow retry instead of
+ * hammering a database that is still starting up.
+ */
+const RECONNECT_MIN_MS = 1_000;
+const RECONNECT_MAX_MS = 30_000;
+
 export default async function streamRoutes(fastify: FastifyInstance): Promise<void> {
   const ctx = fastify.appCtx;
 
@@ -50,9 +58,15 @@ export default async function streamRoutes(fastify: FastifyInstance): Promise<vo
 
   if (ctx.mode === 'db') {
     // Dedicated long-lived client for LISTEN — separate from the query pool so a
-    // slow query can never starve notification delivery.
-    const listener: PoolClient = await ctx.pool.connect();
-    await listener.query(`LISTEN ${NOTIFY_CHANNEL}`);
+    // slow query can never starve notification delivery. It is rebound on loss
+    // rather than held forever: see bindListener.
+    // Captured here because `bindListener` is a hoisted function declaration,
+    // which TS analyses without this block's `ctx.mode === 'db'` narrowing.
+    const pool = ctx.pool;
+    let listener: PoolClient | null = null;
+    let reconnectTimer: NodeJS.Timeout | null = null;
+    let backoffMs = RECONNECT_MIN_MS;
+    let closing = false;
 
     const onNotification = (msg: Notification): void => {
       if (msg.channel !== NOTIFY_CHANNEL) return;
@@ -60,19 +74,85 @@ export default async function streamRoutes(fastify: FastifyInstance): Promise<vo
       // through verbatim (default to an empty object if a bare NOTIFY arrives).
       broadcast('factor', msg.payload ?? '{}');
     };
-    listener.on('notification', onNotification);
+
+    /** Drop a dead client. Idempotent — loss can be observed more than once. */
+    const discard = (client: PoolClient, err?: Error): void => {
+      client.removeListener('notification', onNotification);
+      client.removeAllListeners('error');
+      if (listener === client) listener = null;
+      try {
+        // Releasing WITH an error destroys the connection instead of returning a
+        // broken one to the pool, where it would be handed to the next caller.
+        client.release(err ?? true);
+      } catch {
+        // Already released by the pool's own error handling.
+      }
+    };
+
+    const scheduleRebind = (): void => {
+      if (closing || reconnectTimer !== null) return;
+      const delay = backoffMs;
+      backoffMs = Math.min(backoffMs * 2, RECONNECT_MAX_MS);
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        void bindListener();
+      }, delay);
+      // Must not hold the event loop open during shutdown.
+      reconnectTimer.unref();
+    };
+
+    async function bindListener(): Promise<void> {
+      if (closing) return;
+      try {
+        const client = await pool.connect();
+        // THE reason this route used to take the whole process down: a FATAL
+        // from the server (57P01 when Postgres restarts or fails over) arrives
+        // as an 'error' event on the client. With no listener attached, Node
+        // treats it as an unhandled 'error' and exits. A database restart must
+        // degrade live deltas, never kill the web service.
+        client.on('error', (err: Error) => {
+          if (closing) return;
+          fastify.log.warn({ err, channel: NOTIFY_CHANNEL }, 'LISTEN client lost; rebinding');
+          discard(client, err);
+          scheduleRebind();
+        });
+        client.on('notification', onNotification);
+        await client.query(`LISTEN ${NOTIFY_CHANNEL}`);
+        listener = client;
+        backoffMs = RECONNECT_MIN_MS;
+        fastify.log.info({ channel: NOTIFY_CHANNEL }, 'SSE stream bound to Postgres LISTEN/NOTIFY');
+      } catch (err) {
+        // Includes the database simply not being up yet. Serving the client and
+        // the feed matters more than live deltas, so retry rather than throw.
+        fastify.log.warn({ err, channel: NOTIFY_CHANNEL }, 'LISTEN bind failed; will retry');
+        scheduleRebind();
+      }
+    }
+
+    await bindListener();
 
     fastify.addHook('onClose', async () => {
-      listener.removeListener('notification', onNotification);
+      closing = true;
+      if (reconnectTimer !== null) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+      const client = listener;
+      if (client === null) return;
+      listener = null;
+      client.removeListener('notification', onNotification);
+      client.removeAllListeners('error');
       try {
-        await listener.query(`UNLISTEN ${NOTIFY_CHANNEL}`);
+        await client.query(`UNLISTEN ${NOTIFY_CHANNEL}`);
       } catch {
         // The connection may already be tearing down; nothing to unlisten.
       }
-      listener.release();
+      try {
+        client.release();
+      } catch {
+        // Already released.
+      }
     });
-
-    fastify.log.info({ channel: NOTIFY_CHANNEL }, 'SSE stream bound to Postgres LISTEN/NOTIFY');
   } else {
     fastify.log.info('SSE stream in seed mode: keepalive only, no live deltas ( degrade)');
   }
