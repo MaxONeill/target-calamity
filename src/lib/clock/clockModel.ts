@@ -787,7 +787,15 @@ export function deriveClock(
     domainForces,
     thresholds,
     assumedSpreadYears: hasBaseline && usedFallbackSpread ? derivedSpread : null,
-    confidence: confidenceForCount(contributingCount),
+    // Tiered on the ANCHOR count, not the factor count.
+    //
+    // This reported `substantial` off 99 contributing factors while the
+    // countdown rested on one threshold — and a single reclassification moved
+    // the target six years. Confidence has to describe the number it sits next
+    // to, and that number is a function of the anchors alone: the other 95
+    // factors are forces that shift a date within its published band, not
+    // evidence about when the window closes.
+    confidence: confidenceForCount(anchorWarped.length),
   };
 }
 

@@ -26,7 +26,11 @@ describe('deriveClock — anchor', () => {
     expect(m.hasBaseline).toBe(false);
     expect(m.targetYear).toBeNull();
     expect(m.band).toBeNull();
-    expect(m.confidence).not.toBe('indeterminate'); // has evidence, just no anchor
+    // Confidence tiers on ANCHORS, so no anchor means indeterminate even with
+    // plenty of evidence. It describes the countdown, and there is no
+    // countdown. The factor still counts as evidence — see hasEvidence.
+    expect(m.confidence).toBe('indeterminate');
+    expect(m.hasEvidence).toBe(true);
   });
 
   it('is fully indeterminate with no factors at all', () => {
