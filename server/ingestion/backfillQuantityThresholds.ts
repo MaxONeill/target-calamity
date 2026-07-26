@@ -8,12 +8,20 @@
  * to demand a year and the literature publishes degrees. Each is asked, once,
  * whether its sources state a threshold against a measurable quantity.
  *
- *   npm run backfill:quantities                 # judge every candidate row
- *   npm run backfill:quantities -- --plan       # list candidates, no calls
- *   npm run backfill:quantities -- --limit 10   # cap the number judged (cost)
+ *   npm run backfill:quantities            # search every UNCHECKED candidate
+ *   DRY_RUN=1 npm run backfill:quantities # list candidates, no calls, no writes
+ *   LIMIT=10 npm run backfill:quantities  # cap the number searched (cost)
+ *   FORCE=1 npm run backfill:quantities   # re-include previously-empty rows
  *
- * `--plan`, not `--dry-run`: npm claims the latter as its own config and eats it
- * before the script sees it. DRY_RUN=1 works everywhere.
+ * Prefer the ENV forms. npm swallows flags it recognises even after `--`, and
+ * both `--dry-run` and `--limit` have been observed not to reach the script —
+ * which, for a command that spends a Firecrawl search per row, has meant runs
+ * costing ~50 searches when they were meant to cost none.
+ *
+ * COST: one Firecrawl search per candidate. Rows that come back empty are
+ * stamped `threshold_checked_at` and skipped thereafter, so a re-run costs
+ * nothing until new factors arrive. FORCE=1 is the way back in when the
+ * extraction or the gate has changed enough to be worth re-asking.
  *
  * Candidates are ADVERSE factors with no tipping point at all. A factor that
  * already carries one is left alone: overwriting a published year with a
@@ -100,16 +108,39 @@ interface Row {
   description: string;
 }
 
-async function candidateRows(db: Database): Promise<Row[]> {
+/**
+ * Rows worth spending a search on: adverse, verified, no threshold, and not
+ * already searched-and-empty.
+ *
+ * That last clause is what makes re-running affordable. Each candidate costs a
+ * Firecrawl search, and without it every previously-empty factor is researched
+ * again — one run checked 48 rows to gain a single threshold. `--force` exists
+ * for when the extraction or the gate has changed enough that old negatives are
+ * worth revisiting, which is a deliberate decision rather than the default.
+ */
+async function candidateRows(db: Database, force: boolean): Promise<Row[]> {
   const { rows } = await sql<Row>`
     SELECT id, name, description
       FROM factors
      WHERE tipping_point IS NULL
        AND effect <= 0
        AND verification_state = 'verified'
+       AND (${force} OR threshold_checked_at IS NULL)
      ORDER BY (ABS(effect * significance)) DESC, id ASC
   `.execute(db);
   return rows;
+}
+
+/**
+ * Record that a search happened and found nothing, so the next run skips it.
+ * Only negatives are stamped — a positive is self-evident from `tipping_point`
+ * no longer being NULL, which the candidate query already excludes.
+ */
+async function markChecked(db: Database, id: string): Promise<void> {
+  await sql`
+    UPDATE factors SET threshold_checked_at = NOW()
+     WHERE id = ${id}::uuid AND tipping_point IS NULL
+  `.execute(db);
 }
 
 /**
@@ -190,18 +221,31 @@ export async function backfillQuantityThresholds(
     return;
   }
 
+  // npm swallows flags it recognises — --limit and --dry-run have both been
+  // observed not to arrive — so every switch has an env-var form, and those are
+  // the ones to trust when a run costs money.
   const args = process.argv.slice(2);
   const dryRun =
     args.includes('--plan') || args.includes('--dry-run') || process.env.DRY_RUN === '1';
+  const force = args.includes('--force') || process.env.FORCE === '1';
   const limitArg = args.indexOf('--limit');
-  const limit = limitArg >= 0 ? Number.parseInt(args[limitArg + 1] ?? '', 10) : NaN;
+  const limitRaw = limitArg >= 0 ? args[limitArg + 1] : process.env.LIMIT;
+  const limit = Number.parseInt(limitRaw ?? '', 10);
+
+  // Honour the operator's cost ceiling instead of hardcoding one. This is the
+  // multiplier on every search: pages retrieved and scraped per call.
+  const maxResults = Number.parseInt(process.env.FIRECRAWL_MAX_RESULTS ?? '', 10);
 
   const { db, pool } = createDatabase(databaseUrl);
   try {
-    let rows = await candidateRows(db);
+    let rows = await candidateRows(db, force);
     if (Number.isFinite(limit) && limit > 0) rows = rows.slice(0, limit);
 
-    logger.info(`[quantities] ${rows.length} threshold-less adverse factor(s) to check.`);
+    logger.info(
+      `[quantities] ${rows.length} unchecked adverse factor(s)` +
+        `${force ? ' (--force: previously-empty rows re-included)' : ''}. ` +
+        `Each costs one Firecrawl search.`,
+    );
     if (dryRun || rows.length === 0) {
       logger.info(dryRun ? '[quantities] plan only — no calls made.' : '[quantities] nothing to do.');
       return;
@@ -221,10 +265,18 @@ export async function backfillQuantityThresholds(
           const docs = await firecrawlSearch(
             thresholdQuery(row.name),
             process.env.FIRECRAWL_API_KEY as string,
-            { maxResults: 6 },
+            // Omitted when unset so firecrawlSearch applies its own default,
+            // rather than this file inventing a competing one.
+            Number.isFinite(maxResults) && maxResults > 0 ? { maxResults } : {},
           );
           done += 1;
-          if (docs.length === 0) continue;
+          // From here on, every exit that does not write a threshold marks the
+          // row checked. Missing one of them leaks the saving: the search has
+          // already been paid for, and the next run would pay again.
+          if (docs.length === 0) {
+            await markChecked(db, row.id);
+            continue;
+          }
 
           const verdict = await structuredCompletion({
             client,
@@ -236,13 +288,17 @@ export async function backfillQuantityThresholds(
             schema: QuantityJudgementSchema,
             schemaName: 'QuantityThresholdJudgement',
           });
-          if (!verdict || !verdict.found) continue;
+          if (!verdict || !verdict.found) {
+            await markChecked(db, row.id);
+            continue;
+          }
           if (
             !Number.isFinite(verdict.value) ||
             verdict.quantity.trim() === '' ||
             verdict.unit.trim() === ''
           ) {
             logger.warn(`[quantities] incomplete threshold for ${row.id} — skipped.`);
+            await markChecked(db, row.id);
             continue;
           }
 
@@ -255,6 +311,7 @@ export async function backfillQuantityThresholds(
               `[quantities] "${row.name.slice(0, 40)}" cited source ${verdict.sourceIndex}, ` +
                 `which does not exist — dropped as unsourced.`,
             );
+            await markChecked(db, row.id);
             continue;
           }
 
@@ -269,6 +326,10 @@ export async function backfillQuantityThresholds(
               `[quantities] rejected ${doc.url} for "${row.name.slice(0, 32)}" ` +
                 `(reputability ${score.score.toFixed(2)})`,
             );
+            // Marked too: the best source retrieval could find did not clear the
+            // bar, and a re-run would retrieve the same pages. `--force` is the
+            // way back in once the gate itself changes.
+            await markChecked(db, row.id);
             continue;
           }
 

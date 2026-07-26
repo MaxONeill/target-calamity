@@ -197,13 +197,16 @@ export async function researchProjection(
   }
 
   const apiKey = env.FIRECRAWL_API_KEY as string;
+  // A curve has to come from ONE source, so the odds hinge on at least one
+  // retrieved page carrying a full series — more results is the lever. But the
+  // operator's ceiling wins over that preference: FIRECRAWL_MAX_RESULTS is the
+  // multiplier on every search, and a module hardcoding past it makes the
+  // setting a lie. Unset on both → firecrawlSearch's own default.
+  const envMax = Number.parseInt(env.FIRECRAWL_MAX_RESULTS ?? '', 10);
+  const maxResults = opts.maxResults ?? (Number.isFinite(envMax) && envMax > 0 ? envMax : undefined);
+
   const docs = await firecrawlSearch(projectionQuery(request), apiKey, {
-    // Wider than factor research by default. A curve has to come from ONE
-    // source, so the odds hinge on at least one retrieved page carrying a full
-    // series — more candidates is the lever, and this runs once per quantity
-    // rather than once per factor, so the cost stays bounded.
-    maxResults: opts.maxResults ?? 8,
-    ...(opts.maxResults !== undefined ? { maxResults: opts.maxResults } : {}),
+    ...(maxResults !== undefined ? { maxResults } : {}),
     ...(opts.maxContentChars !== undefined ? { maxContentChars: opts.maxContentChars } : {}),
   });
   if (docs.length === 0) return null;
