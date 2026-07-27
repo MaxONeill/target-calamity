@@ -1,7 +1,7 @@
 ﻿/**
  * TypeScript types for the shared contract, DERIVED from the zod schemas in
  * `shared/schema.ts` via `z.infer`. Do not hand-write or edit these to
- * diverge from the schemas â€” change the schema and the type follows. Importing
+ * diverge from the schemas — change the schema and the type follows. Importing
  * from here keeps callers off the zod runtime when they only need the types.
  */
 import type { z } from 'zod';
@@ -61,7 +61,7 @@ export type FactorByIdResponse = z.infer<typeof FactorByIdResponseSchema>;
 
 /**
  * The ONLY fields an anonymous submitter may send. Note what is absent:
- * effect, significance, verificationState, lat, lon, tippingPoint â€” all
+ * effect, significance, verificationState, lat, lon, tippingPoint — all
  * system-assigned. The schema is `.strict()`, so supplying one is a hard error.
  */
 export type FactorSubmission = z.infer<typeof FactorSubmissionSchema>;

@@ -1,5 +1,5 @@
 ﻿/**
- * The reconciliation loop â€” Phase A to D orchestration.
+ * The reconciliation loop — Phase A to D orchestration.
  *
  * This module owns the impure concerns: idempotency, batching, value
  * validation, quarantine and the transactional critical section. The decision
@@ -46,7 +46,7 @@ interface PreparedFactor {
 
 /**
  * Construct the reconciliation pipeline. Returns `processBatch`, which runs the
- * full Aâ†’D loop over a page of inbound items and reports the outcome counts.
+ * full A→D loop over a page of inbound items and reports the outcome counts.
  */
 export function createPipeline(deps: PipelineDeps) {
   const log = deps.logger ?? console;
@@ -56,7 +56,7 @@ export function createPipeline(deps: PipelineDeps) {
     embeddings: deps.embeddings,
 
     /**
-     * Process one batch of inbound intel items through Phases Aâ€“D. Idempotent at
+     * Process one batch of inbound intel items through Phases A–D. Idempotent at
      * the item level, batched at the embedding level, and
      * serialized per spatial bucket at the write level.
      */
@@ -70,7 +70,7 @@ export function createPipeline(deps: PipelineDeps) {
         processedFactors: 0,
       };
 
-      // --- Item-level idempotency â€” BEFORE extraction, but ONLY for
+      // --- Item-level idempotency — BEFORE extraction, but ONLY for
       // items that carry a source URL (real articles: a re-ingest is a cheap
       // pre-skip). Live research TOPICS have no URL and MUST be re-run each cycle,
       // so they are never pre-skipped here; their idempotency is per-finding,
@@ -196,11 +196,11 @@ export function createPipeline(deps: PipelineDeps) {
       embedding: number[],
       resolver: EntityResolver,
     ): Promise<ResolutionOutcome> {
-      // Phase C â€” candidates, not a decision.
+      // Phase C — candidates, not a decision.
       const raw = await tx.findNearestFactors(embedding, CANDIDATE_TOP_K);
       const candidates = filterCandidates(raw);
 
-      // Phase D â€” classify (only when there is something to compare against).
+      // Phase D — classify (only when there is something to compare against).
       let verdict: ResolverVerdict;
       if (candidates.length === 0) {
         verdict = { kind: 'independent' };
@@ -230,7 +230,7 @@ export function createPipeline(deps: PipelineDeps) {
       };
 
       if (outcome.kind === 'insert') {
-        // No Collision â€” a distinct event. Its verification state comes from the
+        // No Collision — a distinct event. Its verification state comes from the
         // reputability gate: `verified` when a reputable source cleared
         // the threshold, else `pending` ( default for machine-extracted
         // rows, still excluded from the field bake until verified).
@@ -252,7 +252,7 @@ export function createPipeline(deps: PipelineDeps) {
           reputabilityScore: p.draft.reputabilityScore,
           reputabilityReasoning: p.draft.reputabilityReasoning,
           citation,
-          // Every other source the gate scored. contentHash is null on these â€”
+          // Every other source the gate scored. contentHash is null on these —
           // it is the per-finding idempotency key and belongs to the deciding
           // citation alone (see FactorWriteInput.corroborating).
           corroborating: (p.draft.corroborating ?? []).map((s) => ({
@@ -269,7 +269,7 @@ export function createPipeline(deps: PipelineDeps) {
           },
         });
       } else {
-        // Collision â€” escalate exactly one parent with recalculated metrics,
+        // Collision — escalate exactly one parent with recalculated metrics,
         // appending a citation + revision (one-target write) and merging in any
         // new data the parent lacked (tipping point, reputable promotion).
         await tx.escalateFactor({
@@ -305,7 +305,7 @@ function candidateView(
   // The DB candidate carries metrics + distance; name/description are not on the
   // FactorCandidate shape (kept lean for the pure math), so the resolver sees the
   // identifying metrics and distance. A richer view can be added if a resolver
-  // needs the parent's text â€” it would come from an additional repository read.
+  // needs the parent's text — it would come from an additional repository read.
   return {
     id: c.id,
     name: '',

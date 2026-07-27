@@ -3,7 +3,7 @@
  *
  * Every one has both a Postgres implementation and an in-memory or
  * deterministic offline counterpart, which is what keeps the whole pipeline
- * runnable â€” and testable â€” with no network and no database.
+ * runnable — and testable — with no network and no database.
  */
 import type { TippingPoint, VerificationState } from '../../shared/types.js';
 import type { Domain } from '../../shared/domains.js';
@@ -45,7 +45,7 @@ export interface ResolutionRequest {
 /**
  * Phase D. The resolver ONLY classifies (/finding 28): independent event
  * vs escalation of a named candidate + directionality. It never computes stored
- * numbers â€” that is the server's deterministic job (, in `dedupe.ts`).
+ * numbers — that is the server's deterministic job (, in `dedupe.ts`).
  */
 export interface EntityResolver {
   resolve(request: ResolutionRequest): Promise<ResolverVerdict>;
@@ -119,7 +119,7 @@ export interface NewFactorInput {
    * The OTHER sources the gate saw and scored, beyond the deciding one.
    *
    * The extraction returns several sources per finding and the gate scores every
-   * one of them, but only the best was ever persisted â€” so a claim backed by
+   * one of them, but only the best was ever persisted — so a claim backed by
    * three reputable publishers displayed a single citation, and the reader had
    * no way to know corroboration existed. In the live set that left 89 of 104
    * factors showing exactly one source, which described our write path rather
@@ -206,8 +206,8 @@ export interface IngestionRepository {
   /**
    * Run `fn` inside a READ COMMITTED transaction holding
    * `pg_advisory_xact_lock(hashtext(bucketKey))`, so concurrent inbound items in
-   * the same spatial/temporal bucket serialize through the Phase Câ†’D critical
-   * section. The advisory lock â€” not the isolation level â€” provides
+   * the same spatial/temporal bucket serialize through the Phase C→D critical
+   * section. The advisory lock — not the isolation level — provides
    * mutual exclusion.
    */
   withBucketLock<T>(
@@ -225,7 +225,7 @@ export interface IngestionRepository {
 /**
  * Optional publisher/domain allowlist. When provided, a factor whose citation
  * fails the check is quarantined rather than inserted. Left undefined, the gate
- * is a no-op â€” provenance policy is a deployment decision, so this is a hook,
+ * is a no-op — provenance policy is a deployment decision, so this is a hook,
  * not a hard-coded list.
  */
 export type SourceAllowlist = (citation: {
@@ -254,7 +254,7 @@ export interface BatchResult {
    * Extracted factors skipped because their SOURCE was already ingested.
    * The live research path re-runs the same topics every cycle on purpose, so
    * idempotency for it is per-FINDING (source URL / content hash), applied after
-   * extraction â€” not per-topic, which would wrongly skip re-research entirely.
+   * extraction — not per-topic, which would wrongly skip re-research entirely.
    */
   skippedDuplicateFactors: number;
   /** Drafts rejected by value validation or the allowlist. */

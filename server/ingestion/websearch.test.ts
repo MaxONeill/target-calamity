@@ -1,7 +1,7 @@
 ﻿/**
  * Tests for the OFFLINE STUB path of Phase A research (server/ingestion/websearch.ts).
  *
- * These never touch the network or the live API â€” they exercise the deterministic
+ * These never touch the network or the live API — they exercise the deterministic
  * offline stub and the no-credential fallback. The live path (Firecrawl retrieval
  * + typed extraction) is intentionally NOT called here.
  */
@@ -17,7 +17,7 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-describe('researchFactorsOffline â€” deterministic offline candidates', () => {
+describe('researchFactorsOffline — deterministic offline candidates', () => {
   it('is deterministic for a given topic', () => {
     expect(researchFactorsOffline('arctic sea ice record low')).toEqual(
       researchFactorsOffline('arctic sea ice record low'),
@@ -52,7 +52,7 @@ describe('researchFactorsOffline â€” deterministic offline candidates', () 
   });
 });
 
-describe('researchFactors â€” no-credential fallback', () => {
+describe('researchFactors — no-credential fallback', () => {
   it('returns the offline stub when neither provider key is present', async () => {
     vi.stubEnv('FIREWORKS_API_KEY', '');
     vi.stubEnv('FIRECRAWL_API_KEY', '');
@@ -74,10 +74,10 @@ describe('researchFactors â€” no-credential fallback', () => {
 });
 
 /* -------------------------------------------------------------------------- */
-/*  â€” provenance assembly from Firecrawl results                        */
+/*  — provenance assembly from Firecrawl results                        */
 /* -------------------------------------------------------------------------- */
 
-describe('normalizeCandidate â€” citations resolve to REAL retrieved sources', () => {
+describe('normalizeCandidate — citations resolve to REAL retrieved sources', () => {
   const docs = [
     {
       url: 'https://nsidc.org/report',

@@ -42,7 +42,7 @@ export function App(): JSX.Element {
   // Touch gestures for the panel. Opening is restricted to a right-edge strip
   // rather than the whole screen: a horizontal drag anywhere else is an orbit,
   // and the strip sits above the canvas so the globe never sees the gesture at
-  // all. Closing is unambiguous â€” the swipe has to start on the open panel.
+  // all. Closing is unambiguous — the swipe has to start on the open panel.
   const onSwipe = useCallback(
     ({ direction, target }: SwipeGesture) => {
       const node = target instanceof Element ? target : null;

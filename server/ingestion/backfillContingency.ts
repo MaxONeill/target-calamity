@@ -14,14 +14,14 @@
  *
  * THE RULE THAT MAKES THIS DEFENSIBLE: an edge exists only where a retrieved
  * source states it. Dependency chains are the most fabrication-prone output in
- * this system â€” a model will produce a fluent, plausible, entirely invented
+ * this system — a model will produce a fluent, plausible, entirely invented
  * chain faster than anything else, and a wrong link is hard to catch because it
  * reads like engineering rather than like an error. So every node carries its
  * own retrieval, its own verbatim quote, and its own pass through the
  * reputability gate. Nothing is admitted on the model's reasoning alone.
  *
  * A leaf with status `unknown` is a RESULT, not a failure. It marks the point
- * where no source describes what comes next â€” precisely the thing that needs
+ * where no source describes what comes next — precisely the thing that needs
  * inventing, and far more useful to surface than a manufactured next step.
  *
  *   npm run backfill:contingency            # expand unexpanded crossed anchors
@@ -81,7 +81,7 @@ const EXPAND_SYSTEM =
   'You extract DEPENDENCIES from the retrieved sources: what a stated goal ' +
   'requires in order to happen. ' +
   'Return at most three, each a single concrete requirement rather than a ' +
-  'summary â€” a capability, a technology, a physical condition, a policy â€” and ' +
+  'summary — a capability, a technology, a physical condition, a policy — and ' +
   'each STATED IN A SOURCE below. ' +
   'Do NOT reason your way to a dependency. If you know from background that X ' +
   'needs Y but no source in front of you says so, leave it out. A plausible ' +
@@ -148,7 +148,7 @@ async function crossedRoots(
     const label =
       (tp?.label as string | undefined) ??
       (tp?.quantityThreshold
-        ? `${tp.quantityThreshold.value} ${tp.quantityThreshold.unit} â€” ${tp.quantityThreshold.quantity}`
+        ? `${tp.quantityThreshold.value} ${tp.quantityThreshold.unit} — ${tp.quantityThreshold.quantity}`
         : null);
     if (label) byLabel.set(label, r);
     return {
@@ -174,7 +174,7 @@ async function crossedRoots(
     if (!force && expanded.has(row.id)) continue;
 
     // The chain is rooted at REVERSING the threshold. Where the recovery pass
-    // already established what reversal demands, that becomes the seed â€” so the
+    // already established what reversal demands, that becomes the seed — so the
     // tree starts from a cited condition rather than from the factor's title.
     const recovery = (row.tipping_point as { recovery?: { effort?: string } } | null)?.recovery;
     const seed = recovery?.effort
@@ -188,7 +188,7 @@ async function crossedRoots(
 interface NodeToExpand {
   /**
    * This node's OWN row id, which becomes the parent of whatever it turns up.
-   * Null for the seed, which has no row â€” so the requirements it yields are
+   * Null for the seed, which has no row — so the requirements it yields are
    * roots, satisfying the schema's `(depth = 0) = (parent_id IS NULL)` check.
    */
   dbId: string | null;
@@ -227,13 +227,13 @@ export async function backfillContingency(
 ): Promise<void> {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl || databaseUrl.trim() === '') {
-    logger.warn('[contingency] no DATABASE_URL â€” nothing to do, exiting.');
+    logger.warn('[contingency] no DATABASE_URL — nothing to do, exiting.');
     return;
   }
   if (!hasLiveCredentials() || !hasRetrievalCredentials()) {
     logger.warn(
       '[contingency] needs BOTH FIREWORKS_API_KEY and FIRECRAWL_API_KEY. Every link ' +
-        'must be READ from a source â€” an unsourced dependency chain reads like ' +
+        'must be READ from a source — an unsourced dependency chain reads like ' +
         'engineering and nobody catches it. Exiting.',
     );
     return;
@@ -257,7 +257,7 @@ export async function backfillContingency(
     );
     for (const r of roots) logger.info(`[contingency]   root: ${r.seed.slice(0, 90)}`);
     if (dryRun || roots.length === 0) {
-      logger.info(dryRun ? '[contingency] dry run â€” no calls, no writes.' : '[contingency] nothing to do.');
+      logger.info(dryRun ? '[contingency] dry run — no calls, no writes.' : '[contingency] nothing to do.');
       return;
     }
 
@@ -273,8 +273,8 @@ export async function backfillContingency(
       // Breadth-first, so a shallow complete tree beats a deep narrow one when
       // the node budget runs out.
       const queue: NodeToExpand[] = [{ dbId: null, statement: root.seed, depth: 0 }];
-      // Statements already expanded in THIS tree. Chains converge â€” several
-      // paths reach "carbon removal at scale" â€” and without this the same
+      // Statements already expanded in THIS tree. Chains converge — several
+      // paths reach "carbon removal at scale" — and without this the same
       // subtree is researched repeatedly at full cost.
       const seen = new Set<string>();
       let nodes = 0;
@@ -339,7 +339,7 @@ export async function backfillContingency(
             totalNodes += 1;
             logger.info(
               `[contingency] ${'  '.repeat(current.depth)}[${req.status}] ` +
-                `${req.statement.slice(0, 70)} Â· ${publisher}`,
+                `${req.statement.slice(0, 70)} · ${publisher}`,
             );
 
             // An `exists` requirement is already met, so what it would in turn
@@ -354,10 +354,10 @@ export async function backfillContingency(
         }
       }
 
-      logger.info(`[contingency] ${root.name.slice(0, 50)} â€” ${nodes} node(s).`);
+      logger.info(`[contingency] ${root.name.slice(0, 50)} — ${nodes} node(s).`);
     }
 
-    logger.info(`[contingency] done â€” ${totalNodes} requirement(s) across ${roots.length} chain(s).`);
+    logger.info(`[contingency] done — ${totalNodes} requirement(s) across ${roots.length} chain(s).`);
     await notifyFieldChanged(db);
   } finally {
     await pool.end();

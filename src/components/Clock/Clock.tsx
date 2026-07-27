@@ -21,7 +21,7 @@ export interface ClockProps {
   factors: readonly ClockFactorInput[];
   /**
    * Published trajectories used to date quantity-stated thresholds. Empty is
-   * valid and normal â€” such a threshold is simply not dated, and therefore not
+   * valid and normal — such a threshold is simply not dated, and therefore not
    * anchored, rather than being estimated.
    */
   projections?: readonly Projection[];
@@ -65,7 +65,7 @@ export function Clock({ factors, projections, requirements, className }: ClockPr
     <section
       ref={rootRef}
       className={className ? `tc-clock ${className}` : 'tc-clock'}
-      aria-label="The Clock â€” modeled projection"
+      aria-label="The Clock — modeled projection"
       data-expanded={expanded}
     >
       <div className="tc-clock-window-group">

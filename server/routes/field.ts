@@ -1,19 +1,19 @@
 ﻿/**
- * GET /api/field â€” the shader's input set.
+ * GET /api/field — the shader's input set.
  *
  * Deliberately has NO camera and NO cursor parameters. The field is a function
  * of the data alone, so two clients holding the same `fieldEpoch` are provably
  * rendering the same planet.
  *
- * Returns verified factors ranked by actual field influence â€” ABS(effect *
- * significance), the numerator of the accumulation kernel â€” capped at a fixed
+ * Returns verified factors ranked by actual field influence — ABS(effect *
+ * significance), the numerator of the accumulation kernel — capped at a fixed
  * rendering budget. `, id ASC` is a MANDATORY tiebreak: without it Postgres has
  * no stable order for ties and two clients can receive different sets. Backed by
  * `idx_factors_field_rank ON factors ((ABS(effect*significance)) DESC, id ASC)`.
  *
  * Each entry carries server-derived causal `domains` (see `shared/domains.ts`),
  * which the Clock uses to link factor forces to the tipping points they act on.
- * Deriving them here keeps the field lean â€” the domain tags cross the wire, not
+ * Deriving them here keeps the field lean — the domain tags cross the wire, not
  * the description they were derived from.
  */
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
@@ -118,8 +118,8 @@ interface ProjectionRow {
  * Unfiltered on purpose: a threshold is matched to a projection on the CLIENT
  * (see `deriveClock`), so narrowing here to "only the ones currently referenced"
  * would require running the match twice, in two languages, and any drift
- * between them would silently drop an anchor. The set is small â€” one row per
- * quantity, not per factor â€” so sending it whole is cheaper than the bug.
+ * between them would silently drop an anchor. The set is small — one row per
+ * quantity, not per factor — so sending it whole is cheaper than the bug.
  *
  * SQL nulls are stripped rather than passed through: the schemas are
  * `.optional()` and never `.nullable()`, per the project's read-path rule.
@@ -193,7 +193,7 @@ function toCounterEfforts(
  * Unfiltered for the same reason projections are: the client reconstructs the
  * tree from `parentId`, and narrowing here to "only thresholds currently in
  * view" would duplicate the field's own selection logic in a second place where
- * it could drift. The set is small â€” a handful of nodes per crossed threshold.
+ * it could drift. The set is small — a handful of nodes per crossed threshold.
  */
 async function requirementsDb(db: Database): Promise<FieldResponse['requirements']> {
   // Both effort sets arrive as correlated scalar subqueries rather than joins.
@@ -302,7 +302,7 @@ function fieldSeed(): FieldResponse {
     pins: toPins(rows),
     globalFactors: toGlobalFactors(rows),
     // Seed mode has no projections table. Seed thresholds are year-stated, so
-    // nothing in the curated set needs one â€” but the field MUST still carry the
+    // nothing in the curated set needs one — but the field MUST still carry the
     // key, or the client's schema parse diverges between modes.
     projections: [],
     // Seed mode has no requirements table; the key must still be present or

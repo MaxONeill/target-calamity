@@ -14,7 +14,7 @@
  *   FORCE=1 npm run backfill:quantities   # re-include previously-empty rows
  *
  * Prefer the ENV forms. npm swallows flags it recognises even after `--`, and
- * both `--dry-run` and `--limit` have been observed not to reach the script â€”
+ * both `--dry-run` and `--limit` have been observed not to reach the script —
  * which, for a command that spends a Firecrawl search per row, has meant runs
  * costing ~50 searches when they were meant to cost none.
  *
@@ -77,7 +77,7 @@ const QuantityJudgementSchema = z.object({
 
 const JUDGE_SYSTEM =
   'You extract a TIPPING THRESHOLD stated against a measurable quantity, FROM THE ' +
-  'RETRIEVED SOURCES BELOW â€” how the tipping-point literature usually publishes ' +
+  'RETRIEVED SOURCES BELOW — how the tipping-point literature usually publishes ' +
   'one. Examples of the form: "the Greenland ice sheet destabilises at about ' +
   '1.5 degC of warming above pre-industrial", "Amazon dieback beyond 20-25% ' +
   'deforested". ' +
@@ -93,7 +93,7 @@ const JUDGE_SYSTEM =
   'sourceIndex is the SOURCE block the threshold came from, and quote is the ' +
   'sentence stating it, copied verbatim. ' +
   'closesWindow is TRUE only if crossing it means human action can NO LONGER ' +
-  'restore the prior state â€” self-sustaining or irreversible on a policy ' +
+  'restore the prior state — self-sustaining or irreversible on a policy ' +
   'timescale. Severity is not the test; irreversibility is. ' +
   'Set found=false when the sources give no threshold for THIS factor. Most ' +
   'factors have none, and saying so is the correct answer.';
@@ -115,7 +115,7 @@ interface Row {
  *
  * That last clause is what makes re-running affordable. Each candidate costs a
  * Firecrawl search, and without it every previously-empty factor is researched
- * again â€” one run checked 48 rows to gain a single threshold. `--force` exists
+ * again — one run checked 48 rows to gain a single threshold. `--force` exists
  * for when the extraction or the gate has changed enough that old negatives are
  * worth revisiting, which is a deliberate decision rather than the default.
  */
@@ -134,7 +134,7 @@ async function candidateRows(db: Database, force: boolean): Promise<Row[]> {
 
 /**
  * Record that a search happened and found nothing, so the next run skips it.
- * Only negatives are stamped â€” a positive is self-evident from `tipping_point`
+ * Only negatives are stamped — a positive is self-evident from `tipping_point`
  * no longer being NULL, which the candidate query already excludes.
  */
 async function markChecked(db: Database, id: string): Promise<void> {
@@ -148,7 +148,7 @@ async function markChecked(db: Database, id: string): Promise<void> {
  * Persist the threshold AND the source it was read from.
  *
  * The citation is the point of this backfill. A threshold anchors the countdown,
- * so it is the last thing that should be the one input without provenance â€”
+ * so it is the last thing that should be the one input without provenance —
  * `label` names the source inline for the Why panel, and the citation row puts
  * it in the same audit trail as every other claim.
  */
@@ -209,7 +209,7 @@ export async function backfillQuantityThresholds(
 ): Promise<void> {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl || databaseUrl.trim() === '') {
-    logger.warn('[quantities] no DATABASE_URL â€” nothing to backfill, exiting.');
+    logger.warn('[quantities] no DATABASE_URL — nothing to backfill, exiting.');
     return;
   }
   if (!hasLiveCredentials() || !hasRetrievalCredentials()) {
@@ -222,8 +222,8 @@ export async function backfillQuantityThresholds(
     return;
   }
 
-  // npm swallows flags it recognises â€” --limit and --dry-run have both been
-  // observed not to arrive â€” so every switch has an env-var form, and those are
+  // npm swallows flags it recognises — --limit and --dry-run have both been
+  // observed not to arrive — so every switch has an env-var form, and those are
   // the ones to trust when a run costs money.
   const args = process.argv.slice(2);
   const dryRun =
@@ -248,7 +248,7 @@ export async function backfillQuantityThresholds(
         `Each costs one Firecrawl search.`,
     );
     if (dryRun || rows.length === 0) {
-      logger.info(dryRun ? '[quantities] plan only â€” no calls made.' : '[quantities] nothing to do.');
+      logger.info(dryRun ? '[quantities] plan only — no calls made.' : '[quantities] nothing to do.');
       return;
     }
 
@@ -298,7 +298,7 @@ export async function backfillQuantityThresholds(
             verdict.quantity.trim() === '' ||
             verdict.unit.trim() === ''
           ) {
-            logger.warn(`[quantities] incomplete threshold for ${row.id} â€” skipped.`);
+            logger.warn(`[quantities] incomplete threshold for ${row.id} — skipped.`);
             await markChecked(db, row.id);
             continue;
           }
@@ -310,7 +310,7 @@ export async function backfillQuantityThresholds(
           if (!doc) {
             logger.warn(
               `[quantities] "${row.name.slice(0, 40)}" cited source ${verdict.sourceIndex}, ` +
-                `which does not exist â€” dropped as unsourced.`,
+                `which does not exist — dropped as unsourced.`,
             );
             await markChecked(db, row.id);
             continue;
@@ -338,9 +338,9 @@ export async function backfillQuantityThresholds(
           found += 1;
           if (verdict.closesWindow) anchors += 1;
           logger.info(
-            `[quantities] ${verdict.closesWindow ? 'ANCHOR ' : 'â€”      '} ` +
+            `[quantities] ${verdict.closesWindow ? 'ANCHOR ' : '—      '} ` +
               `${verdict.value} ${verdict.unit} ${verdict.quantity.slice(0, 34)} ` +
-              `Â· ${row.name.slice(0, 34)} Â· ${publisherFromUrl(doc.url, doc.title)}`,
+              `· ${row.name.slice(0, 34)} · ${publisherFromUrl(doc.url, doc.title)}`,
           );
         } catch (err) {
           done += 1;
@@ -351,7 +351,7 @@ export async function backfillQuantityThresholds(
     await Promise.all(Array.from({ length: CONCURRENCY }, worker));
 
     logger.info(
-      `[quantities] done â€” ${done} checked, ${found} carry a measurable threshold, ` +
+      `[quantities] done — ${done} checked, ${found} carry a measurable threshold, ` +
         `${anchors} of those close the window.`,
     );
     // Open clients fetched the field once; without this they keep rendering

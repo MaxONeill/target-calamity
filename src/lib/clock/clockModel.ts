@@ -1,29 +1,29 @@
 ﻿/**
- * The Clock â€” derivation model.
+ * The Clock — derivation model.
  *
  * Neither the product brief nor any source defines what the Clock counts down TO
  * or how the factor set produces a time value, so it is defined here, explicitly
  * and inspectably. The design has three moving parts:
  *
- *   1. ANCHOR â€” the dated tipping points. Rather than averaging their years (an
+ *   1. ANCHOR — the dated tipping points. Rather than averaging their years (an
  *      average of incommensurable thresholds means nothing), each threshold is a
  *      significance-weighted arrival-time distribution built from its
  *      earliest/central/latest range. Their normalized mixture is a proper CDF
  *      over "when does the polycrisis cross a point of no return", and the Clock
- *      targets its median â€” with the interquartile p25â€“p75 years as an honest
+ *      targets its median — with the interquartile p25–p75 years as an honest
  *      band. Heavier and nearer thresholds dominate by construction.
  *
- *   2. FORCES INTERPOLATE WITHIN THE PUBLISHED RANGE â€” the other factors are
+ *   2. FORCES INTERPOLATE WITHIN THE PUBLISHED RANGE — the other factors are
  *      pressures and counter-forces, not dated thresholds. Each acts only on the
  *      tipping points it is causally linked to, by shared {@link Domain} (see
  *      `shared/domains.ts`): deforestation moves the Amazon threshold, clean
  *      energy moves the climate-driven ones, not the AMOC one directly. Crucially,
- *      the net force does NOT bend a threshold by some invented amount â€” it moves
+ *      the net force does NOT bend a threshold by some invented amount — it moves
  *      the best estimate WITHIN the threshold's own published uncertainty band.
  *      Full net Calamity pulls the estimate to the earliest published year, full
  *      net Humanity to the latest; a balanced or thinly-evidenced set barely
  *      moves it. So the maximum a factor can shift a date is the science's own
- *      stated uncertainty â€” there is no free "elasticity" constant to choose, and
+ *      stated uncertainty — there is no free "elasticity" constant to choose, and
  *      the model can never claim a date outside what was published.
  *
  * What this model deliberately does NOT claim: the anchor is a weighted aggregate
@@ -47,12 +47,12 @@ import {
 
 /**
  * A dated, (near-)irreversible threshold a factor represents. Optional on a
- * factor â€” most factors have none. `centralYear` is the best estimate; the
+ * factor — most factors have none. `centralYear` is the best estimate; the
  * optional bounds carry the published uncertainty range.
  */
 /**
  * A threshold stated against a measurable quantity rather than a year. Dated by
- * reading a {@link Projection} for the same quantity â€” see `dateFromProjection`.
+ * reading a {@link Projection} for the same quantity — see `dateFromProjection`.
  */
 export interface QuantityThreshold {
   readonly quantity: string;
@@ -71,13 +71,13 @@ export interface QuantityThreshold {
   readonly projectionId?: string;
 }
 
-/** A published trajectory for a quantity. Ascending by year, â‰¥ 2 points. */
+/** A published trajectory for a quantity. Ascending by year, ≥ 2 points. */
 export interface Projection {
   readonly id?: string;
   readonly quantity: string;
   readonly unit: string;
   readonly baseline?: string;
-  /** Scenario assumes action beyond what is implemented. Absent â†’ treated true. */
+  /** Scenario assumes action beyond what is implemented. Absent → treated true. */
   readonly assumesFutureAction?: boolean;
   readonly points: readonly { readonly year: number; readonly value: number }[];
 }
@@ -86,7 +86,7 @@ export interface Projection {
  * What reversing an already-crossed threshold would take.
  *
  * Read from sources, never derived. `timescaleYears` in particular is a
- * published restoration timescale and is never computed from `effort` â€”
+ * published restoration timescale and is never computed from `effort` —
  * converting "requires large-scale carbon removal" into a number of years
  * would be an unsourced figure that reads like a sourced one.
  */
@@ -111,7 +111,7 @@ export interface TippingPoint {
   readonly label?: string;
   /**
    * Crossing this ends the possibility of correction. Only these anchor the
-   * Clock; see `closesWindow` in shared/schema.ts. Absent â†’ false.
+   * Clock; see `closesWindow` in shared/schema.ts. Absent → false.
    */
   readonly closesWindow?: boolean;
 }
@@ -124,7 +124,7 @@ export interface TippingPoint {
  */
 const FALLBACK_SPREAD_YEARS = 10;
 
-/** Weight at which evidence mass reaches 0.5 (saturating: more evidence â†’ â†’1). */
+/** Weight at which evidence mass reaches 0.5 (saturating: more evidence → →1). */
 const EVIDENCE_HALF_SATURATION = 4;
 
 /** Julian year in milliseconds. */
@@ -134,8 +134,8 @@ export type ClockConfidence = 'indeterminate' | 'low' | 'moderate' | 'substantia
 
 /**
  * Minimal input the model needs from a factor. `FieldPin`/`GlobalFactor` satisfy
- * it structurally. `verificationState` absent â†’ contributes; `'pending'` â†’
- * excluded. `tippingPoint` present â†’ anchors. `domains` absent/empty â†’ systemic.
+ * it structurally. `verificationState` absent → contributes; `'pending'` →
+ * excluded. `tippingPoint` present → anchors. `domains` absent/empty → systemic.
  */
 export interface ClockFactorInput {
   /**
@@ -155,9 +155,9 @@ export interface ClockFactorInput {
 export interface DomainForce {
   readonly domain: Domain | 'systemic';
   readonly label: string;
-  /** Significance-weighted mean signed effect in this domain, âˆˆ [-1, 1]. */
+  /** Significance-weighted mean signed effect in this domain, ∈ [-1, 1]. */
   readonly netForce: number;
-  /** Î£ significance backing that force. */
+  /** Σ significance backing that force. */
   readonly weight: number;
   readonly factorCount: number;
 }
@@ -182,8 +182,8 @@ export interface ThresholdContribution {
   readonly drivingDomains: readonly Domain[];
   /**
    * Whether this threshold anchors the countdown, i.e. crossing it closes the
-   * course-correction window. Non-anchoring thresholds are still shown â€” they
-   * are real dated evidence â€” but they do not move the target year.
+   * course-correction window. Non-anchoring thresholds are still shown — they
+   * are real dated evidence — but they do not move the target year.
    */
   readonly anchors: boolean;
   /** Where the year came from. Shown so a reader can audit the derivation. */
@@ -194,7 +194,7 @@ export interface ThresholdContribution {
    * Whether this threshold's estimated year is already behind us.
    *
    * Derived from the model's own dates, not from a stored flag, so it stays
-   * true to whatever the evidence currently says. It is REPORTING only â€” a
+   * true to whatever the evidence currently says. It is REPORTING only — a
    * crossed threshold contributes to the countdown exactly as it did before it
    * was crossed. A forecast that jumped because a date it predicted arrived
    * would be a badly calibrated forecast.
@@ -225,9 +225,9 @@ export interface ClockModel {
   readonly hasEvidence: boolean;
 
   /* --------------------------- tipping-point anchor ----------------------- */
-  /** Window-closing thresholds â€” what the countdown actually rests on. */
+  /** Window-closing thresholds — what the countdown actually rests on. */
   readonly tippingPointCount: number;
-  /** Every dated threshold in view, anchoring or not. Always â‰¥ the above. */
+  /** Every dated threshold in view, anchoring or not. Always ≥ the above. */
   readonly datedThresholdCount: number;
   /**
    * Anchors whose estimated year is already behind us.
@@ -252,13 +252,13 @@ export interface ClockModel {
   readonly band: ClockBand | null;
 
   /* ------------------------------- derivation ----------------------------- */
-  /** Net force per domain, sorted by influence â€” the modifiers, explained. */
+  /** Net force per domain, sorted by influence — the modifiers, explained. */
   readonly domainForces: readonly DomainForce[];
   /** Each anchor threshold and how the forces moved it. */
   readonly thresholds: readonly ThresholdContribution[];
   /**
    * The assumed half-width (years) applied to thresholds that published only a
-   * central year â€” the median of the peer half-widths, or the fallback constant
+   * central year — the median of the peer half-widths, or the fallback constant
    * when none published a range. Null when every threshold carried its own range.
    */
   readonly assumedSpreadYears: number | null;
@@ -294,8 +294,8 @@ function quantityKey(quantity: string, unit: string): string {
  * Find the projection a quantity threshold should be read against.
  *
  * Prefers the server-resolved `projectionId`. The string fallback is
- * deliberately STRICT â€” exact quantity and unit after casing/space
- * normalisation â€” because a loose match here is not a missing anchor, it is a
+ * deliberately STRICT — exact quantity and unit after casing/space
+ * normalisation — because a loose match here is not a missing anchor, it is a
  * confidently wrong year. Baselines must agree too: "1.5 degC above
  * pre-industrial" and "1.5 degC above 1986-2005" are the same quantity and unit
  * roughly 0.6 degC apart, so a mismatch (or an unknown on either side) refuses.
@@ -338,7 +338,7 @@ function baselinesAgree(a: string | undefined, b: string | undefined): boolean {
  *
  * Handles both directions: a rising quantity (warming, CO2) is crossed from
  * below, a falling one (ocean pH, ice extent) from above. Returns null when the
- * curve never reaches the value within its published span â€” extrapolating past
+ * curve never reaches the value within its published span — extrapolating past
  * the last point would be inventing a year, which is the one thing this model
  * refuses to do.
  */
@@ -388,7 +388,7 @@ interface DatedThreshold {
  * threshold value is reached LATER, so the dated bounds arrive reversed and are
  * sorted rather than assumed.
  *
- * Returns null when the threshold cannot be dated honestly â€” no matching
+ * Returns null when the threshold cannot be dated honestly — no matching
  * projection, disagreeing baselines, or a curve that never reaches the value
  * inside its published span. A threshold that cannot be dated is dropped, never
  * estimated.
@@ -433,7 +433,7 @@ function dateThreshold(
     earliest: bounds.length > 0 ? Math.min(bounds[0]!, central) : undefined,
     latest: bounds.length > 0 ? Math.max(bounds[bounds.length - 1]!, central) : undefined,
     dating: 'projected',
-    // Absent â†’ treated as assuming future action. An unlabelled scenario cannot
+    // Absent → treated as assuming future action. An unlabelled scenario cannot
     // be shown to be assumption-free, and guessing permissively is what makes
     // the Clock read later than any source supports.
     forcesApply: projection.assumesFutureAction === false,
@@ -456,7 +456,7 @@ interface ArrivalDist {
   c: number;
   b: number;
   /**
-   * Probability this threshold is real and relevant â€” the factor's significance,
+   * Probability this threshold is real and relevant — the factor's significance,
    * read in its natural [0, 1] sense. NOT a normalized mixture weight: each
    * threshold is an independent way for the window to close, not a share of one.
    */
@@ -466,12 +466,12 @@ interface ArrivalDist {
 /**
  * CDF of the FIRST crossing among the anchors:
  *
- *     F(y) = 1 âˆ’ Î  (1 âˆ’ páµ¢ Â· Fáµ¢(y))
+ *     F(y) = 1 − Π (1 − pᵢ · Fᵢ(y))
  *
  * The window closes when the earliest window-closing threshold is crossed, not
  * when some average of them is. That distinction is the whole point of this
- * model: a median over catalogued thresholds has no referent â€” nobody
- * experiences "the median tipping point" â€” whereas "the first crossing after
+ * model: a median over catalogued thresholds has no referent — nobody
+ * experiences "the median tipping point" — whereas "the first crossing after
  * which correction no longer restores the system" is a claim you can defend in
  * a sentence and audit against sources.
  *
@@ -482,7 +482,7 @@ interface ArrivalDist {
  *
  * ASSUMPTION: independence. Real thresholds are positively correlated, and
  * correlation makes the true first crossing LATER than this. The model is
- * therefore biased early â€” the conservative direction for a planning horizon,
+ * therefore biased early — the conservative direction for a planning horizon,
  * but a real limitation and not to be presented as neutral.
  */
 function firstCrossingCdf(dists: readonly ArrivalDist[], y: number): number {
@@ -492,7 +492,7 @@ function firstCrossingCdf(dists: readonly ArrivalDist[], y: number): number {
 }
 
 /**
- * Ceiling of {@link firstCrossingCdf} as y â†’ âˆž. Below 1 whenever any anchor is
+ * Ceiling of {@link firstCrossingCdf} as y → ∞. Below 1 whenever any anchor is
  * less than fully significant: thin evidence cannot assert certainty.
  */
 function firstCrossingCeiling(dists: readonly ArrivalDist[]): number {
@@ -504,7 +504,7 @@ function firstCrossingCeiling(dists: readonly ArrivalDist[]): number {
 /**
  * Invert the first-crossing CDF at `level`.
  *
- * Returns null when the curve never reaches `level` â€” the evidence does not
+ * Returns null when the curve never reaches `level` — the evidence does not
  * support asserting the window has closed by ANY year at that confidence. The
  * countdown then suppresses rather than naming a year it cannot support, which
  * is the same rule as having no anchors at all, arrived at by the math instead
@@ -551,13 +551,13 @@ interface ThresholdRaw {
   earliestPub: number | undefined;
   latestPub: number | undefined;
   domains: readonly Domain[];
-  /** Anchors the countdown. Absent on the source data â†’ false. */
+  /** Anchors the countdown. Absent on the source data → false. */
   closesWindow: boolean;
-  /** "1.5 degC â€” global warming", when the threshold was stated that way. */
+  /** "1.5 degC — global warming", when the threshold was stated that way. */
   quantityLabel: string | null;
   /** Carried through for reporting. Never consulted by the countdown math. */
   recovery: Recovery | null;
-  /** How the year was obtained â€” surfaced so the derivation stays inspectable. */
+  /** How the year was obtained — surfaced so the derivation stays inspectable. */
   dating: ThresholdDating;
   /**
    * False when the projection that dated this threshold already assumes future
@@ -578,7 +578,7 @@ function median(values: number[]): number {
 /**
  * Derive the Clock state from a factor set. Pure and total: any input (empty,
  * all-pending, poison values, no tipping points) yields a well-defined
- * {@link ClockModel} â€” `hasBaseline === false` / `targetYear === null` rather
+ * {@link ClockModel} — `hasBaseline === false` / `targetYear === null` rather
  * than a NaN or throw.
  */
 export function deriveClock(
@@ -587,8 +587,8 @@ export function deriveClock(
   /**
    * The year "now", used ONLY to report which thresholds are already behind us.
    *
-   * Passed in rather than read from the clock so this function stays pure â€”
-   * same inputs, same output â€” which is what makes the aggregation testable and
+   * Passed in rather than read from the clock so this function stays pure —
+   * same inputs, same output — which is what makes the aggregation testable and
    * what `targetDeadlineMs` already assumes by taking "now" at the edge.
    *
    * It is deliberately not consulted by any of the countdown math. A crossed
@@ -652,7 +652,7 @@ export function deriveClock(
       }
     }
 
-    // Threshold-bearing factors additionally anchor the countdown â€” but only
+    // Threshold-bearing factors additionally anchor the countdown — but only
     // ADVERSE ones.
     //
     // The countdown measures how long the window for course-correction stays
@@ -669,7 +669,7 @@ export function deriveClock(
     //
     // Polarity is taken from the carrying factor's own `effect` rather than a
     // new schema field: it is already required, already validated, and a factor
-    // that helps does not carry a deadline. Only `effect > 0` is excluded â€”
+    // that helps does not carry a deadline. Only `effect > 0` is excluded —
     // neutral factors (documented opposing forces) can still carry a genuine
     // adverse threshold, and dropping those would lose real deadlines.
     const tp = effect > 0 ? undefined : f.tippingPoint;
@@ -686,7 +686,7 @@ export function deriveClock(
         dating: dated.dating,
         forcesApply: dated.forcesApply,
         quantityLabel: tp.quantityThreshold
-          ? `${tp.quantityThreshold.value} ${tp.quantityThreshold.unit} â€” ${tp.quantityThreshold.quantity}`
+          ? `${tp.quantityThreshold.value} ${tp.quantityThreshold.unit} — ${tp.quantityThreshold.quantity}`
           : null,
         recovery: tp.recovery ?? null,
         domains,
@@ -746,7 +746,7 @@ export function deriveClock(
       }
     }
     const force = den > 0 ? clamp(num / den, -1, 1) : 0;
-    const mass = den / (den + EVIDENCE_HALF_SATURATION); // evidence damping âˆˆ [0,1)
+    const mass = den / (den + EVIDENCE_HALF_SATURATION); // evidence damping ∈ [0,1)
 
     // Move the estimate WITHIN the published band: Calamity toward `earliest`,
     // Humanity toward `latest`. At full force + full evidence it reaches the
@@ -754,15 +754,15 @@ export function deriveClock(
     //
     // Withheld when the dating projection already assumes future action: that
     // curve has the mitigation baked in, so bending it with the same factors
-    // counts them twice. The threshold still anchors â€” it is dated, just not
-    // re-shifted â€” and `forcesApply: false` is reported so the panel can say so.
+    // counts them twice. The threshold still anchors — it is dated, just not
+    // re-shifted — and `forcesApply: false` is reported so the panel can say so.
     const room = force < 0 ? t.central - earliest : latest - t.central;
     const warpedCentral = t.forcesApply
       ? clamp(t.central + force * room * mass, earliest, latest)
       : t.central;
 
     thresholds.push({
-      // A quantity-stated threshold usually has no prose label â€” the source
+      // A quantity-stated threshold usually has no prose label — the source
       // stated a number, not a name. Falling back to that number is derived
       // display text, not invented data, and beats rendering "Unlabelled".
       factorId: t.factorId,
@@ -777,7 +777,7 @@ export function deriveClock(
       forcesApply: t.forcesApply,
       // Reported, never fed back. `crossed` is derived from the warped year
       // against the reference year rather than stored, so it tracks whatever
-      // the evidence currently says â€” and neither it nor `recovery` appears
+      // the evidence currently says — and neither it nor `recovery` appears
       // anywhere in the first-crossing math above.
       crossed: warpedCentral < referenceYear,
       recovery: t.recovery,
@@ -802,7 +802,7 @@ export function deriveClock(
 
   const p25 = firstCrossingQuantile(anchorWarped, 0.25);
   const p75 = firstCrossingQuantile(anchorWarped, 0.75);
-  // p75 can be absent while the median exists â€” a single moderately-significant
+  // p75 can be absent while the median exists — a single moderately-significant
   // anchor tops out below 0.75. Report no band rather than inventing an edge.
   const band: ClockBand | null =
     targetYear !== null && p25 !== null && p75 !== null
@@ -836,7 +836,7 @@ export function deriveClock(
     (a, b) => Math.abs(b.netForce * b.weight) - Math.abs(a.netForce * a.weight),
   );
 
-  // Anchors first, then by year â€” the Why panel reads top-down, and what the
+  // Anchors first, then by year — the Why panel reads top-down, and what the
   // countdown rests on should be what a reader sees first.
   thresholds.sort((a, b) =>
     a.anchors === b.anchors ? a.warpedYear - b.warpedYear : a.anchors ? -1 : 1,
@@ -867,7 +867,7 @@ export function deriveClock(
     // Tiered on the ANCHOR count, not the factor count.
     //
     // This reported `substantial` off 99 contributing factors while the
-    // countdown rested on one threshold â€” and a single reclassification moved
+    // countdown rested on one threshold — and a single reclassification moved
     // the target six years. Confidence has to describe the number it sits next
     // to, and that number is a function of the anchors alone: the other 95
     // factors are forces that shift a date within its published band, not
@@ -891,7 +891,7 @@ export function yearToEpochMs(year: number): number {
 
 /**
  * The absolute wall-clock instant the countdown targets, or null when there is
- * no tipping-point baseline. Pure â€” the view subtracts `Date.now()` to drive the
+ * no tipping-point baseline. Pure — the view subtracts `Date.now()` to drive the
  * live countdown.
  */
 export function targetDeadlineMs(model: ClockModel): number | null {

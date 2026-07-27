@@ -3,7 +3,7 @@
  *
  * Reads every `tipping_point.quantityThreshold` in the factor set, works out
  * which (quantity, unit) pairs have no usable projection yet, and researches
- * one per pair. Retrieval is per DISTINCT QUANTITY, not per factor â€” every
+ * one per pair. Retrieval is per DISTINCT QUANTITY, not per factor — every
  * climate threshold collapses onto a handful of quantities, so this is tens of
  * calls across the whole set rather than hundreds.
  *
@@ -16,8 +16,8 @@
  * works.
  *
  * A projection is only stored if it clears the reputability gate. Its blast
- * radius is larger than a factor's â€” a wrong curve mis-dates every threshold on
- * its quantity â€” so it is held to the same source standard and simply dropped
+ * radius is larger than a factor's — a wrong curve mis-dates every threshold on
+ * its quantity — so it is held to the same source standard and simply dropped
  * when it fails, leaving the threshold undated rather than wrongly dated.
  */
 import { realpathSync } from 'node:fs';
@@ -44,7 +44,7 @@ interface WantedRow {
 /**
  * Quantities a threshold asks for that no stored projection satisfies.
  *
- * Matching mirrors the model's fallback exactly â€” case-insensitive quantity and
+ * Matching mirrors the model's fallback exactly — case-insensitive quantity and
  * unit, plus baselines that agree or are both absent. If the two ever diverge
  * this would fetch curves the Clock then refuses to use, so the rule lives in
  * one shape in both places until the semantic resolver replaces it.
@@ -108,7 +108,7 @@ export async function fetchProjections(
 ): Promise<void> {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl || databaseUrl.trim() === '') {
-    logger.warn('[projections] no DATABASE_URL â€” nothing to do, exiting.');
+    logger.warn('[projections] no DATABASE_URL — nothing to do, exiting.');
     return;
   }
 
@@ -128,7 +128,7 @@ export async function fetchProjections(
       logger.info(`[projections]   want: ${w.quantity} (${w.unit})${w.baseline ? ` vs ${w.baseline}` : ''}`);
     }
     if (dryRun || wanted.length === 0) {
-      logger.info(dryRun ? '[projections] plan only â€” no calls made.' : '[projections] nothing to do.');
+      logger.info(dryRun ? '[projections] plan only — no calls made.' : '[projections] nothing to do.');
       return;
     }
 
@@ -136,7 +136,7 @@ export async function fetchProjections(
     for (const request of wanted) {
       const researched = await researchProjection(request, { logger });
       if (!researched) {
-        logger.warn(`[projections] no usable curve for "${request.quantity}" â€” left undated.`);
+        logger.warn(`[projections] no usable curve for "${request.quantity}" — left undated.`);
         continue;
       }
 
@@ -174,12 +174,12 @@ export async function fetchProjections(
       stored += 1;
       logger.info(
         `[projections] stored ${researched.candidate.quantity} (${researched.candidate.unit}) ` +
-          `${researched.candidate.points.length} points Â· scenario=${researched.candidate.scenario ?? 'unstated'} ` +
-          `Â· assumesFutureAction=${researched.candidate.assumesFutureAction} Â· ${researched.candidate.sourceUrl}`,
+          `${researched.candidate.points.length} points · scenario=${researched.candidate.scenario ?? 'unstated'} ` +
+          `· assumesFutureAction=${researched.candidate.assumesFutureAction} · ${researched.candidate.sourceUrl}`,
       );
     }
 
-    logger.info(`[projections] done â€” ${stored}/${wanted.length} stored.`);
+    logger.info(`[projections] done — ${stored}/${wanted.length} stored.`);
     // Open clients fetched the field once; without this they keep rendering
     // the values this run replaced.
     await notifyFieldChanged(db);

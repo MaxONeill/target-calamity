@@ -17,7 +17,7 @@ const ARC_SEGMENTS = 48;
  * Per-state visuals. Selected takes precedence over highlighted.
  *
  * `thicken` grows the arc's radial thickness about its own mid-radius, which
- * only ADDS coverage on both edges â€” a pointer already over the arc stays over
+ * only ADDS coverage on both edges — a pointer already over the arc stays over
  * it. Scaling the mesh instead would translate the annulus radially (it scales
  * about the globe centre, far outside the arc) and slide the arc out from under
  * the pointer, causing hover to oscillate.
@@ -52,7 +52,7 @@ interface ArcRecord {
  * A factor's weight on the field: |effect| * significance.
  *
  * The same product the field query ranks by and the accumulation kernel uses as
- * its numerator. Kept identical on purpose â€” a ring ordered by one measure and
+ * its numerator. Kept identical on purpose — a ring ordered by one measure and
  * a globe baked from another would disagree about which factors matter.
  */
 export function fieldInfluence(factor: {
@@ -88,8 +88,8 @@ export function orderByInfluence<T extends { id: string; effect: number; signifi
  *
  * A factor with no location cannot honestly be drawn at a point on the surface,
  * but it still carries charge. Arcs run clockwise in descending FIELD INFLUENCE
- * â€” |effect| * significance, the measure the field bake and the feed also rank
- * by â€” and each arc's angular width is proportional to that same number, so the
+ * — |effect| * significance, the measure the field bake and the feed also rank
+ * by — and each arc's angular width is proportional to that same number, so the
  * ring reads as one global band whose heaviest members are both first and the
  * largest targets. Colour follows the same effect ramp as the pins.
  *

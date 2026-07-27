@@ -18,7 +18,7 @@ const STATUS_LABEL: Record<Requirement['status'], string> = {
  * looks like one.
  *
  * A branch that ends without children is where no source described what comes
- * next. That is stated rather than left blank â€” an unexplained stop reads as an
+ * next. That is stated rather than left blank — an unexplained stop reads as an
  * oversight, when it is actually the most actionable node in the tree.
  */
 function RequirementBranch({
@@ -135,7 +135,7 @@ function DomainForces({ model }: { model: ClockModel }): JSX.Element | null {
               {f.factorCount} factor{f.factorCount === 1 ? '' : 's'}
             </span>
             <span className={`tc-why-row-value ${signClass(f.netForce)}`}>
-              {f.netForce >= 0 ? '+' : 'âˆ’'}
+              {f.netForce >= 0 ? '+' : '−'}
               {Math.abs(f.netForce).toFixed(2)}
             </span>
           </li>
@@ -187,20 +187,20 @@ function Thresholds({
                   the countdown, where its year came from, and whether forces
                   were withheld to avoid double-counting a scenario. */}
               {t.anchors ? null : (
-                <span className="tc-why-row-meta"> Â· informs only</span>
+                <span className="tc-why-row-meta"> · informs only</span>
               )}
               {t.dating === 'projected' ? (
-                <span className="tc-why-row-meta"> Â· dated from a projection</span>
+                <span className="tc-why-row-meta"> · dated from a projection</span>
               ) : null}
               {t.anchors && !t.forcesApply ? (
-                <span className="tc-why-row-meta"> Â· forces withheld (scenario already assumes action)</span>
+                <span className="tc-why-row-meta"> · forces withheld (scenario already assumes action)</span>
               ) : null}
-              {t.crossed ? <span className="tc-why-crossed"> Â· already crossed</span> : null}
+              {t.crossed ? <span className="tc-why-crossed"> · already crossed</span> : null}
             </span>
 
             {/* A crossed threshold is a debt, not an ending. What reversal would
-                take is shown in full â€” effort, timescale, reasoning and the
-                source â€” because that is the only part of a past-due threshold a
+                take is shown in full — effort, timescale, reasoning and the
+                source — because that is the only part of a past-due threshold a
                 reader can act on. An absent timescale is stated as absent
                 rather than filled in. */}
             {t.crossed && t.recovery ? (
@@ -212,7 +212,7 @@ function Thresholds({
                       ~{t.recovery.timescaleYears} yr
                       {t.recovery.timescaleLowYears !== undefined &&
                       t.recovery.timescaleHighYears !== undefined
-                        ? ` (${t.recovery.timescaleLowYears}â€“${t.recovery.timescaleHighYears})`
+                        ? ` (${t.recovery.timescaleLowYears}–${t.recovery.timescaleHighYears})`
                         : ''}
                     </strong>
                   ) : (
@@ -255,16 +255,16 @@ function Thresholds({
               {formatYear(t.baselineYear)}
               {Math.abs(t.shiftYears) >= 0.05 ? (
                 <>
-                  {' â†’ '}
+                  {' → '}
                   <span className={signClass(t.shiftYears)}>{formatYear(t.warpedYear)}</span>
                   <span className="tc-why-row-meta">
                     {' '}
-                    ({t.shiftYears < 0 ? 'âˆ’' : '+'}
+                    ({t.shiftYears < 0 ? '−' : '+'}
                     {Math.abs(t.shiftYears).toFixed(1)} yr)
                   </span>
                 </>
               ) : (
-                <span className="tc-why-row-meta"> Â· unmoved</span>
+                <span className="tc-why-row-meta"> · unmoved</span>
               )}
             </span>
           </li>
@@ -294,7 +294,7 @@ export function WhyPanel({
       <div className="tc-why-body">
         <p className="tc-why-intro">
           The countdown anchors on the polycrisis&apos;s dated tipping points, then
-          lets the other factors â€” pressures and counter-forces â€” warp WHEN those
+          lets the other factors — pressures and counter-forces — warp WHEN those
           thresholds arrive. It is a modeled projection, not a measured deadline.
         </p>
 
@@ -302,18 +302,18 @@ export function WhyPanel({
           <li>
             <strong>Anchor.</strong> Each dated threshold becomes a
             significance-weighted range of when it could be crossed. Combined, they
-            form the distribution the countdown reads â€” heavier, nearer thresholds
+            form the distribution the countdown reads — heavier, nearer thresholds
             dominate.
           </li>
           <li>
             <strong>Warp.</strong> Every other factor acts only on the thresholds it
             is causally linked to, by shared domain. Its force moves those
-            thresholds â€” more where there is more runway and more evidence behind
+            thresholds — more where there is more runway and more evidence behind
             it, less where a threshold is imminent or the evidence is thin.
           </li>
           <li>
             <strong>Read.</strong> The headline is the median of the warped
-            distribution; the range below is its p25â€“p75 spread â€” the honest
+            distribution; the range below is its p25–p75 spread — the honest
             uncertainty, not a single instant.
           </li>
         </ol>
@@ -323,9 +323,9 @@ export function WhyPanel({
             <div className="tc-why-heading">The window</div>
             <ul className="tc-why-list">
               <li className="tc-why-row">
-                <span className="tc-why-row-label">Likely range (p25â€“p75)</span>
+                <span className="tc-why-row-label">Likely range (p25–p75)</span>
                 <span className="tc-why-row-value">
-                  {formatYear(model.band.p25)} â€“ {formatYear(model.band.p75)}
+                  {formatYear(model.band.p25)} – {formatYear(model.band.p75)}
                 </span>
               </li>
               {model.baselineTargetYear !== null ? (
@@ -339,7 +339,7 @@ export function WhyPanel({
               <li className="tc-why-row">
                 <span className="tc-why-row-label">Net shift by forces</span>
                 <span className={`tc-why-row-value ${signClass(model.shiftYears)}`}>
-                  {model.shiftYears < 0 ? 'âˆ’' : '+'}
+                  {model.shiftYears < 0 ? '−' : '+'}
                   {Math.abs(model.shiftYears).toFixed(1)} yr
                 </span>
               </li>
@@ -352,14 +352,14 @@ export function WhyPanel({
 
         <p className="tc-why-assumption">
           No invented dials: the forces only move each estimate <em>within</em> the
-          threshold&apos;s own published uncertainty range â€” full net Calamity toward
+          threshold&apos;s own published uncertainty range — full net Calamity toward
           the earliest year science allows, full net Humanity toward the latest. A
           date is never claimed outside what was published.
           {model.assumedSpreadYears !== null ? (
             <>
               {' '}
               Thresholds that published only a single year are given an assumed
-              Â±{model.assumedSpreadYears.toFixed(0)}-year band, the median of the
+              ±{model.assumedSpreadYears.toFixed(0)}-year band, the median of the
               ranges the other thresholds did publish.
             </>
           ) : null}
