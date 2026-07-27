@@ -68,7 +68,12 @@ const BANDS: Record<z.infer<typeof SignificanceSchema>['scale'], [number, number
   site: [0.02, 0.14],
 };
 
-const SCORE_SYSTEM =
+/**
+ * Exported so other passes score on the SAME rubric. researchOutcomes wrote its
+ * own scale language and produced 0.40 for a single lagoon, which the bands here
+ * put at 0.02-0.14 — one definition beats two that drift.
+ */
+export const SCORE_SYSTEM =
   'You score SIGNIFICANCE for a reality tracker: how much of the system a factor ' +
   'moves. Not how newsworthy or morally serious it is, and NOT how confident you ' +
   'are in the source — credibility is scored separately and must not enter here. ' +

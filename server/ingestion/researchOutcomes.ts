@@ -54,6 +54,19 @@ import { scoreSource, REPUTABILITY_VERIFY_THRESHOLD } from './reputability.js';
 import { renderSourceBlocks } from './websearch.js';
 import { resolveSourceDoc } from './researchCounterEfforts.js';
 import { classifyDomains } from '../../shared/domains.js';
+import { SCORE_SYSTEM } from './backfillSignificance.js';
+
+/** The shared bands, mirrored so an outcome can be clamped to the tier it named. */
+const SIGNIFICANCE_BANDS: Record<
+  'planetary' | 'continental' | 'national' | 'subnational' | 'site',
+  [number, number]
+> = {
+  planetary: [0.9, 1.0],
+  continental: [0.7, 0.85],
+  national: [0.4, 0.65],
+  subnational: [0.15, 0.35],
+  site: [0.02, 0.14],
+};
 
 const OutcomeSchema = z.object({
   /**
@@ -66,14 +79,25 @@ const OutcomeSchema = z.object({
   /** What was achieved, with the number and the date, in the source's terms. */
   description: z.string(),
   /**
-   * Signed impact in [-1, 1]. Positive: this outcome improves humanity's
-   * position. An outcome pass should almost always be positive — a negative
-   * value means the sources describe the effort failing or backfiring, which is
-   * a real and reportable finding.
+   * DIRECTION, not scale. Positive means this outcome moves things toward
+   * Humanity, negative toward Calamity. How much of the world it touches is
+   * `significance` — see {@link SIGNIFICANCE_BANDS}.
    */
   effect: z.number(),
-  /** Weight of the evidence and systemic reach in [0, 1]. */
+  /**
+   * SCALE, on the project's shared band rubric. This is the field that says a
+   * lagoon is small and a biome is not.
+   */
   significance: z.number(),
+  /**
+   * The band the significance was chosen from, named BEFORE the number.
+   *
+   * Naming the tier first is what stops the drift back to 0.8: a free number
+   * regresses to the model's prior, a tier is a discrete decision it has to
+   * defend, and the clamp below means a mis-typed number cannot quietly escape
+   * the tier it claimed.
+   */
+  scale: z.enum(['planetary', 'continental', 'national', 'subnational', 'site']),
   /** The year the result was measured. */
   year: z.number().nullable(),
   /** The sentence stating the measured result, verbatim. */
@@ -100,15 +124,19 @@ const OUTCOME_SYSTEM =
   'name is a short factual title for the achievement itself, not the ' +
   "organisation's name. description states the number and the date in the " +
   "source's terms. " +
-  "effect is signed impact in [-1, 1]: positive if this improves humanity's " +
-  'position, and sized by how much. Reserve magnitudes above 0.6 for outcomes of ' +
-  'genuine global consequence; a regional restoration project is small on a ' +
-  'planetary scale however good it is. Use a NEGATIVE value if the sources show ' +
-  'the effort failed or backfired — that is a real finding, not an error. ' +
-  'significance is [0, 1] for the weight of the evidence and the systemic reach. ' +
+  'effect is DIRECTION ONLY, in [-1, 1]: positive when the outcome moves things ' +
+  'toward humanity, negative when the sources show the effort failed or ' +
+  'backfired — a real finding, not an error. Do NOT put scale into effect. How ' +
+  'much of the world this touches belongs entirely to significance, so a small ' +
+  'but clearly good result is a STRONG positive direction at a SMALL scale, not ' +
+  'a middling number in both. ' +
   'year is when the result was measured, or null. ' +
   'quote is the sentence stating the measured result, copied verbatim, and ' +
-  'sourceIndex is its SOURCE block.';
+  'sourceIndex is its SOURCE block.\n\n' +
+  // The SAME rubric the significance backfill uses, rather than scale language
+  // invented here. The first version of this prompt wrote its own and scored a
+  // single lagoon at 0.40, where these bands put a single site at 0.02-0.14.
+  SCORE_SYSTEM;
 
 /**
  * Aimed at results, not at the organisation's own description of itself.
@@ -251,7 +279,11 @@ export async function researchOutcomes(
         }
 
         const effect = Math.max(-1, Math.min(1, out.effect));
-        const significance = Math.max(0, Math.min(1, out.significance));
+        // Clamped to the band the model NAMED. A number outside its own
+        // declared tier is the drift this rubric exists to stop, and clamping
+        // means a mis-typed value cannot quietly reintroduce it.
+        const [lo, hi] = SIGNIFICANCE_BANDS[out.scale];
+        const significance = Math.max(lo, Math.min(hi, out.significance));
         const domains = classifyDomains(out.name, out.description, 'global');
         const [vector] = await embeddings.embed([`${out.name}: ${out.description}`]);
 

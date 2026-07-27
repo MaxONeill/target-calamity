@@ -119,6 +119,11 @@ export const ASSESSMENT_TOPICS: readonly string[] = [
   'published critical thresholds for freshwater, aquifer depletion, and food-system failure',
   'research identifying thresholds beyond which public-health or antimicrobial-resistance harm becomes irreversible',
   'scholarship on thresholds of institutional, economic, or societal breakdown from which recovery is not observed',
+  // Absent until now, which is a strange gap in a tracker of points of no
+  // return: nuclear conflict is the canonical irreversible threshold, and the
+  // literature on nuclear winter and escalation ladders is exactly the dated,
+  // quantified assessment work this sweep is looking for.
+  'assessments of nuclear conflict thresholds, escalation ladders, and nuclear winter climate effects',
 ];
 
 const DEFAULT_TOPICS: readonly string[] = [
@@ -146,8 +151,18 @@ const DEFAULT_TOPICS: readonly string[] = [
   'newest data on antimicrobial resistance and emerging pandemic risk', // C
   'recent public-health advances: disease control, vaccination, and mortality gains', // H
   // Society, governance & conflict
+  //
+  // Conflict was one generic line here, and the set showed it: "Global Rise in
+  // Armed Conflicts" and nothing about any actual war. A tracker of humanity's
+  // position that cannot see the wars being fought is missing a whole axis, and
+  // interstate escalation is among the fastest-moving forces on the board —
+  // slower only than the nuclear thresholds below, which were absent entirely.
   'recent developments in democratic backsliding, authoritarianism, and armed conflict', // C
+  'current interstate wars and military escalation between states: casualties, displacement, economic damage', // C
+  'latest assessments of nuclear weapons risk, arsenal expansion, and arms-control breakdown', // C
+  'recent findings on conflict-driven famine, food-system disruption from war, and blockades', // C
   'recent conflict-resolution, peace processes, and human-rights progress', // H
+  'recent arms-control agreements, denuclearization progress, and de-escalation between states', // H
   'recent findings on forced displacement and climate migration', // C
   'recent gains in climate adaptation and community resilience', // H
   // Technology & institutions
