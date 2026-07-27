@@ -181,11 +181,14 @@ export function ClockDerivation({
       </dl>
 
       <footer className="tc-clock-footer">
+        {/* Kept in step with the model. This previously described a
+            significance-weighted baseline shifted by net polarity, which was
+            the aggregation the Clock used before it moved to first-crossing —
+            a footnote describing the wrong model is worse than none. */}
         <p className="tc-clock-note">
-          Countdown anchored to the significance-weighted baseline of the
-          polycrisis's dated tipping points, shifted by the net Calamity/Humanity
-          balance. A model, not a measurement — see&nbsp;
-          <span className="tc-clock-note-glyph">[ i ]</span>.
+          Counting down to the earliest published change that cannot be undone.
+          A model, not a measurement — see&nbsp;
+          <span className="tc-clock-note-glyph">[i]</span>.
         </p>
         <button
           type="button"

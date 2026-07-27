@@ -1,5 +1,5 @@
 /**
- * Renders both the `[ i ]` trigger glyph and the modal it opens.
+ * Renders both the `[i]` trigger glyph and the modal it opens.
  *
  * The modal is focus-trapped and closes on Escape or backdrop click, restoring
  * focus to the trigger. `onOpenChange` lets the Clock halt the ambient tick
@@ -159,7 +159,7 @@ export function ExplainerModal({ onOpenChange }: ExplainerModalProps): JSX.Eleme
         aria-label="About the Clock model"
         title="About the Clock model"
       >
-        [ i ]
+        [i]
       </button>
       {modal ? createPortal(modal, document.body) : null}
     </>
