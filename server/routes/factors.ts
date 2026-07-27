@@ -232,9 +232,34 @@ function stripNullReputability(factor: Factor): Factor {
   return out;
 }
 
+/**
+ * Same treatment for the placement columns, added in migration 018.
+ *
+ * `location_kind` is NULL on every placeless factor and `location_note` on every
+ * MEASURED one — a source placed it, so there is no editorial reason to record.
+ * Both schema fields are `.optional()` and never `.nullable()`, so a literal
+ * null failed the contract, `FactorByIdResponseSchema.parse` threw, and the
+ * selected-factor hook swallowed it and left the record null. The visible
+ * symptom was the detail panel falling back to "sources are loading or
+ * unavailable" on pins whose record was sitting right there — a parse failure
+ * wearing the costume of a slow network.
+ */
+function stripNullPlacement(factor: Factor): Factor {
+  let out = factor;
+  if (out.locationKind == null) {
+    const { locationKind: _k, ...rest } = out;
+    out = rest;
+  }
+  if (out.locationNote == null) {
+    const { locationNote: _n, ...rest } = out;
+    out = rest;
+  }
+  return out;
+}
+
 /** Strip every never-`null` optional key the JSON assembly may have set to null. */
 function mapFactorRow(factor: Factor): Factor {
-  return stripNullReputability(stripNullTippingPoint(factor));
+  return stripNullPlacement(stripNullReputability(stripNullTippingPoint(factor)));
 }
 
 async function recentFeedDb(
