@@ -1,5 +1,64 @@
-import type { ClockModel } from '../../lib/clock/clockModel.js';
+﻿import type { ClockModel } from '../../lib/clock/clockModel.js';
+import type { Requirement } from '../../../shared/types.js';
 import { formatYear } from './format.js';
+
+/** How each requirement status reads, and how urgently. */
+const STATUS_LABEL: Record<Requirement['status'], string> = {
+  exists: 'exists today',
+  partial: 'exists, not at scale',
+  absent: 'does not exist yet',
+  unknown: 'status unknown',
+};
+
+/**
+ * One branch of a contingency chain.
+ *
+ * Recursive rather than flattened, because the nesting IS the argument: "to
+ * reverse this you need A, and to get A you need B" only reads as a chain if it
+ * looks like one.
+ *
+ * A branch that ends without children is where no source described what comes
+ * next. That is stated rather than left blank â€” an unexplained stop reads as an
+ * oversight, when it is actually the most actionable node in the tree.
+ */
+function RequirementBranch({
+  node,
+  byParent,
+}: {
+  node: Requirement;
+  byParent: Map<string | null, Requirement[]>;
+}): JSX.Element {
+  const children = byParent.get(node.id) ?? [];
+  return (
+    <li className="tc-req" data-status={node.status}>
+      <div className="tc-req-head">
+        <span className="tc-req-statement">{node.statement}</span>
+        <span className="tc-req-status">{STATUS_LABEL[node.status]}</span>
+      </div>
+      {node.reasoning ? <p className="tc-req-reason">{node.reasoning}</p> : null}
+      {node.sourceUrl ? (
+        <a
+          className="tc-req-source"
+          href={node.sourceUrl}
+          target="_blank"
+          rel="noreferrer noopener"
+        >
+          {node.publisher ?? 'source'}
+        </a>
+      ) : null}
+
+      {children.length > 0 ? (
+        <ul className="tc-req-children">
+          {children.map((c) => (
+            <RequirementBranch key={c.id} node={c} byParent={byParent} />
+          ))}
+        </ul>
+      ) : node.status !== 'exists' ? (
+        <p className="tc-req-terminal">No source describes what this would take.</p>
+      ) : null}
+    </li>
+  );
+}
 
 function signClass(value: number): string {
   return value < 0 ? 'tc-why-neg' : value > 0 ? 'tc-why-pos' : 'tc-why-zero';
@@ -22,7 +81,7 @@ function DomainForces({ model }: { model: ClockModel }): JSX.Element | null {
               {f.factorCount} factor{f.factorCount === 1 ? '' : 's'}
             </span>
             <span className={`tc-why-row-value ${signClass(f.netForce)}`}>
-              {f.netForce >= 0 ? '+' : '−'}
+              {f.netForce >= 0 ? '+' : 'âˆ’'}
               {Math.abs(f.netForce).toFixed(2)}
             </span>
           </li>
@@ -32,8 +91,31 @@ function DomainForces({ model }: { model: ClockModel }): JSX.Element | null {
   );
 }
 
-function Thresholds({ model }: { model: ClockModel }): JSX.Element | null {
+function Thresholds({
+  model,
+  requirements,
+}: {
+  model: ClockModel;
+  requirements: readonly Requirement[];
+}): JSX.Element | null {
   if (model.thresholds.length === 0) return null;
+
+  // The wire carries requirements flat, keyed by parentId, and the tree is
+  // rebuilt here. Flat survives schema evolution better than nested recursion,
+  // and the sets are small enough that two passes cost nothing.
+  const byParent = new Map<string | null, Requirement[]>();
+  const requirementsByFactor = new Map<string, Requirement[]>();
+  for (const r of requirements) {
+    const siblings = byParent.get(r.parentId) ?? [];
+    siblings.push(r);
+    byParent.set(r.parentId, siblings);
+    if (r.parentId === null) {
+      const roots = requirementsByFactor.get(r.factorId) ?? [];
+      roots.push(r);
+      requirementsByFactor.set(r.factorId, roots);
+    }
+  }
+
   return (
     <div className="tc-why-section">
       <div className="tc-why-heading">Dated thresholds</div>
@@ -51,20 +133,20 @@ function Thresholds({ model }: { model: ClockModel }): JSX.Element | null {
                   the countdown, where its year came from, and whether forces
                   were withheld to avoid double-counting a scenario. */}
               {t.anchors ? null : (
-                <span className="tc-why-row-meta"> · informs only</span>
+                <span className="tc-why-row-meta"> Â· informs only</span>
               )}
               {t.dating === 'projected' ? (
-                <span className="tc-why-row-meta"> · dated from a projection</span>
+                <span className="tc-why-row-meta"> Â· dated from a projection</span>
               ) : null}
               {t.anchors && !t.forcesApply ? (
-                <span className="tc-why-row-meta"> · forces withheld (scenario already assumes action)</span>
+                <span className="tc-why-row-meta"> Â· forces withheld (scenario already assumes action)</span>
               ) : null}
-              {t.crossed ? <span className="tc-why-crossed"> · already crossed</span> : null}
+              {t.crossed ? <span className="tc-why-crossed"> Â· already crossed</span> : null}
             </span>
 
             {/* A crossed threshold is a debt, not an ending. What reversal would
-                take is shown in full — effort, timescale, reasoning and the
-                source — because that is the only part of a past-due threshold a
+                take is shown in full â€” effort, timescale, reasoning and the
+                source â€” because that is the only part of a past-due threshold a
                 reader can act on. An absent timescale is stated as absent
                 rather than filled in. */}
             {t.crossed && t.recovery ? (
@@ -76,7 +158,7 @@ function Thresholds({ model }: { model: ClockModel }): JSX.Element | null {
                       ~{t.recovery.timescaleYears} yr
                       {t.recovery.timescaleLowYears !== undefined &&
                       t.recovery.timescaleHighYears !== undefined
-                        ? ` (${t.recovery.timescaleLowYears}–${t.recovery.timescaleHighYears})`
+                        ? ` (${t.recovery.timescaleLowYears}â€“${t.recovery.timescaleHighYears})`
                         : ''}
                     </strong>
                   ) : (
@@ -101,20 +183,34 @@ function Thresholds({ model }: { model: ClockModel }): JSX.Element | null {
                 </em>
               </div>
             ) : null}
+
+            {/* The contingency chain. Every node is a cited claim, so the tree
+                is an argument a reader can follow and check rather than a
+                summary they have to trust. */}
+            {t.crossed && (requirementsByFactor.get(t.factorId ?? '') ?? []).length > 0 ? (
+              <div className="tc-req-tree">
+                <div className="tc-req-tree-head">What reversal would require</div>
+                <ul className="tc-req-children">
+                  {(requirementsByFactor.get(t.factorId ?? '') ?? []).map((r) => (
+                    <RequirementBranch key={r.id} node={r} byParent={byParent} />
+                  ))}
+                </ul>
+              </div>
+            ) : null}
             <span className="tc-why-threshold-years">
               {formatYear(t.baselineYear)}
               {Math.abs(t.shiftYears) >= 0.05 ? (
                 <>
-                  {' → '}
+                  {' â†’ '}
                   <span className={signClass(t.shiftYears)}>{formatYear(t.warpedYear)}</span>
                   <span className="tc-why-row-meta">
                     {' '}
-                    ({t.shiftYears < 0 ? '−' : '+'}
+                    ({t.shiftYears < 0 ? 'âˆ’' : '+'}
                     {Math.abs(t.shiftYears).toFixed(1)} yr)
                   </span>
                 </>
               ) : (
-                <span className="tc-why-row-meta"> · unmoved</span>
+                <span className="tc-why-row-meta"> Â· unmoved</span>
               )}
             </span>
           </li>
@@ -129,7 +225,13 @@ function Thresholds({ model }: { model: ClockModel }): JSX.Element | null {
  * detail: how thresholds anchor the countdown, how domain-linked forces warp
  * them, the resulting range, and the one assumption behind it.
  */
-export function WhyPanel({ model }: { model: ClockModel }): JSX.Element | null {
+export function WhyPanel({
+  model,
+  requirements = [],
+}: {
+  model: ClockModel;
+  requirements?: readonly Requirement[];
+}): JSX.Element | null {
   if (!model.hasBaseline) return null;
 
   return (
@@ -138,7 +240,7 @@ export function WhyPanel({ model }: { model: ClockModel }): JSX.Element | null {
       <div className="tc-why-body">
         <p className="tc-why-intro">
           The countdown anchors on the polycrisis&apos;s dated tipping points, then
-          lets the other factors — pressures and counter-forces — warp WHEN those
+          lets the other factors â€” pressures and counter-forces â€” warp WHEN those
           thresholds arrive. It is a modeled projection, not a measured deadline.
         </p>
 
@@ -146,18 +248,18 @@ export function WhyPanel({ model }: { model: ClockModel }): JSX.Element | null {
           <li>
             <strong>Anchor.</strong> Each dated threshold becomes a
             significance-weighted range of when it could be crossed. Combined, they
-            form the distribution the countdown reads — heavier, nearer thresholds
+            form the distribution the countdown reads â€” heavier, nearer thresholds
             dominate.
           </li>
           <li>
             <strong>Warp.</strong> Every other factor acts only on the thresholds it
             is causally linked to, by shared domain. Its force moves those
-            thresholds — more where there is more runway and more evidence behind
+            thresholds â€” more where there is more runway and more evidence behind
             it, less where a threshold is imminent or the evidence is thin.
           </li>
           <li>
             <strong>Read.</strong> The headline is the median of the warped
-            distribution; the range below is its p25–p75 spread — the honest
+            distribution; the range below is its p25â€“p75 spread â€” the honest
             uncertainty, not a single instant.
           </li>
         </ol>
@@ -167,9 +269,9 @@ export function WhyPanel({ model }: { model: ClockModel }): JSX.Element | null {
             <div className="tc-why-heading">The window</div>
             <ul className="tc-why-list">
               <li className="tc-why-row">
-                <span className="tc-why-row-label">Likely range (p25–p75)</span>
+                <span className="tc-why-row-label">Likely range (p25â€“p75)</span>
                 <span className="tc-why-row-value">
-                  {formatYear(model.band.p25)} – {formatYear(model.band.p75)}
+                  {formatYear(model.band.p25)} â€“ {formatYear(model.band.p75)}
                 </span>
               </li>
               {model.baselineTargetYear !== null ? (
@@ -183,7 +285,7 @@ export function WhyPanel({ model }: { model: ClockModel }): JSX.Element | null {
               <li className="tc-why-row">
                 <span className="tc-why-row-label">Net shift by forces</span>
                 <span className={`tc-why-row-value ${signClass(model.shiftYears)}`}>
-                  {model.shiftYears < 0 ? '−' : '+'}
+                  {model.shiftYears < 0 ? 'âˆ’' : '+'}
                   {Math.abs(model.shiftYears).toFixed(1)} yr
                 </span>
               </li>
@@ -192,18 +294,18 @@ export function WhyPanel({ model }: { model: ClockModel }): JSX.Element | null {
         ) : null}
 
         <DomainForces model={model} />
-        <Thresholds model={model} />
+        <Thresholds model={model} requirements={requirements} />
 
         <p className="tc-why-assumption">
           No invented dials: the forces only move each estimate <em>within</em> the
-          threshold&apos;s own published uncertainty range — full net Calamity toward
+          threshold&apos;s own published uncertainty range â€” full net Calamity toward
           the earliest year science allows, full net Humanity toward the latest. A
           date is never claimed outside what was published.
           {model.assumedSpreadYears !== null ? (
             <>
               {' '}
               Thresholds that published only a single year are given an assumed
-              ±{model.assumedSpreadYears.toFixed(0)}-year band, the median of the
+              Â±{model.assumedSpreadYears.toFixed(0)}-year band, the median of the
               ranges the other thresholds did publish.
             </>
           ) : null}
@@ -212,3 +314,4 @@ export function WhyPanel({ model }: { model: ClockModel }): JSX.Element | null {
     </details>
   );
 }
+

@@ -93,6 +93,10 @@ export function toClockFactor(pin: FieldPin | GlobalFactor): ClockFactorInput {
   }
 
   return {
+    // Carried so a threshold can be joined to rows keyed on the factor —
+    // contingency chains in particular. Without it every ThresholdContribution
+    // reports factorId: null and the chains have nothing to attach to.
+    id: pin.id,
     effect: pin.effect,
     significance: pin.significance,
     domains: pin.domains,

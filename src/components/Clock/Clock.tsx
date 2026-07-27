@@ -1,5 +1,6 @@
 ﻿import { useCallback, useMemo, useRef, useState } from 'react';
 import { useSwipe, type SwipeGesture } from '../../hooks/useSwipe.js';
+import type { Requirement } from '../../../shared/types.js';
 import {
   deriveClock,
   type ClockFactorInput,
@@ -24,6 +25,8 @@ export interface ClockProps {
    * anchored, rather than being estimated.
    */
   projections?: readonly Projection[];
+  /** Contingency chains for crossed thresholds. */
+  requirements?: readonly Requirement[];
   className?: string;
 }
 
@@ -36,7 +39,7 @@ export interface ClockProps {
  * fabricated instant. The compact widget carries the live time; clicking it
  * discloses how that time was derived.
  */
-export function Clock({ factors, projections, className }: ClockProps): JSX.Element {
+export function Clock({ factors, projections, requirements, className }: ClockProps): JSX.Element {
   const model = useMemo(
     () => deriveClock(factors, projections ?? [], new Date().getUTCFullYear()),
     [factors, projections],
@@ -80,6 +83,7 @@ export function Clock({ factors, projections, className }: ClockProps): JSX.Elem
         <ClockDerivation
           model={model}
           soundEnabled={soundEnabled}
+          requirements={requirements ?? []}
           onToggleSound={toggleSound}
         >
           <ExplainerModal onOpenChange={setModalOpen} />
@@ -88,4 +92,6 @@ export function Clock({ factors, projections, className }: ClockProps): JSX.Elem
     </section>
   );
 }
+
+
 

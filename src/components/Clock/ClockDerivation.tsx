@@ -1,4 +1,5 @@
-import type { ClockConfidence, ClockModel } from '../../lib/clock/clockModel.js';
+﻿import type { ClockConfidence, ClockModel } from '../../lib/clock/clockModel.js';
+import type { Requirement } from '../../../shared/types.js';
 import { formatYear } from './format.js';
 import { WhyPanel } from './WhyPanel.js';
 
@@ -42,34 +43,34 @@ function TargetHeadline({ model }: { model: ClockModel }): JSX.Element {
     <div className="tc-clock-primary">
       <div className="tc-clock-horizon">
         <span className="tc-clock-horizon-approx" aria-hidden="true">
-          ≈
+          â‰ˆ
         </span>
         <span className="tc-clock-horizon-value">
-          {hasBaseline && targetYear !== null ? formatYear(targetYear) : '—'}
+          {hasBaseline && targetYear !== null ? formatYear(targetYear) : 'â€”'}
         </span>
         <span className="tc-clock-horizon-unit">TARGET</span>
       </div>
 
       {hasBaseline && model.band ? (
         <div className="tc-clock-range">
-          likely {formatYear(model.band.p25)} – {formatYear(model.band.p75)}
+          likely {formatYear(model.band.p25)} â€“ {formatYear(model.band.p75)}
         </div>
       ) : null}
 
       <div className="tc-clock-window">
         {!hasBaseline || baselineTargetYear === null ? (
-          'no dated tipping points in view — baseline indeterminate'
+          'no dated tipping points in view â€” baseline indeterminate'
         ) : (
           <>
             tipping-point anchor {formatYear(baselineTargetYear)}
             {Math.abs(shiftYears) < 0.05 ? (
-              ' · unshifted (balanced)'
+              ' Â· unshifted (balanced)'
             ) : (
               <>
                 {' '}
-                · shifted{' '}
+                Â· shifted{' '}
                 <span data-sign={shiftYears < 0 ? 'calamity' : 'humanity'}>
-                  {shiftYears < 0 ? '−' : '+'}
+                  {shiftYears < 0 ? 'âˆ’' : '+'}
                   {Math.abs(shiftYears).toFixed(1)} yr
                 </span>{' '}
                 by net {netPolarity < 0 ? 'Calamity' : 'Humanity'}
@@ -111,6 +112,8 @@ function PolarityBar({
 
 export interface ClockDerivationProps {
   model: ClockModel;
+  /** Contingency chains for crossed thresholds, flat and keyed by factorId. */
+  requirements?: readonly Requirement[];
   soundEnabled: boolean;
   onToggleSound: () => void;
   children?: React.ReactNode;
@@ -119,11 +122,12 @@ export interface ClockDerivationProps {
 /**
  * The expanded panel: how the target was derived, and from what evidence.
  *
- * This is the derivation, not a second clock — the live countdown stays in the
+ * This is the derivation, not a second clock â€” the live countdown stays in the
  * compact widget so the two can never disagree.
  */
 export function ClockDerivation({
   model,
+  requirements = [],
   soundEnabled,
   onToggleSound,
   children,
@@ -138,11 +142,11 @@ export function ClockDerivation({
 
       <TargetHeadline model={model} />
 
-      <WhyPanel model={model} />
+      <WhyPanel model={model} requirements={requirements} />
 
       {!model.hasBaseline ? (
         <div className="tc-clock-indeterminate" role="status">
-          AWAITING A DATED TIPPING POINT — the countdown anchors to the
+          AWAITING A DATED TIPPING POINT â€” the countdown anchors to the
           polycrisis's own thresholds; none are in view yet, so no target is shown.
         </div>
       ) : null}
@@ -183,11 +187,11 @@ export function ClockDerivation({
       <footer className="tc-clock-footer">
         {/* Kept in step with the model. This previously described a
             significance-weighted baseline shifted by net polarity, which was
-            the aggregation the Clock used before it moved to first-crossing —
+            the aggregation the Clock used before it moved to first-crossing â€”
             a footnote describing the wrong model is worse than none. */}
         <p className="tc-clock-note">
           Counting down to the earliest published change that cannot be undone.
-          A model, not a measurement — see&nbsp;
+          A model, not a measurement â€” see&nbsp;
           <span className="tc-clock-note-glyph">[i]</span>.
         </p>
         <button
@@ -202,3 +206,5 @@ export function ClockDerivation({
     </>
   );
 }
+
+

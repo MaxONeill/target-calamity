@@ -36,7 +36,7 @@ export function App(): JSX.Element {
   const appRef = useRef<HTMLDivElement>(null);
 
   const feed = useFactorFeed();
-  const { fieldPins, globalFactors, projections, reloadField } = useFieldPins();
+  const { fieldPins, globalFactors, projections, requirements, reloadField } = useFieldPins();
   const panel = useSlideoutPanel();
 
   // Touch gestures for the panel. Opening is restricted to a right-edge strip
@@ -155,7 +155,11 @@ export function App(): JSX.Element {
         <StatusBar streamStatus={streamStatus} />
 
         <div className="tc-clock-slot">
-          <Clock factors={clockFactors} projections={clockProjections} />
+          <Clock
+            factors={clockFactors}
+            projections={clockProjections}
+            requirements={requirements}
+          />
         </div>
 
         {/* Bottom-centre CTA. Shifts with the globe when the panel opens so it
@@ -198,4 +202,5 @@ export function App(): JSX.Element {
 }
 
 export default App;
+
 

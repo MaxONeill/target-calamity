@@ -1,7 +1,7 @@
-/**
+﻿/**
  * TypeScript types for the shared contract, DERIVED from the zod schemas in
  * `shared/schema.ts` via `z.infer`. Do not hand-write or edit these to
- * diverge from the schemas — change the schema and the type follows. Importing
+ * diverge from the schemas â€” change the schema and the type follows. Importing
  * from here keeps callers off the zod runtime when they only need the types.
  */
 import type { z } from 'zod';
@@ -12,6 +12,8 @@ import type {
   TippingPointSchema,
   QuantityThresholdSchema,
   ProjectionSchema,
+  RequirementSchema,
+  RequirementStatusSchema,
   CitationSchema,
   FactorSchema,
   FieldPinSchema,
@@ -34,6 +36,8 @@ export type VerificationState = z.infer<typeof VerificationStateSchema>;
 export type TippingPoint = z.infer<typeof TippingPointSchema>;
 export type QuantityThreshold = z.infer<typeof QuantityThresholdSchema>;
 export type Projection = z.infer<typeof ProjectionSchema>;
+export type Requirement = z.infer<typeof RequirementSchema>;
+export type RequirementStatus = z.infer<typeof RequirementStatusSchema>;
 
 export type Citation = z.infer<typeof CitationSchema>;
 export type Factor = z.infer<typeof FactorSchema>;
@@ -57,9 +61,10 @@ export type FactorByIdResponse = z.infer<typeof FactorByIdResponseSchema>;
 
 /**
  * The ONLY fields an anonymous submitter may send. Note what is absent:
- * effect, significance, verificationState, lat, lon, tippingPoint — all
+ * effect, significance, verificationState, lat, lon, tippingPoint â€” all
  * system-assigned. The schema is `.strict()`, so supplying one is a hard error.
  */
 export type FactorSubmission = z.infer<typeof FactorSubmissionSchema>;
 export type SubmissionOutcome = z.infer<typeof SubmissionOutcomeSchema>;
 export type SubmissionResponse = z.infer<typeof SubmissionResponseSchema>;
+

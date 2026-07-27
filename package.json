@@ -23,6 +23,7 @@
     "report:coverage": "tsx --env-file-if-exists=.env server/ingestion/coverageReport.ts",
     "backfill:significance": "tsx --env-file-if-exists=.env server/ingestion/backfillSignificance.ts",
     "backfill:recovery": "tsx --env-file-if-exists=.env server/ingestion/backfillRecovery.ts",
+    "backfill:contingency": "tsx --env-file-if-exists=.env server/ingestion/backfillContingency.ts",
     "fetch:elevation": "node scripts/fetch-elevation.mjs"
   },
   "dependencies": {

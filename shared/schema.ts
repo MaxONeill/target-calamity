@@ -134,6 +134,40 @@ export const RecoverySchema = z.object({
   publisher: z.string().optional(),
 });
 
+/** Where a requirement stands today. `unknown` is also the chain's terminus. */
+export const RequirementStatusSchema = z.enum(['exists', 'partial', 'absent', 'unknown']);
+
+/**
+ * One link in the chain of what it would take to reverse a crossed threshold.
+ *
+ * Flat at the wire — `parentId` reconstructs the tree client-side — because the
+ * set per threshold is small and a flat array survives schema evolution better
+ * than nested recursion.
+ *
+ * Every node is a CITED claim. Dependency chains are the most fabrication-prone
+ * output in this system: a model produces a fluent, plausible, invented chain
+ * faster than anything else, and a wrong link reads like engineering rather than
+ * like an error. So an edge exists only where a source states it.
+ *
+ * A leaf with `status: 'unknown'` is a feature, not a gap. It marks where no
+ * source describes what comes next — the thing that actually needs inventing,
+ * which is more useful than a manufactured next step.
+ */
+export const RequirementSchema = z.object({
+  id: z.string().uuid(),
+  /** The threshold whose reversal this chain describes. */
+  factorId: z.string().uuid(),
+  /** Null at the root, which states what reversing the threshold itself needs. */
+  parentId: z.string().uuid().nullable(),
+  statement: z.string().min(1),
+  status: RequirementStatusSchema,
+  depth: z.number().int().min(0),
+  sourceUrl: z.string().url().optional(),
+  publisher: z.string().optional(),
+  quote: z.string().optional(),
+  reasoning: z.string().optional(),
+});
+
 export const TippingPointSchema = z.object({
   /**
    * Best-estimate calendar year the threshold is crossed (e.g. 2050). Optional
@@ -369,6 +403,14 @@ export const FieldResponseSchema = z.object({
    * quantity-stated.
    */
   projections: z.array(ProjectionSchema).default([]),
+  /**
+   * Contingency chains for the thresholds in view, flat and keyed by `factorId`.
+   *
+   * Rides with the field for the same reason projections do: both are refetched
+   * by the same stream invalidation, so a chain can never be shown against a
+   * threshold set it was not derived from. Empty until the expansion pass runs.
+   */
+  requirements: z.array(RequirementSchema).default([]),
   fieldEpoch: z.string().datetime({ offset: true }),
 });
 
