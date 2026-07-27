@@ -94,14 +94,37 @@
 .tc-clock-compact-seg {
   color: var(--tc-text);
 }
-.tc-clock-compact-indet,
-.tc-clock-compact-passed {
+.tc-clock-compact-indet {
   font-size: 11px;
   letter-spacing: 0.14em;
   color: var(--tc-text-faint);
 }
-.tc-clock-compact-passed {
+
+/* Past the target the whole count goes Calamity-red and keeps running. The
+   colour is the state change; the digits stay put so the eye reads it as the
+   same clock still counting, not a different message in its place. */
+.tc-clock-compact-count[data-overdue='true'] .tc-clock-compact-seg,
+.tc-clock-compact-sign {
   color: var(--tc-calamity);
+}
+.tc-clock-compact-sign {
+  /* Tabular digits keep the segments from shifting each tick; the sign is
+     outside that run, so it gets explicit spacing rather than a space glyph. */
+  margin-right: 1px;
+}
+
+/* Available to assistive tech, absent from the page. Not `display: none`,
+   which would hide it from screen readers too. */
+.tc-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .tc-clock-caret {

@@ -249,6 +249,78 @@ function ReputabilityBlock({
   );
 }
 
+/**
+ * Who is working on this — the routing surface, on every factor.
+ *
+ * The heading follows the sign of `effect`, because the question asked of each
+ * side differs: a Calamity factor gets "who is working against this", a Humanity
+ * factor gets "who is scaling this up". Labelling a beneficial trend's backers as
+ * "counter-efforts" would read as opposition to something good.
+ *
+ * Every entry links to the source that names it. Unranked and unnumbered on
+ * purpose: reporting who is working on something is defensible, ordering them by
+ * promise is an opinion this system has no basis for.
+ *
+ * An empty set renders as a stated finding rather than nothing at all. "We went
+ * looking and found nobody" is information; a blank space reads as a page that
+ * has not finished loading.
+ */
+function EffortsBlock({
+  efforts,
+  effect,
+}: {
+  efforts: Factor['efforts'];
+  effect: number;
+}): JSX.Element {
+  const amplify = effect > 0;
+  const heading = amplify ? 'Who is scaling this up' : 'Who is working against this';
+  return (
+    <section
+      className={`tc-details__efforts tc-details__efforts--${amplify ? 'amplify' : 'counter'}`}
+      aria-label={heading}
+    >
+      <div className="tc-details__section-head">
+        {heading}
+        {efforts.length > 0 ? (
+          <span className="tc-details__count">[{efforts.length}]</span>
+        ) : null}
+      </div>
+      {efforts.length === 0 ? (
+        <p className="tc-details__efforts-empty">
+          No effort found yet. That is a gap in what we have been able to
+          retrieve, not proof that nobody is working on it.
+        </p>
+      ) : (
+        <ul className="tc-details__effort-list">
+          {efforts.map((e) => (
+            <li key={e.id} className="tc-details__effort">
+              <div className="tc-details__effort-head">
+                <a
+                  className="tc-details__effort-name"
+                  href={e.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={e.sourceUrl}
+                >
+                  {e.name}
+                  <span className="tc-cite__link-glyph"> {'↗'}</span>
+                </a>
+                {e.stage ? (
+                  <span className="tc-details__effort-stage">{e.stage}</span>
+                ) : null}
+              </div>
+              <p className="tc-details__effort-desc">{e.description}</p>
+              {e.publisher ? (
+                <span className="tc-details__effort-src">via {e.publisher}</span>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 export function FactorDetails({ factor, pin, onClose }: FactorDetailsProps): JSX.Element | null {
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -325,6 +397,14 @@ export function FactorDetails({ factor, pin, onClose }: FactorDetailsProps): JSX
           ) : null}
 
           <DetailMetrics effect={factor.effect} significance={factor.significance} />
+
+          {/* Placed above the sources: the citations say the thing is real, this
+              says what can be done about it, and a reader who stops scrolling
+              partway should hit the actionable part first. A neutral factor is
+              skipped — with no sign there is no stance to research. */}
+          {factor.effect !== 0 ? (
+            <EffortsBlock efforts={factor.efforts} effect={factor.effect} />
+          ) : null}
 
           {/* SOURCES — a plain list: publisher + the link itself, nothing else. */}
           {factor.citations.length > 0 ? (

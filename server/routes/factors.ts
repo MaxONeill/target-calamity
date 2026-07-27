@@ -124,6 +124,34 @@ const CITATIONS_LATERAL = sql`
   ) c ON true`;
 
 /**
+ * Inline researched efforts, same one-round-trip shape as citations.
+ *
+ * A separate LATERAL rather than a second join on the same subquery: joining
+ * two one-to-many tables directly would cross-multiply, and the citation
+ * aggregate would silently multiply by the effort count.
+ *
+ * Insertion order, deliberately not a ranking — reporting who is working on
+ * something is defensible, ordering them by promise is not.
+ */
+const EFFORTS_LATERAL = sql`
+  LEFT JOIN LATERAL (
+    SELECT json_agg(
+             json_build_object(
+               'id',          ce.id,
+               'name',        ce.name,
+               'description', ce.description,
+               'stage',       ce.stage,
+               'sourceUrl',   ce.source_url,
+               'publisher',   ce.publisher,
+               'quote',       ce.quote
+             )
+             ORDER BY ce.created_at, ce.id
+           ) AS efforts
+    FROM counter_efforts ce
+    WHERE ce.factor_id = f.id
+  ) e ON true`;
+
+/**
  * The whole factor assembled server-side as JSON. Timestamps are formatted to
  * microsecond ISO-8601 text and `spatial_path` is rendered ::text.
  */
@@ -142,6 +170,7 @@ const FACTOR_JSON = sql`
     'createdAt',             to_char(f.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
     'updatedAt',             to_char(f.updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
     'citations',             COALESCE(c.citations, '[]'::json),
+    'efforts',               COALESCE(e.efforts, '[]'::json),
     'tippingPoint',          f.tipping_point,
     'reputabilityScore',     f.reputability_score,
     'reputabilityReasoning', f.reputability_reasoning
@@ -204,6 +233,7 @@ async function recentFeedDb(
     SELECT ${FACTOR_JSON} AS factor, f.seq::text AS seq, f.id AS id
     FROM factors f
     ${CITATIONS_LATERAL}
+    ${EFFORTS_LATERAL}
     ${where}
     ORDER BY f.seq DESC, f.id DESC
     LIMIT ${FEED_PAGE_SIZE}
@@ -225,6 +255,7 @@ async function magnitudeFeedDb(db: Database, viewport: Viewport): Promise<FeedRe
     SELECT ${FACTOR_JSON} AS factor, f.seq::text AS seq, f.id AS id
     FROM factors f
     ${CITATIONS_LATERAL}
+    ${EFFORTS_LATERAL}
     ${where}
     ORDER BY ABS(f.effect) DESC, f.id DESC
     LIMIT ${MAGNITUDE_CAP}
@@ -239,6 +270,7 @@ async function factorByIdDb(db: Database, id: string): Promise<Factor | null> {
     SELECT ${FACTOR_JSON} AS factor
     FROM factors f
     ${CITATIONS_LATERAL}
+    ${EFFORTS_LATERAL}
     WHERE f.id = ${id}::uuid
     LIMIT 1
   `.execute(db);

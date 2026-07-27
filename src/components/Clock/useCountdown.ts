@@ -4,8 +4,12 @@ import { targetDeadlineMs } from '../../lib/clock/clockModel.js';
 import { splitDuration, type CountdownParts } from './format.js';
 
 export interface Countdown {
+  /**
+   * Distance to the target instant, as a magnitude. Past the target this is how
+   * far past — the clock keeps running rather than stopping at a label.
+   */
   remaining: CountdownParts;
-  /** True once the modeled target instant has passed. */
+  /** True once the modeled target instant has passed; the count is then negative. */
   overdue: boolean;
 }
 

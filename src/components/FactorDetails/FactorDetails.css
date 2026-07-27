@@ -309,3 +309,81 @@
   border: 1px dashed var(--tc-hairline-strong);
   border-radius: 4px;
 }
+
+/* ── Efforts: who is working on this ──────────────────────────────────────────
+   The routing surface. Tinted by which side the factor is on, because the two
+   are different claims: on a Calamity factor these are people pushing back
+   (Humanity blue, deliberately — the effort is the good news on a bad row), and
+   on a Humanity factor they are people scaling something that is already
+   working.
+
+   Given a left accent and its own ground so it reads as a distinct block rather
+   than more metadata. This is the part of the panel a reader can act on. */
+.tc-details__efforts {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-left: 2px solid var(--tc-humanity);
+  border-radius: 0 4px 4px 0;
+  background: rgba(74, 155, 230, 0.07);
+}
+
+.tc-details__efforts-empty {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--tc-ink-dim);
+}
+
+.tc-details__effort-list {
+  /* No bullets, no numbers: a numbered list reads as a ranking, and nothing
+     here is ranked. */
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tc-details__effort-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tc-details__effort-name {
+  color: var(--tc-humanity);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.tc-details__effort-name:hover {
+  text-decoration: underline;
+}
+
+/* Stage verbatim from the source, styled as a neutral tag rather than a
+   progress indicator — "pilot" is a fact about the effort, not a score. */
+.tc-details__effort-stage {
+  padding: 1px 6px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--tc-ink-dim);
+  border: 1px solid var(--tc-hairline);
+  border-radius: 2px;
+}
+
+.tc-details__effort-desc {
+  margin: 3px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--tc-ink);
+}
+
+.tc-details__effort-src {
+  font-size: 10px;
+  color: var(--tc-ink-dim);
+}

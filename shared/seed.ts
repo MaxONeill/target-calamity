@@ -33,7 +33,14 @@ const ts = (n: number): string => {
   return `2026-06-${day}T12:00:00.000Z`;
 };
 
-export const SEED_FACTORS: Factor[] = [
+/**
+ * Seed mode has no `counter_efforts` table, so no seed factor has researched
+ * efforts. Declared once here and filled in below rather than repeating
+ * `efforts: []` on every entry — it is a property of the mode, not of any
+ * individual factor, and the key must still be PRESENT or the client parses a
+ * different shape between seed and DB mode.
+ */
+const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
   /* ───────────────────────── CALAMITY (negative effect) ───────────────────── */
   {
     id: 'f0000000-0000-4000-8000-000000000001',
@@ -716,3 +723,5 @@ export const SEED_FACTORS: Factor[] = [
     ],
   },
 ];
+
+export const SEED_FACTORS: Factor[] = SEED_FACTORS_RAW.map((f) => ({ ...f, efforts: [] }));

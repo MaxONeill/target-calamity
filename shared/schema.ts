@@ -400,6 +400,23 @@ export const FactorSchema = z.object({
    */
   reputabilityScore: z.number().min(0).max(1).optional(),
   reputabilityReasoning: z.string().optional(),
+  /**
+   * Researched efforts acting on this factor, each with the source naming them.
+   *
+   * The sign of `effect` decides what was asked: for a Calamity factor these are
+   * counter-efforts — who is working to stop or reverse it — and for a Humanity
+   * factor they are amplification efforts, who is working to expand or fund it.
+   * Asking "who opposes this" of a beneficial trend would return its opponents,
+   * which is the opposite of a routing surface, so the two are researched with
+   * different questions and stored in the same shape.
+   *
+   * Rides on the FEED, not the field: the field stays lean and camera-invariant
+   * (charge and position only), and this is sidebar detail like citations.
+   *
+   * Empty is meaningful and common — it means retrieval found nobody, not that
+   * the lookup has yet to run.
+   */
+  efforts: z.array(CounterEffortSchema).default([]),
 });
 
 /* -------------------------------------------------------------------------- */

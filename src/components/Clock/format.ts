@@ -15,14 +15,18 @@ export function pad2(n: number): string {
 }
 
 /**
- * Splits a remaining duration into years-inclusive parts.
+ * Splits a duration into years-inclusive parts, by MAGNITUDE.
  *
  * Years use the same Julian convention as the model's deadline math, so the
  * leading `Yy` segment stays consistent with the projected target year.
  * Remaining days are whatever is left after whole years.
+ *
+ * A negative input yields the size of the overshoot rather than clamping to
+ * zero, so the Clock can keep counting once the target is behind us. The sign
+ * is the caller's to render: the parts describe how far, not which way.
  */
 export function splitDuration(ms: number): CountdownParts {
-  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const totalSeconds = Math.floor(Math.abs(ms) / 1000);
   const years = Math.floor(totalSeconds / SECONDS_PER_YEAR);
 
   let rem = totalSeconds - Math.floor(years * SECONDS_PER_YEAR);

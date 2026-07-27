@@ -1,5 +1,18 @@
 /**
- * Go and find who is actually working on each open requirement.
+ * Go and find who is actually working on it — for every open requirement, and
+ * for every factor in the set.
+ *
+ * Two shapes, one pipeline, because the question differs by which side a factor
+ * is on:
+ *
+ *   Calamity factor (effect < 0)  -> who is WORKING AGAINST this
+ *   Humanity factor (effect > 0)  -> who is WORKING TO AMPLIFY this
+ *   Open requirement              -> who is working on this missing capability
+ *
+ * The asymmetry matters. Asking "who opposes coral bleaching" and asking "who is
+ * scaling up this reforestation programme" are different questions, and a single
+ * prompt for both returns the generic answer to neither. A Humanity factor is
+ * already good news; the useful thing is who is making it bigger.
  *
  * This is the router half of the product. The Clock detects; the contingency
  * tree says what reversal would take; this says who is already doing it. A
@@ -27,16 +40,24 @@
  * something is reporting; ranking them is an opinion this system has no basis
  * for and no business publishing.
  *
- *   npm run research:efforts             # research requirements with none yet
- *   DRY_RUN=1 npm run research:efforts   # list targets, no calls, no writes
- *   LIMIT=3 npm run research:efforts     # cap requirements researched (cost)
- *   FORCE=1 npm run research:efforts     # re-research ones already done
+ *   npm run research:efforts                  # requirements, then factors
+ *   SCOPE=requirements npm run research:efforts   # only the contingency trees
+ *   SCOPE=factors npm run research:efforts        # only the factor set
+ *   DRY_RUN=1 npm run research:efforts        # list targets, no calls, no writes
+ *   LIMIT=3 npm run research:efforts          # cap targets researched (cost)
+ *   FORCE=1 npm run research:efforts          # re-research ones already done
  *
- * COST: one search + one turn PER REQUIREMENT. Bounded by the requirement count,
- * unlike contingency expansion which branches. Scoped by default to requirements
- * that are still OPEN — `absent`, `partial` or `unknown`. Something that already
- * `exists` at the scale needed does not need anyone routed to it, and spending
- * retrieval on it is spending it on the one branch nobody is waiting for.
+ * COST: one search + one turn PER TARGET. Bounded by the target count, unlike
+ * contingency expansion which branches — but the factor set is ~100 rows, so
+ * a full uncapped run is two orders of magnitude more retrieval than the
+ * requirement pass. LIMIT exists for that reason and running in batches is the
+ * expected use.
+ *
+ * Requirements are scoped to the ones still OPEN (`absent`, `partial`,
+ * `unknown`): something that already `exists` at the scale needed has nobody
+ * waiting on it. Factors are scoped to `verified`, since researching who
+ * opposes a claim that has not cleared the gate spends retrieval on something
+ * that may never be shown.
  */
 import { realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -96,9 +117,32 @@ const EffortsSchema = z.object({
   ),
 });
 
+/**
+ * What we are asking about the target — which decides both the search wording
+ * and the framing of the extraction.
+ *
+ * `amplify` exists because a Humanity factor is already good news: asking who
+ * "works against" clean-energy growth returns its opponents, which is the exact
+ * opposite of a routing surface. The useful question there is who is scaling it.
+ */
+type Stance = 'counter' | 'amplify' | 'requirement';
+
+const STANCE_BRIEF: Record<Stance, string> = {
+  counter:
+    'The subject is a HARMFUL trend. Identify who is working to STOP, SLOW, ' +
+    'REVERSE OR REPAIR it. Not who studies it and not who causes it.',
+  amplify:
+    'The subject is a BENEFICIAL trend already underway. Identify who is ' +
+    'working to EXPAND, ACCELERATE, FUND OR REPLICATE it. Not its opponents, ' +
+    'and not people merely reporting that it is happening.',
+  requirement:
+    'The subject is a capability that is missing or not yet at scale. ' +
+    'Identify who is working to BUILD OR PROVIDE it.',
+};
+
 const EFFORTS_SYSTEM =
   'You identify ORGANISATIONS, PROGRAMMES AND PROJECTS that the retrieved ' +
-  'sources describe as working on a stated requirement. ' +
+  'sources describe as working on a stated subject. ' +
   'Every one you return must be NAMED IN A SOURCE below as working on this. ' +
   'Do not name organisations from your own knowledge. You know many real ones, ' +
   'and that is exactly the hazard: a name you supply unprompted is ' +
@@ -108,7 +152,7 @@ const EFFORTS_SYSTEM =
   'Return at most four, each a distinct effort rather than four descriptions of ' +
   'one. Prefer the specific over the general: a named programme beats the ' +
   'institution hosting it. ' +
-  'description is what THIS effort is doing about THIS requirement, in one or ' +
+  'description is what THIS effort is doing about THIS subject, in one or ' +
   'two plain sentences a non-expert can follow, taken from the source rather ' +
   'than from what you assume the organisation does. ' +
   'stage is how far along the source says they are — research, pilot, ' +
@@ -119,16 +163,43 @@ const EFFORTS_SYSTEM =
   'quote is the sentence naming them, copied verbatim, and sourceIndex is its ' +
   'SOURCE block.';
 
-/** Aimed at who is doing the work, not at the problem itself. */
-function effortQuery(statement: string): string {
-  return `organizations projects working on ${statement} initiative program funding research`;
+/**
+ * The claim the reputability gate scores the quote against.
+ *
+ * Phrased per stance, because the gate's support axis judges whether the quote
+ * backs THIS SENTENCE. A factor's name is a headline, not a predicate —
+ * "Coral Reef Stewardship Fund is working on Warm-water coral reef tipping point
+ * crossed" is barely grammatical, and the model correctly scored quotes as not
+ * supporting it, flooring real organisations to 0.00 on the support axis.
+ */
+function effortClaim(name: string, subject: string, stance: Stance): string {
+  if (stance === 'amplify') return `${name} works to expand or support: ${subject}`;
+  if (stance === 'counter') return `${name} works to address or reduce: ${subject}`;
+  return `${name} works to provide: ${subject}`;
 }
 
-interface TargetRow {
+/** Aimed at who is doing the work, not at the subject itself. */
+function effortQuery(subject: string, stance: Stance): string {
+  if (stance === 'amplify') {
+    return `organizations scaling up expanding funding ${subject} initiative program investment`;
+  }
+  if (stance === 'counter') {
+    return `organizations working to stop reverse ${subject} initiative program conservation funding`;
+  }
+  return `organizations projects working on ${subject} initiative program funding research`;
+}
+
+interface Target {
+  /** Which column the resulting rows hang off. Exactly one is set. */
+  kind: 'requirement' | 'factor';
   id: string;
-  statement: string;
-  status: string;
-  factor_name: string;
+  /** What we research: the requirement statement, or the factor's name. */
+  subject: string;
+  stance: Stance;
+  /** Extra framing for the prompt — why this subject is being asked about. */
+  context: string;
+  /** For logging only. */
+  label: string;
 }
 
 /**
@@ -139,8 +210,13 @@ interface TargetRow {
  * specific gaps. When LIMIT cuts the run short, the reader gets the branches
  * most likely to have someone behind them.
  */
-async function targets(db: Database, force: boolean): Promise<TargetRow[]> {
-  const { rows } = await sql<TargetRow>`
+async function requirementTargets(db: Database, force: boolean): Promise<Target[]> {
+  const { rows } = await sql<{
+    id: string;
+    statement: string;
+    status: string;
+    factor_name: string;
+  }>`
     SELECT r.id, r.statement, r.status, f.name AS factor_name
       FROM requirements r
       JOIN factors f ON f.id = r.factor_id
@@ -150,12 +226,64 @@ async function targets(db: Database, force: boolean): Promise<TargetRow[]> {
        ))
      ORDER BY r.depth, r.id
   `.execute(db);
-  return rows;
+
+  return rows.map((r) => ({
+    kind: 'requirement' as const,
+    id: r.id,
+    subject: r.statement,
+    stance: 'requirement' as const,
+    context: `This is needed in order to reverse "${r.factor_name}".`,
+    label: `[${r.status}] ${r.statement}`,
+  }));
+}
+
+/**
+ * Verified factors with no researched efforts yet, heaviest first.
+ *
+ * Ordered by field influence — the same `ABS(effect * significance)` the field
+ * ranks on — so a LIMIT-capped run covers what a reader is most likely to click
+ * before it covers the long tail.
+ *
+ * The stance is taken from the sign of `effect`, which is the whole reason this
+ * generalises cleanly: the data already knows whether a factor is something to
+ * fight or something to grow.
+ */
+async function factorTargets(db: Database, force: boolean): Promise<Target[]> {
+  const { rows } = await sql<{
+    id: string;
+    name: string;
+    description: string;
+    effect: number;
+  }>`
+    SELECT f.id, f.name, f.description, f.effect
+      FROM factors f
+     WHERE f.verification_state = 'verified'
+       AND f.effect <> 0
+       AND (${force} OR NOT EXISTS (
+         SELECT 1 FROM counter_efforts c WHERE c.factor_id = f.id
+       ))
+     ORDER BY ABS(f.effect * f.significance) DESC, f.id
+  `.execute(db);
+
+  return rows.map((r) => {
+    const harmful = Number(r.effect) < 0;
+    return {
+      kind: 'factor' as const,
+      id: r.id,
+      subject: r.name,
+      stance: harmful ? ('counter' as const) : ('amplify' as const),
+      // The description travels because a factor NAME is often too terse to
+      // search well on its own — "Secondary displacement risk" means nothing
+      // without it, and a vague subject returns a vague set of organisations.
+      context: r.description.slice(0, 400),
+      label: `[${harmful ? 'counter' : 'amplify'}] ${r.name}`,
+    };
+  });
 }
 
 async function insertEffort(
   db: Database,
-  requirementId: string,
+  target: Target,
   effort: {
     name: string;
     description: string;
@@ -167,15 +295,27 @@ async function insertEffort(
   },
 ): Promise<boolean> {
   const vec = effort.embedding ? `[${effort.embedding.join(',')}]` : null;
+  // Exactly one of the two scope columns is set, per the table's CHECK.
+  const requirementId = target.kind === 'requirement' ? target.id : null;
+  const factorId = target.kind === 'factor' ? target.id : null;
   const { rows } = await sql<{ id: string }>`
     INSERT INTO counter_efforts
-      (requirement_id, name, description, stage, source_url, publisher, quote, embedding)
-    VALUES (${requirementId}::uuid, ${effort.name}, ${effort.description}, ${effort.stage},
+      (requirement_id, factor_id, name, description, stage, source_url, publisher, quote, embedding)
+    VALUES (${requirementId}::uuid, ${factorId}::uuid,
+            ${effort.name}, ${effort.description}, ${effort.stage},
             ${effort.sourceUrl}, ${effort.publisher}, ${effort.quote}, ${vec}::halfvec)
     ON CONFLICT DO NOTHING
     RETURNING id
   `.execute(db);
   return rows.length > 0;
+}
+
+async function clearEfforts(db: Database, target: Target): Promise<void> {
+  if (target.kind === 'requirement') {
+    await sql`DELETE FROM counter_efforts WHERE requirement_id = ${target.id}::uuid`.execute(db);
+  } else {
+    await sql`DELETE FROM counter_efforts WHERE factor_id = ${target.id}::uuid`.execute(db);
+  }
 }
 
 export async function researchCounterEfforts(
@@ -201,17 +341,33 @@ export async function researchCounterEfforts(
   const force = args.includes('--force') || process.env.FORCE === '1';
   const limit = Number.parseInt(process.env.LIMIT ?? '', 10);
 
+  const scope = (process.env.SCOPE ?? 'all').toLowerCase();
+  if (!['all', 'requirements', 'factors'].includes(scope)) {
+    logger.error(`[counter] SCOPE must be all | requirements | factors, got "${scope}".`);
+    return;
+  }
+
   const { db, pool } = createDatabase(databaseUrl);
   try {
-    let rows = await targets(db, force);
+    // Requirements first: they are the deep end of the product and there are a
+    // handful of them, where the factor set is ~100 rows. A LIMIT-capped run
+    // should finish the small, high-value set before starting the long one.
+    let rows: Target[] = [
+      ...(scope === 'factors' ? [] : await requirementTargets(db, force)),
+      ...(scope === 'requirements' ? [] : await factorTargets(db, force)),
+    ];
+    const total = rows.length;
     if (Number.isFinite(limit) && limit > 0) rows = rows.slice(0, limit);
 
     logger.info(
-      `[counter] ${rows.length} open requirement(s) to research` +
-        `${force ? ' (--force)' : ''}. One search + one turn each.`,
+      `[counter] ${rows.length} of ${total} target(s) to research` +
+        `${force ? ' (--force)' : ''}${scope === 'all' ? '' : ` (scope=${scope})`}. ` +
+        'One search + one turn each.',
     );
-    for (const r of rows) {
-      logger.info(`[counter]   [${r.status}] ${r.statement.slice(0, 80)}`);
+    for (const r of rows) logger.info(`[counter]   ${r.label.slice(0, 90)}`);
+    if (rows.length < total) {
+      // Never let a cap read as full coverage.
+      logger.info(`[counter] ${total - rows.length} target(s) left for a later run (LIMIT).`);
     }
     if (dryRun || rows.length === 0) {
       logger.info(dryRun ? '[counter] dry run — no calls, no writes.' : '[counter] nothing to do.');
@@ -227,23 +383,23 @@ export async function researchCounterEfforts(
     for (const r of rows) {
       try {
         const docs = await firecrawlSearch(
-          effortQuery(r.statement),
+          effortQuery(r.subject, r.stance),
           process.env.FIRECRAWL_API_KEY as string,
           {},
         );
         if (docs.length === 0) {
           empty += 1;
-          logger.warn(`[counter] no sources for "${r.statement.slice(0, 60)}"`);
+          logger.warn(`[counter] no sources for "${r.subject.slice(0, 60)}"`);
           continue;
         }
 
         const out = await structuredCompletion({
           client,
           model,
-          system: EFFORTS_SYSTEM,
+          system: `${EFFORTS_SYSTEM} ${STANCE_BRIEF[r.stance]}`,
           user:
-            `REQUIREMENT: ${r.statement}\n` +
-            `CONTEXT: this is needed in order to reverse "${r.factor_name}".\n\n` +
+            `SUBJECT: ${r.subject}\n` +
+            `CONTEXT: ${r.context}\n\n` +
             renderSourceBlocks(docs),
           schema: EffortsSchema,
           schemaName: 'CounterEfforts',
@@ -251,17 +407,15 @@ export async function researchCounterEfforts(
 
         if (!out || !out.found || out.efforts.length === 0) {
           empty += 1;
-          // Worth reporting rather than passing over. A requirement with no
+          // Worth reporting rather than passing over. A subject with no
           // organised effort behind it is one of the more actionable things
           // this tracker can surface, and the UI says so rather than rendering
           // a blank space.
-          logger.warn(`[counter] nobody found for "${r.statement.slice(0, 60)}"`);
+          logger.warn(`[counter] nobody found for "${r.subject.slice(0, 60)}"`);
           continue;
         }
 
-        if (force) {
-          await sql`DELETE FROM counter_efforts WHERE requirement_id = ${r.id}::uuid`.execute(db);
-        }
+        if (force) await clearEfforts(db, r);
 
         for (const e of out.efforts.slice(0, MAX_EFFORTS)) {
           const doc = docs[e.sourceIndex - 1];
@@ -271,7 +425,7 @@ export async function researchCounterEfforts(
           const score = await scoreSource({
             url: doc.url,
             publisher,
-            claim: `${e.name} is working on ${r.statement}`,
+            claim: effortClaim(e.name, r.subject, r.stance),
             quoteSnippet: e.quote,
           });
           if (score.score < REPUTABILITY_VERIFY_THRESHOLD) {
@@ -281,12 +435,13 @@ export async function researchCounterEfforts(
             continue;
           }
 
-          // Embedded for cross-requirement dedupe later — the same organisation
-          // legitimately addresses several branches, and knowing that is useful.
-          // A failed embedding is not a reason to drop a sourced effort.
+          // Embedded for cross-subject dedupe later — the same organisation
+          // legitimately addresses several factors and branches, and knowing
+          // that is useful. A failed embedding is not a reason to drop a
+          // sourced effort.
           const [vector] = await embeddings.embed([`${e.name}: ${e.description}`]);
 
-          const ok = await insertEffort(db, r.id, {
+          const ok = await insertEffort(db, r, {
             name: e.name.trim().slice(0, 200),
             description: e.description.trim().slice(0, 1000),
             stage: e.stage.trim().slice(0, 60),
@@ -298,17 +453,17 @@ export async function researchCounterEfforts(
           if (!ok) continue;
           written += 1;
           logger.info(
-            `[counter] ${r.statement.slice(0, 40)} → ${e.name.slice(0, 40)} ` +
+            `[counter] ${r.subject.slice(0, 40)} → ${e.name.slice(0, 40)} ` +
               `[${e.stage.slice(0, 14)}] · ${publisher}`,
           );
         }
       } catch (err) {
-        logger.error(`[counter] "${r.statement.slice(0, 40)}" failed: ${(err as Error).message}`);
+        logger.error(`[counter] "${r.subject.slice(0, 40)}" failed: ${(err as Error).message}`);
       }
     }
 
     logger.info(
-      `[counter] done — ${written} effort(s) across ${rows.length} requirement(s); ` +
+      `[counter] done — ${written} effort(s) across ${rows.length} target(s); ` +
         `${empty} with nobody found.`,
     );
     await notifyFieldChanged(db);
