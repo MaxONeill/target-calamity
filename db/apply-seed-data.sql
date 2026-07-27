@@ -35,7 +35,14 @@ BEGIN;
 
 SET session_replication_role = replica;
 
-TRUNCATE TABLE public.citations, public.factor_revisions, public.factors, public.projections;
+-- Every table the pipeline owns. counter_efforts and requirements are listed
+-- explicitly rather than left to CASCADE: they would be cleared anyway as
+-- children of factors, but naming them keeps this list a readable statement of
+-- what the reload replaces, and a table added later that is NOT a child of
+-- factors would otherwise be silently missed.
+TRUNCATE TABLE public.citations, public.factor_revisions, public.factors,
+               public.projections, public.requirements, public.requirement_efforts,
+               public.counter_efforts, public.counter_effort_candidates;
 
 \i db/seed-data.sql
 
@@ -54,4 +61,11 @@ SELECT
     WHERE tipping_point->>'closesWindow' = 'true')       AS anchors,
   (SELECT count(*) FROM public.factors
     WHERE significance_scale IS NOT NULL)                AS scored,
+  -- The routing surface. `efforts` at 0 with factors loaded means the reload
+  -- landed but the counter-effort tables did not, which shows up in the UI as
+  -- "no effort found addressing this" on every factor — a wrong finding, not a
+  -- blank space, so it is worth catching here rather than in the browser.
+  (SELECT count(*) FROM public.counter_efforts)          AS efforts,
+  (SELECT count(*) FROM public.requirements)             AS requirements,
+  (SELECT count(*) FROM public.counter_effort_candidates) AS candidates,
   (SELECT last_value FROM public.factors_seq_seq)        AS seq_last;
