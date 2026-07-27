@@ -191,6 +191,8 @@ const FACTOR_JSON = sql`
     'citations',             COALESCE(c.citations, '[]'::json),
     'efforts',               COALESCE(e.efforts, '[]'::json),
     'tippingPoint',          f.tipping_point,
+    'locationKind',          f.location_kind,
+    'locationNote',          f.location_note,
     'reputabilityScore',     f.reputability_score,
     'reputabilityReasoning', f.reputability_reasoning
   )`;

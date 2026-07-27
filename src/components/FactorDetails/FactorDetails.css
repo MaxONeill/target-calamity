@@ -427,3 +427,23 @@
 .tc-details__effort-outcome-mark {
   margin-right: 5px;
 }
+
+/* Representative placement disclosure. Deliberately not a warning colour: the
+   factor is real and its magnitude is real, only the point is ours. */
+.tc-details__placement {
+  margin: 8px 0 0;
+  padding: 7px 9px;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--tc-ink-dim);
+  border-left: 2px dashed var(--tc-hairline-strong);
+  background: rgba(255, 255, 255, 0.02);
+}
+.tc-details__placement-tag {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--tc-ink-faint);
+  margin-bottom: 2px;
+}

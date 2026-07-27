@@ -417,6 +417,18 @@ export function FactorDetails({
             verificationState={factor.verificationState}
           />
 
+          {/* Said plainly, right under the title. A representative pin is our
+              editorial choice about where to draw a distributed phenomenon, and
+              a reader who is not told cannot tell it from a measurement — which
+              is the only thing that would make placing it dishonest. */}
+          {factor.locationKind === 'representative' ? (
+            <p className="tc-details__placement">
+              <span className="tc-details__placement-tag">Representative location</span>
+              {factor.locationNote ??
+                'The source did not place this; the pin marks where the phenomenon is.'}
+            </p>
+          ) : null}
+
           {factor.tippingPoint ? <TippingPointBlock tp={factor.tippingPoint} /> : null}
 
           {factor.description ? (

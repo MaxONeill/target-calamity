@@ -47,6 +47,8 @@ interface FieldRow {
   tipping_point: TippingPoint | null;
   /** Stored LLM-assigned tags; `[]` on rows predating classification. */
   domains: string[] | null;
+  /** measured | representative. Null only on a placeless row, which yields no pin. */
+  location_kind: string | null;
   updated_at: string;
 }
 
@@ -75,6 +77,9 @@ function toPins(rows: readonly FieldRow[]): FieldPin[] {
       significance: r.significance,
       lat: r.lat,
       lon: r.lon,
+      // Defaults to 'measured' only for seed rows, which are hand-placed. A DB
+      // row always carries the column, because the CHECK ties it to lat.
+      locationKind: r.location_kind === 'representative' ? 'representative' : 'measured',
       domains: domainsOf(r),
       ...tippingPointField(r.tipping_point),
     }));
@@ -268,7 +273,7 @@ async function requirementsDb(db: Database): Promise<FieldResponse['requirements
 async function fieldDb(db: Database): Promise<FieldResponse> {
   const { rows } = await sql<FieldRow>`
     SELECT id, name, description, spatial_path::text AS spatial_path,
-           effect, significance, lat, lon, tipping_point, domains,
+           effect, significance, lat, lon, tipping_point, domains, location_kind,
            to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS updated_at
     FROM factors
     WHERE verification_state = 'verified'
@@ -309,6 +314,7 @@ function fieldSeed(): FieldResponse {
       lon: f.lon,
       tipping_point: f.tippingPoint ?? null,
       domains: null,
+      location_kind: 'measured',
       updated_at: f.updatedAt,
     }));
 

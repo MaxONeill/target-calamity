@@ -49,6 +49,13 @@ export const SortModeSchema = z.enum(['recent', 'magnitude']);
  */
 export const VerificationStateSchema = z.enum(['verified', 'pending']);
 
+/**
+ * How this pin got its coordinates. Travels with EVERY placed pin because the
+ * globe must not show an editorial placement and a measured one identically —
+ * that identity would be the fabrication the placement pass avoids.
+ */
+export const LocationKindSchema = z.enum(['measured', 'representative']);
+
 /* -------------------------------------------------------------------------- */
 /* Core entities                                                              */
 /* -------------------------------------------------------------------------- */
@@ -424,6 +431,14 @@ export const FactorSchema = z.object({
    * before migration 004. `.optional()` (not `.nullable()`) keeps it clean under
    * exactOptionalPropertyTypes; the read path strips a SQL null before re-validating.
    */
+  /** How the coordinates were arrived at. Absent on a placeless factor. */
+  locationKind: LocationKindSchema.optional(),
+  /**
+   * Why a representative point stands for this factor, in plain words.
+   * Shown to the reader: a placement without its reasoning cannot be told
+   * apart from a measurement, which is the whole thing this guards against.
+   */
+  locationNote: z.string().optional(),
   reputabilityScore: z.number().min(0).max(1).optional(),
   reputabilityReasoning: z.string().optional(),
   /**
@@ -457,6 +472,8 @@ export const FactorSchema = z.object({
  */
 export const FieldPinSchema = z.object({
   id: z.string().uuid(),
+  /** measured = a source placed it. representative = we chose a point for it. */
+  locationKind: LocationKindSchema.default('measured'),
   effect: z.number().gte(-1).lte(1),
   significance: z.number().gte(0).lte(1),
   lat: z.number().gte(-90).lte(90),

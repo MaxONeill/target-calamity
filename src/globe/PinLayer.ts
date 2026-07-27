@@ -22,7 +22,24 @@ export interface PinInput {
   lon: number;
   effect: number;
   significance: number;
+  /**
+   * How the coordinates were arrived at. A representative pin is drawn
+   * THINNER — see REPRESENTATIVE_THICKNESS. Thickness is the only free
+   * channel: length already encodes significance and hue encodes effect, so
+   * marking placement confidence on either would corrupt a reading the globe
+   * already makes.
+   */
+  locationKind?: 'measured' | 'representative';
 }
+
+/**
+ * Thickness multiplier for a point we chose rather than one a source measured.
+ *
+ * Visible without being loud. The pin must not read as measured evidence, but
+ * it is still a real factor at a real magnitude, so it stays the same length
+ * and colour and only loses substance.
+ */
+const REPRESENTATIVE_THICKNESS = 0.45;
 
 export interface PinLayerOptions {
   /** Globe radius; pins sit just above it. Match GlobeMesh's radius. */
@@ -263,7 +280,8 @@ export class PinLayer {
     this.haloVecs[i] = this.tmpVec.clone(); // unit surface direction for halo picks
     this.tmpQuat.setFromUnitVectors(LOCAL_UP, this.tmpVec);
 
-    const thickness = this.baseSize * this.radius * emphasis.thickMul;
+    const placementMul = pin.locationKind === 'representative' ? REPRESENTATIVE_THICKNESS : 1;
+    const thickness = this.baseSize * this.radius * emphasis.thickMul * placementMul;
     const length = this.radius * PIN_LENGTH_FRAC * (0.35 + pin.significance) * emphasis.lengthMul;
     // Non-uniform: thin in X/Z (base half-width), long in Y (spike length).
     this.tmpScale.set(thickness, length, thickness);
