@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+﻿import * as THREE from 'three';
 import type { GlobalFactor } from '../../shared/types.js';
 import { rampColor } from './shaders.js';
 
@@ -17,7 +17,7 @@ const ARC_SEGMENTS = 48;
  * Per-state visuals. Selected takes precedence over highlighted.
  *
  * `thicken` grows the arc's radial thickness about its own mid-radius, which
- * only ADDS coverage on both edges — a pointer already over the arc stays over
+ * only ADDS coverage on both edges â€” a pointer already over the arc stays over
  * it. Scaling the mesh instead would translate the annulus radially (it scales
  * about the globe centre, far outside the arc) and slide the arc out from under
  * the pointer, causing hover to oscillate.
@@ -49,12 +49,49 @@ interface ArcRecord {
 }
 
 /**
+ * A factor's weight on the field: |effect| * significance.
+ *
+ * The same product the field query ranks by and the accumulation kernel uses as
+ * its numerator. Kept identical on purpose â€” a ring ordered by one measure and
+ * a globe baked from another would disagree about which factors matter.
+ */
+export function fieldInfluence(factor: {
+  effect: number;
+  significance: number;
+}): number {
+  return Math.abs(factor.effect) * Math.max(factor.significance, 0);
+}
+
+/**
+ * Placeless factors in descending field influence.
+ *
+ * Order and arc width used to disagree: arcs were laid out in the order they
+ * arrived (influence-ranked by the field query) but sized by SIGNIFICANCE alone.
+ * A high-significance, low-effect factor therefore got a wide arc placed late,
+ * so widths did not descend and the ring read as unsorted even though it was
+ * ordered. Sorting here rather than trusting the caller also keeps the ring
+ * self-consistent whatever order it is handed.
+ */
+export function orderByInfluence<T extends { id: string; effect: number; significance: number }>(
+  factors: readonly T[],
+): T[] {
+  return [...factors].sort((a, b) => {
+    const delta = fieldInfluence(b) - fieldInfluence(a);
+    // Stable tiebreak on id, for the same reason the field query has one:
+    // without it two equal-influence factors can swap between renders.
+    return delta !== 0 ? delta : a.id.localeCompare(b.id);
+  });
+}
+
+/**
  * Renders placeless factors as a ring of arcs encircling the globe.
  *
  * A factor with no location cannot honestly be drawn at a point on the surface,
- * but it still carries charge. Each arc's angular width is proportional to its
- * significance and its color follows the same effect ramp as the pins, so the
- * ring reads as one global band whose heaviest members are the largest targets.
+ * but it still carries charge. Arcs run clockwise in descending FIELD INFLUENCE
+ * â€” |effect| * significance, the measure the field bake and the feed also rank
+ * by â€” and each arc's angular width is proportional to that same number, so the
+ * ring reads as one global band whose heaviest members are both first and the
+ * largest targets. Colour follows the same effect ramp as the pins.
  *
  * The ring is billboarded: {@link faceCamera} orients it into the screen plane
  * each frame, so it always reads as a full circle around the globe regardless of
@@ -96,17 +133,16 @@ export class GlobalRing {
     this.#disposeArcs();
 
     if (factors.length > 0) {
-      const totalSignificance = factors.reduce((sum, f) => sum + Math.max(f.significance, 0), 0);
-      const usableAngle = Math.PI * 2 - ARC_GAP * factors.length;
+      const ordered = orderByInfluence(factors);
+      const totalInfluence = ordered.reduce((sum, f) => sum + fieldInfluence(f), 0);
+      const usableAngle = Math.PI * 2 - ARC_GAP * ordered.length;
 
       let cursor = 0;
-      for (const factor of factors) {
-        // Equal shares when every significance is zero, so the ring never
+      for (const factor of ordered) {
+        // Equal shares when every influence is zero, so the ring never
         // collapses to nothing and stays clickable.
         const share =
-          totalSignificance > 0
-            ? Math.max(factor.significance, 0) / totalSignificance
-            : 1 / factors.length;
+          totalInfluence > 0 ? fieldInfluence(factor) / totalInfluence : 1 / ordered.length;
         const sweep = usableAngle * share;
 
         const arc = this.#buildArc(factor, cursor, cursor + sweep);
@@ -275,3 +311,4 @@ function clamp01(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.min(1, Math.max(0, value));
 }
+
