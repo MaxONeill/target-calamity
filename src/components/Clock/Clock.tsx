@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+﻿import { useCallback, useMemo, useRef, useState } from 'react';
 import { useSwipe, type SwipeGesture } from '../../hooks/useSwipe.js';
 import {
   deriveClock,
@@ -20,7 +20,7 @@ export interface ClockProps {
   factors: readonly ClockFactorInput[];
   /**
    * Published trajectories used to date quantity-stated thresholds. Empty is
-   * valid and normal — such a threshold is simply not dated, and therefore not
+   * valid and normal â€” such a threshold is simply not dated, and therefore not
    * anchored, rather than being estimated.
    */
   projections?: readonly Projection[];
@@ -38,7 +38,7 @@ export interface ClockProps {
  */
 export function Clock({ factors, projections, className }: ClockProps): JSX.Element {
   const model = useMemo(
-    () => deriveClock(factors, projections ?? []),
+    () => deriveClock(factors, projections ?? [], new Date().getUTCFullYear()),
     [factors, projections],
   );
 
@@ -62,7 +62,7 @@ export function Clock({ factors, projections, className }: ClockProps): JSX.Elem
     <section
       ref={rootRef}
       className={className ? `tc-clock ${className}` : 'tc-clock'}
-      aria-label="The Clock — modeled projection"
+      aria-label="The Clock â€” modeled projection"
       data-expanded={expanded}
     >
       <div className="tc-clock-window-group">
@@ -88,3 +88,4 @@ export function Clock({ factors, projections, className }: ClockProps): JSX.Elem
     </section>
   );
 }
+

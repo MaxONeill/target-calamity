@@ -82,12 +82,32 @@ export interface Projection {
   readonly points: readonly { readonly year: number; readonly value: number }[];
 }
 
+/**
+ * What reversing an already-crossed threshold would take.
+ *
+ * Read from sources, never derived. `timescaleYears` in particular is a
+ * published restoration timescale and is never computed from `effort` —
+ * converting "requires large-scale carbon removal" into a number of years
+ * would be an unsourced figure that reads like a sourced one.
+ */
+export interface Recovery {
+  readonly timescaleYears?: number;
+  readonly timescaleLowYears?: number;
+  readonly timescaleHighYears?: number;
+  readonly effort: string;
+  readonly reasoning: string;
+  readonly quote: string;
+  readonly sourceUrl: string;
+  readonly publisher?: string;
+}
+
 export interface TippingPoint {
   /** Present when the source published a year. Otherwise dated by quantity. */
   readonly centralYear?: number;
   readonly earliestYear?: number;
   readonly latestYear?: number;
   readonly quantityThreshold?: QuantityThreshold;
+  readonly recovery?: Recovery;
   readonly label?: string;
   /**
    * Crossing this ends the possibility of correction. Only these anchor the
@@ -162,6 +182,18 @@ export interface ThresholdContribution {
   readonly dating: ThresholdDating;
   /** False when forces were withheld to avoid double-counting a scenario. */
   readonly forcesApply: boolean;
+  /**
+   * Whether this threshold's estimated year is already behind us.
+   *
+   * Derived from the model's own dates, not from a stored flag, so it stays
+   * true to whatever the evidence currently says. It is REPORTING only — a
+   * crossed threshold contributes to the countdown exactly as it did before it
+   * was crossed. A forecast that jumped because a date it predicted arrived
+   * would be a badly calibrated forecast.
+   */
+  readonly crossed: boolean;
+  /** What reversal would take, once crossed. Absent until assessed. */
+  readonly recovery: Recovery | null;
 }
 
 /** Interquartile band of the arrival-time mixture. */
@@ -189,6 +221,14 @@ export interface ClockModel {
   readonly tippingPointCount: number;
   /** Every dated threshold in view, anchoring or not. Always ≥ the above. */
   readonly datedThresholdCount: number;
+  /**
+   * Anchors whose estimated year is already behind us.
+   *
+   * Reported so the UI can state plainly what has been passed and what
+   * reversing it would take. It does not enter the countdown: see
+   * `referenceYear` on {@link deriveClock}.
+   */
+  readonly crossedCount: number;
   readonly hasBaseline: boolean;
   /** Median of the UN-warped first-crossing distribution, or null. */
   readonly baselineTargetYear: number | null;
@@ -506,6 +546,8 @@ interface ThresholdRaw {
   closesWindow: boolean;
   /** "1.5 degC — global warming", when the threshold was stated that way. */
   quantityLabel: string | null;
+  /** Carried through for reporting. Never consulted by the countdown math. */
+  recovery: Recovery | null;
   /** How the year was obtained — surfaced so the derivation stays inspectable. */
   dating: ThresholdDating;
   /**
@@ -533,6 +575,22 @@ function median(values: number[]): number {
 export function deriveClock(
   factors: readonly ClockFactorInput[],
   projections: readonly Projection[] = [],
+  /**
+   * The year "now", used ONLY to report which thresholds are already behind us.
+   *
+   * Passed in rather than read from the clock so this function stays pure —
+   * same inputs, same output — which is what makes the aggregation testable and
+   * what `targetDeadlineMs` already assumes by taking "now" at the edge.
+   *
+   * It is deliberately not consulted by any of the countdown math. A crossed
+   * threshold contributes to the target exactly as it did the day before it was
+   * crossed; a forecast that moved because a date it predicted arrived would be
+   * a badly calibrated forecast, not an updated one.
+   *
+   * The default of 0 means "report nothing as crossed", which is the right
+   * answer for a caller that has not supplied a reference point.
+   */
+  referenceYear = 0,
 ): ClockModel {
   let contributingCount = 0;
   let pendingCount = 0;
@@ -620,6 +678,7 @@ export function deriveClock(
         quantityLabel: tp.quantityThreshold
           ? `${tp.quantityThreshold.value} ${tp.quantityThreshold.unit} — ${tp.quantityThreshold.quantity}`
           : null,
+        recovery: tp.recovery ?? null,
         domains,
         // Strict `=== true`: absent, null, or anything non-boolean means nobody
         // has judged it, and an unjudged threshold must not drive the headline.
@@ -705,6 +764,12 @@ export function deriveClock(
       anchors: t.closesWindow,
       dating: t.dating,
       forcesApply: t.forcesApply,
+      // Reported, never fed back. `crossed` is derived from the warped year
+      // against the reference year rather than stored, so it tracks whatever
+      // the evidence currently says — and neither it nor `recovery` appears
+      // anywhere in the first-crossing math above.
+      crossed: warpedCentral < referenceYear,
+      recovery: t.recovery,
     });
 
     if (!t.closesWindow) continue;
@@ -777,6 +842,7 @@ export function deriveClock(
     hasEvidence,
     tippingPointCount: anchorWarped.length,
     datedThresholdCount: thresholdsRaw.length,
+    crossedCount: thresholds.filter((t) => t.anchors && t.crossed).length,
     hasBaseline,
     baselineTargetYear,
     baselineEarliestYear,

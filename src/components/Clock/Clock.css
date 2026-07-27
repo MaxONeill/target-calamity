@@ -336,6 +336,44 @@
   font-variant-numeric: tabular-nums;
   color: var(--tc-text);
 }
+/* A crossed threshold is stated, not hidden. It still anchors the countdown
+   exactly as it did before crossing — what changes is that reversing it now
+   carries a cost, shown below it. */
+.tc-why-crossed {
+  color: var(--tc-calamity);
+  letter-spacing: 0.04em;
+}
+
+.tc-why-recovery {
+  margin: 6px 0 2px 10px;
+  padding: 8px 10px;
+  border-left: 2px solid var(--tc-line-strong);
+  background: rgba(0, 0, 0, 0.18);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.tc-why-recovery-head {
+  color: var(--tc-text);
+}
+.tc-why-recovery-effort {
+  margin-top: 3px;
+  color: var(--tc-text-dim);
+}
+.tc-why-recovery-reason {
+  margin: 5px 0 0;
+  color: var(--tc-text-dim);
+}
+.tc-why-recovery-source {
+  display: inline-block;
+  margin-top: 5px;
+  color: var(--tc-accent);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+.tc-why-recovery-source:hover {
+  border-bottom-color: var(--tc-accent);
+}
+
 /* A threshold that informs but does not anchor is dimmed, not hidden: it is
    real dated evidence, it just is not what the countdown rests on. */
 .tc-why-threshold[data-anchors='false'] {

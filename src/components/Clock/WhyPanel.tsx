@@ -59,7 +59,48 @@ function Thresholds({ model }: { model: ClockModel }): JSX.Element | null {
               {t.anchors && !t.forcesApply ? (
                 <span className="tc-why-row-meta"> · forces withheld (scenario already assumes action)</span>
               ) : null}
+              {t.crossed ? <span className="tc-why-crossed"> · already crossed</span> : null}
             </span>
+
+            {/* A crossed threshold is a debt, not an ending. What reversal would
+                take is shown in full — effort, timescale, reasoning and the
+                source — because that is the only part of a past-due threshold a
+                reader can act on. An absent timescale is stated as absent
+                rather than filled in. */}
+            {t.crossed && t.recovery ? (
+              <div className="tc-why-recovery">
+                <div className="tc-why-recovery-head">
+                  Reversing this:{' '}
+                  {t.recovery.timescaleYears !== undefined ? (
+                    <strong>
+                      ~{t.recovery.timescaleYears} yr
+                      {t.recovery.timescaleLowYears !== undefined &&
+                      t.recovery.timescaleHighYears !== undefined
+                        ? ` (${t.recovery.timescaleLowYears}–${t.recovery.timescaleHighYears})`
+                        : ''}
+                    </strong>
+                  ) : (
+                    <em>no timescale published</em>
+                  )}
+                </div>
+                <div className="tc-why-recovery-effort">{t.recovery.effort}</div>
+                <p className="tc-why-recovery-reason">{t.recovery.reasoning}</p>
+                <a
+                  className="tc-why-recovery-source"
+                  href={t.recovery.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                >
+                  {t.recovery.publisher ?? 'source'}
+                </a>
+              </div>
+            ) : t.crossed ? (
+              <div className="tc-why-recovery">
+                <em className="tc-why-recovery-reason">
+                  Reversal not yet assessed.
+                </em>
+              </div>
+            ) : null}
             <span className="tc-why-threshold-years">
               {formatYear(t.baselineYear)}
               {Math.abs(t.shiftYears) >= 0.05 ? (

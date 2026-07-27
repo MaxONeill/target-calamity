@@ -105,6 +105,35 @@ export const QuantityThresholdSchema = z.object({
   highValue: z.number().optional(),
 });
 
+/**
+ * What it would take to reverse a threshold that has already been crossed.
+ *
+ * Every field is READ from a source, never derived. In particular
+ * `timescaleYears` is a published restoration timescale — reef recovery in
+ * decades to centuries, permafrost in centuries, ice sheets in millennia — and
+ * is NEVER computed from `effort`. Turning "requires large-scale carbon
+ * removal" into a number of years ourselves would reinvent exactly the operator
+ * estimate this product removed: a figure with no source that reads as one.
+ *
+ * A source giving effort but no timescale therefore yields `effort` with
+ * `timescaleYears` absent, and the UI must show the gap rather than fill it.
+ */
+export const RecoverySchema = z.object({
+  /** Published restoration timescale in years. Absent when none is stated. */
+  timescaleYears: z.number().optional(),
+  /** Lower/upper bounds of that timescale where the source gives a range. */
+  timescaleLowYears: z.number().optional(),
+  timescaleHighYears: z.number().optional(),
+  /** What reversal demands, in the source's own framing. */
+  effort: z.string().min(1),
+  /** Why this is the assessment — shown to the reader, not just logged. */
+  reasoning: z.string().min(1),
+  /** The sentence the assessment was read from, verbatim. */
+  quote: z.string().min(1),
+  sourceUrl: z.string().url(),
+  publisher: z.string().optional(),
+});
+
 export const TippingPointSchema = z.object({
   /**
    * Best-estimate calendar year the threshold is crossed (e.g. 2050). Optional
@@ -136,6 +165,22 @@ export const TippingPointSchema = z.object({
    * the headline. `server/ingestion/backfillWindowClosers.ts` fills them in.
    */
   closesWindow: z.boolean().optional(),
+  /**
+   * What reversing this would take, once it has already been crossed.
+   *
+   * A crossed threshold is a DEBT, not a terminal state. Reversing warm-water
+   * reef loss is not impossible — it is centuries of recovery conditional on
+   * sustained cooling. Ice-sheet collapse is harder again. Collapsing that
+   * gradient into "the window is shut" throws away the only information a
+   * reader can act on.
+   *
+   * Populated only for thresholds dated in the PAST, by
+   * `server/ingestion/backfillRecovery.ts`. It does not move the countdown —
+   * the countdown is a function of the threshold dates alone and must not lurch
+   * when a date it already predicted arrives. This explains the state; it does
+   * not adjust it.
+   */
+  recovery: RecoverySchema.optional(),
 }).refine(
   (tp) => tp.centralYear !== undefined || tp.quantityThreshold !== undefined,
   {
