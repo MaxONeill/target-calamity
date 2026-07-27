@@ -292,13 +292,29 @@ export function buildReputabilityGate(
       bestScore >= REPUTABILITY_VERIFY_THRESHOLD ? 'verified' : 'pending';
 
     if (best) {
+      const winner = best;
       return {
         verificationState,
         citation: {
-          publisher: best.publisher,
-          sourceUrl: best.url,
-          quoteSnippet: best.quoteSnippet,
+          publisher: winner.publisher,
+          sourceUrl: winner.url,
+          quoteSnippet: winner.quoteSnippet,
         },
+        // Every source that lost. They were all scored anyway, and dropping
+        // them made a claim backed by three publishers look like a claim backed
+        // by one — a weaker piece of evidence than we actually hold.
+        //
+        // Losing does NOT mean disreputable: these are simply the sources whose
+        // quote fit the claim less well than the winner's, and the read path
+        // shows all of them so a reader can weigh the set rather than trust our
+        // pick.
+        corroborating: candidate.sources
+          .filter((s) => s !== winner)
+          .map((s) => ({
+            publisher: s.publisher,
+            sourceUrl: s.url,
+            quoteSnippet: s.quoteSnippet,
+          })),
         // Persist the deciding source's audit trail.
         reputabilityScore: bestScore,
         reputabilityReasoning: bestReasoning,

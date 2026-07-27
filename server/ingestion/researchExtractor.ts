@@ -39,6 +39,15 @@ export interface GateResult {
   verificationState: VerificationState;
   citation: { publisher: string; sourceUrl: string | null; quoteSnippet: string };
   /**
+   * Every OTHER source the gate scored, in the order the extraction gave them.
+   *
+   * The gate has always seen all of them — it scores each and keeps the best —
+   * but only the winner was persisted, so a claim backed by three publishers
+   * displayed one citation and the corroboration vanished silently. Carried
+   * through here so the write path can keep them.
+   */
+  corroborating?: readonly { publisher: string; sourceUrl: string | null; quoteSnippet: string }[];
+  /**
    * The reputability audit trail: the DECIDING (max-scoring)
    * source's score `∈ [0, 1]` and its reasoning, threaded onto the draft so the
    * verified/pending decision is persisted and auditable. Absent from the ungated
@@ -114,6 +123,9 @@ export function createResearchExtractor(
           reputabilityScore: g.reputabilityScore,
           reputabilityReasoning: g.reputabilityReasoning,
           citation: g.citation,
+          // The sources that did not win. Kept so the write path can persist
+          // them alongside the deciding one.
+          corroborating: g.corroborating,
         });
       }
       return drafts;

@@ -1,9 +1,9 @@
-/**
+﻿/**
  * The interfaces the loop depends on instead of concrete infrastructure.
  *
  * Every one has both a Postgres implementation and an in-memory or
  * deterministic offline counterpart, which is what keeps the whole pipeline
- * runnable — and testable — with no network and no database.
+ * runnable â€” and testable â€” with no network and no database.
  */
 import type { TippingPoint, VerificationState } from '../../shared/types.js';
 import type { Domain } from '../../shared/domains.js';
@@ -45,7 +45,7 @@ export interface ResolutionRequest {
 /**
  * Phase D. The resolver ONLY classifies (/finding 28): independent event
  * vs escalation of a named candidate + directionality. It never computes stored
- * numbers — that is the server's deterministic job (, in `dedupe.ts`).
+ * numbers â€” that is the server's deterministic job (, in `dedupe.ts`).
  */
 export interface EntityResolver {
   resolve(request: ResolutionRequest): Promise<ResolverVerdict>;
@@ -62,6 +62,21 @@ export interface CitationWriteInput {
   quoteSnippet: string;
   /** Recorded so a re-ingest of the same item is caught by `existsByContentHash`. */
   contentHash: string;
+}
+
+/**
+ * A supporting source that is NOT the deciding citation.
+ *
+ * Deliberately has no `contentHash` field at all, rather than a nullable one.
+ * The hash is the per-finding idempotency key: exactly one citation per finding
+ * may carry it, or an unrelated finding sharing a source would read as already
+ * seen and be skipped. Omitting the field makes that impossible to get wrong,
+ * where a nullable one would only make it unlikely.
+ */
+export interface CorroboratingCitation {
+  publisher: string;
+  sourceUrl: string | null;
+  quoteSnippet: string;
 }
 
 /** The classified inbound metrics persisted for replay. */
@@ -100,6 +115,21 @@ export interface NewFactorInput {
   reputabilityScore?: number | undefined;
   reputabilityReasoning?: string | undefined;
   citation: CitationWriteInput;
+  /**
+   * The OTHER sources the gate saw and scored, beyond the deciding one.
+   *
+   * The extraction returns several sources per finding and the gate scores every
+   * one of them, but only the best was ever persisted â€” so a claim backed by
+   * three reputable publishers displayed a single citation, and the reader had
+   * no way to know corroboration existed. In the live set that left 89 of 104
+   * factors showing exactly one source, which described our write path rather
+   * than the evidence.
+   *
+   * These are written with a NULL `content_hash` — see {@link CorroboratingCitation},
+   * which has no such field so it cannot be given one. The unique index is
+   * partial (`WHERE content_hash IS NOT NULL`), so nulls coexist freely.
+   */
+  corroborating?: readonly CorroboratingCitation[] | undefined;
   /** Seeds the first `factor_revisions` row. */
   revision: RevisionInput;
 }
@@ -176,8 +206,8 @@ export interface IngestionRepository {
   /**
    * Run `fn` inside a READ COMMITTED transaction holding
    * `pg_advisory_xact_lock(hashtext(bucketKey))`, so concurrent inbound items in
-   * the same spatial/temporal bucket serialize through the Phase C→D critical
-   * section. The advisory lock — not the isolation level — provides
+   * the same spatial/temporal bucket serialize through the Phase Câ†’D critical
+   * section. The advisory lock â€” not the isolation level â€” provides
    * mutual exclusion.
    */
   withBucketLock<T>(
@@ -195,7 +225,7 @@ export interface IngestionRepository {
 /**
  * Optional publisher/domain allowlist. When provided, a factor whose citation
  * fails the check is quarantined rather than inserted. Left undefined, the gate
- * is a no-op — provenance policy is a deployment decision, so this is a hook,
+ * is a no-op â€” provenance policy is a deployment decision, so this is a hook,
  * not a hard-coded list.
  */
 export type SourceAllowlist = (citation: {
@@ -224,7 +254,7 @@ export interface BatchResult {
    * Extracted factors skipped because their SOURCE was already ingested.
    * The live research path re-runs the same topics every cycle on purpose, so
    * idempotency for it is per-FINDING (source URL / content hash), applied after
-   * extraction — not per-topic, which would wrongly skip re-research entirely.
+   * extraction â€” not per-topic, which would wrongly skip re-research entirely.
    */
   skippedDuplicateFactors: number;
   /** Drafts rejected by value validation or the allowlist. */
@@ -236,3 +266,4 @@ export interface BatchResult {
   /** Factor drafts extracted and embedded this batch. */
   processedFactors: number;
 }
+

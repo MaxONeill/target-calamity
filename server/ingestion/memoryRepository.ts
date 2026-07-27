@@ -112,7 +112,11 @@ export function createMemoryIngestionRepository(): MemoryIngestionRepository {
         tippingPoint: input.tippingPoint,
         domains: [...input.domains],
         embedding: input.embedding,
-        citationCount: 1,
+        // The deciding citation plus every corroborating source, matching the
+        // Postgres path. Counting only the deciding one here would let the
+        // in-memory repository disagree with production about how well evidenced
+        // a factor is, which is precisely what dedupe reads this for.
+        citationCount: 1 + (input.corroborating?.length ?? 0),
         createdAt: now,
         updatedAt: now,
       };
@@ -120,6 +124,9 @@ export function createMemoryIngestionRepository(): MemoryIngestionRepository {
       byId.set(id, stored);
       contentHashes.add(input.citation.contentHash);
       if (input.citation.sourceUrl) sourceUrls.add(input.citation.sourceUrl);
+      // Corroborating sources are NOT registered as seen URLs: `existsBySourceUrl`
+      // is the per-finding idempotency check, and a shared supporting source must
+      // not make the next genuinely-new finding look already ingested.
       return id;
     },
 

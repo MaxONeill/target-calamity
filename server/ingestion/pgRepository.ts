@@ -124,12 +124,35 @@ async function insertFactor(
   const id = rows[0]?.id;
   if (!id) throw new Error('insertFactor: INSERT ... RETURNING id produced no row');
 
-  // First citation — carries the  content hash so a re-ingest is caught.
+  // Deciding citation — carries the content hash so a re-ingest is caught.
   await sql`
     INSERT INTO citations (factor_id, source_url, publisher, quote_snippet, content_hash)
     VALUES (${id}::uuid, ${input.citation.sourceUrl}, ${input.citation.publisher},
             ${input.citation.quoteSnippet}, ${input.citation.contentHash})
   `.execute(trx);
+
+  // Corroborating sources the gate also scored. Persisted so a claim backed by
+  // several publishers SHOWS several, instead of the reader seeing one and
+  // having no way to know the rest existed.
+  //
+  // content_hash stays NULL on these: it is the per-finding idempotency key, so
+  // it belongs to the deciding citation alone. Giving these their own hashes
+  // would let an unrelated finding that happens to share a source read as an
+  // already-seen item and be skipped. The unique index is partial, so nulls
+  // coexist without limit.
+  //
+  // A duplicate URL within one finding is dropped — the same page cited twice
+  // is not corroboration.
+  const seenUrls = new Set<string | null>([input.citation.sourceUrl]);
+  for (const extra of input.corroborating ?? []) {
+    if (seenUrls.has(extra.sourceUrl)) continue;
+    seenUrls.add(extra.sourceUrl);
+    await sql`
+      INSERT INTO citations (factor_id, source_url, publisher, quote_snippet, content_hash)
+      VALUES (${id}::uuid, ${extra.sourceUrl}, ${extra.publisher},
+              ${extra.quoteSnippet}, NULL)
+    `.execute(trx);
+  }
 
   // Genesis factor_revisions row is written by the AFTER INSERT trigger — do NOT
   // insert one here (that would duplicate the genesis / recurse the projection).

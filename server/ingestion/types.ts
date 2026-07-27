@@ -57,6 +57,18 @@ export interface ExtractedFactorDraft {
    */
   domains?: readonly Domain[] | undefined;
   /**
+   * Sources the gate scored but did not choose as the deciding citation.
+   *
+   * Persisted alongside it on insert, so a claim backed by several publishers
+   * shows several. Losing the score does not mean disreputable — it means that
+   * source's quote fit the claim less well than the winner's — and dropping
+   * them made the evidence look thinner than it is. Untouched by escalation,
+   * which appends its own citation.
+   */
+  corroborating?:
+    | readonly { publisher: string; sourceUrl: string | null; quoteSnippet: string }[]
+    | undefined;
+  /**
    * The reputability gate's audit trail: the DECIDING (max-scoring)
    * source's credibility score `∈ [0, 1]` and its reasoning, carried onto the
    * persisted factor so the verified/pending decision is auditable. The live gate
