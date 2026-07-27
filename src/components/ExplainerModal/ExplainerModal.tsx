@@ -131,7 +131,7 @@ export function ExplainerModal({ onOpenChange }: ExplainerModalProps): JSX.Eleme
             onClick={closeModal}
             aria-label="Close explainer"
           >
-            [ x ]
+            X
           </button>
         </header>
 
