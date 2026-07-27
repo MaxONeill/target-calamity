@@ -38,7 +38,7 @@ import { researchFactors } from '../ingestion/websearch.js';
 import { buildReputabilityGate } from '../ingestion/worker.js';
 import { createLlmResolver } from '../ingestion/resolver.js';
 import { hasLiveCredentials } from '../ingestion/llmClient.js';
-import { hasRetrievalCredentials } from '../ingestion/firecrawlClient.js';
+import { hasRetrievalCredentials } from '../ingestion/retrieval.js';
 
 /** The accepted submission, as handed to the pipeline. */
 export interface AcceptedSubmission {

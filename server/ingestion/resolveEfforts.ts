@@ -11,7 +11,7 @@
  *   DRY_RUN=1 npm run resolve:efforts   # report only, no calls, no writes
  *   FORCE=1 npm run resolve:efforts     # re-match everything
  *
- * COST: NO FIRECRAWL. Embeddings only, over rows that already exist — one small
+ * COST: NO RETRIEVAL. Embeddings only, over rows that already exist — one small
  * vector per unembedded requirement, then an index-served k-NN each. Cheap
  * enough to re-run freely, unlike anything that goes out and reads the web.
  *

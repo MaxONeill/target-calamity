@@ -40,10 +40,10 @@ import { deriveClock, type ClockFactorInput, type Projection } from '../../src/l
 import { createDatabase, type Database } from '../db.js';
 import { notifyFieldChanged } from './notifyFieldChanged.js';
 import {
-  firecrawlSearch,
+  retrieveDocuments,
   hasRetrievalCredentials,
   publisherFromUrl,
-} from './firecrawlClient.js';
+} from './retrieval.js';
 import {
   getLlmClient,
   hasLiveCredentials,
@@ -232,7 +232,7 @@ export async function backfillContingency(
   }
   if (!hasLiveCredentials() || !hasRetrievalCredentials()) {
     logger.warn(
-      '[contingency] needs BOTH FIREWORKS_API_KEY and FIRECRAWL_API_KEY. Every link ' +
+      '[contingency] needs BOTH FIREWORKS_API_KEY and a search key (SERPER_API_KEY or BRAVE_API_KEY). Every link ' +
         'must be READ from a source — an unsourced dependency chain reads like ' +
         'engineering and nobody catches it. Exiting.',
     );
@@ -287,10 +287,8 @@ export async function backfillContingency(
         seen.add(key);
 
         try {
-          const docs = await firecrawlSearch(
+          const docs = await retrieveDocuments(
             expansionQuery(current.statement),
-            process.env.FIRECRAWL_API_KEY as string,
-            {},
           );
           if (docs.length === 0) continue;
 

@@ -67,10 +67,10 @@ import { createDatabase, type Database } from '../db.js';
 import { notifyFieldChanged } from './notifyFieldChanged.js';
 import { createEmbeddingClient } from './embeddings.js';
 import {
-  firecrawlSearch,
+  retrieveDocuments,
   hasRetrievalCredentials,
   publisherFromUrl,
-} from './firecrawlClient.js';
+} from './retrieval.js';
 import {
   getLlmClient,
   hasLiveCredentials,
@@ -373,7 +373,7 @@ export async function researchCounterEfforts(
   }
   if (!hasLiveCredentials() || !hasRetrievalCredentials()) {
     logger.warn(
-      '[counter] needs BOTH FIREWORKS_API_KEY and FIRECRAWL_API_KEY. Every effort ' +
+      '[counter] needs BOTH FIREWORKS_API_KEY and a search key (SERPER_API_KEY or BRAVE_API_KEY). Every effort ' +
         'must be READ from a source — a plausible invented organisation is one a ' +
         'reader may follow, fund or apply to. Exiting.',
     );
@@ -427,10 +427,8 @@ export async function researchCounterEfforts(
 
     for (const r of rows) {
       try {
-        const docs = await firecrawlSearch(
+        const docs = await retrieveDocuments(
           effortQuery(r.subject, r.stance),
-          process.env.FIRECRAWL_API_KEY as string,
-          {},
         );
         if (docs.length === 0) {
           empty += 1;

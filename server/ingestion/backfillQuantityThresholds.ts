@@ -15,10 +15,10 @@
  *
  * Prefer the ENV forms. npm swallows flags it recognises even after `--`, and
  * both `--dry-run` and `--limit` have been observed not to reach the script —
- * which, for a command that spends a Firecrawl search per row, has meant runs
+ * which, for a command that spends a web search per row, has meant runs
  * costing ~50 searches when they were meant to cost none.
  *
- * COST: one Firecrawl search per candidate. Rows that come back empty are
+ * COST: one web search per candidate. Rows that come back empty are
  * stamped `threshold_checked_at` and skipped thereafter, so a re-run costs
  * nothing until new factors arrive. FORCE=1 is the way back in when the
  * extraction or the gate has changed enough to be worth re-asking.
@@ -40,11 +40,11 @@ import * as z from 'zod/v4';
 import { createDatabase, type Database } from '../db.js';
 import { notifyFieldChanged } from './notifyFieldChanged.js';
 import {
-  firecrawlSearch,
+  retrieveDocuments,
   hasRetrievalCredentials,
   publisherFromUrl,
   type RetrievedDocument,
-} from './firecrawlClient.js';
+} from './retrieval.js';
 import {
   getLlmClient,
   hasLiveCredentials,
@@ -114,7 +114,7 @@ interface Row {
  * already searched-and-empty.
  *
  * That last clause is what makes re-running affordable. Each candidate costs a
- * Firecrawl search, and without it every previously-empty factor is researched
+ * web search, and without it every previously-empty factor is researched
  * again — one run checked 48 rows to gain a single threshold. `--force` exists
  * for when the extraction or the gate has changed enough that old negatives are
  * worth revisiting, which is a deliberate decision rather than the default.
@@ -214,7 +214,7 @@ export async function backfillQuantityThresholds(
   }
   if (!hasLiveCredentials() || !hasRetrievalCredentials()) {
     logger.warn(
-      '[quantities] needs BOTH FIREWORKS_API_KEY and FIRECRAWL_API_KEY. The ' +
+      '[quantities] needs BOTH FIREWORKS_API_KEY and a search key (SERPER_API_KEY or BRAVE_API_KEY). The ' +
         'threshold must be READ from a retrieved source, not recalled: a number ' +
         'nobody can point at in a citation would anchor the countdown while the ' +
         'product claims every input is traceable. Exiting.',
@@ -235,7 +235,7 @@ export async function backfillQuantityThresholds(
 
   // Honour the operator's cost ceiling instead of hardcoding one. This is the
   // multiplier on every search: pages retrieved and scraped per call.
-  const maxResults = Number.parseInt(process.env.FIRECRAWL_MAX_RESULTS ?? '', 10);
+  const maxResults = Number.parseInt(process.env.RETRIEVAL_MAX_RESULTS ?? '', 10);
 
   const { db, pool } = createDatabase(databaseUrl);
   try {
@@ -245,7 +245,7 @@ export async function backfillQuantityThresholds(
     logger.info(
       `[quantities] ${rows.length} unchecked adverse factor(s)` +
         `${force ? ' (--force: previously-empty rows re-included)' : ''}. ` +
-        `Each costs one Firecrawl search.`,
+        `Each costs one web search.`,
     );
     if (dryRun || rows.length === 0) {
       logger.info(dryRun ? '[quantities] plan only — no calls made.' : '[quantities] nothing to do.');
@@ -263,10 +263,9 @@ export async function backfillQuantityThresholds(
       while (cursor < rows.length) {
         const row = rows[cursor++]!;
         try {
-          const docs = await firecrawlSearch(
+          const docs = await retrieveDocuments(
             thresholdQuery(row.name),
-            process.env.FIRECRAWL_API_KEY as string,
-            // Omitted when unset so firecrawlSearch applies its own default,
+            // Omitted when unset so retrieveDocuments applies its own default,
             // rather than this file inventing a competing one.
             Number.isFinite(maxResults) && maxResults > 0 ? { maxResults } : {},
           );

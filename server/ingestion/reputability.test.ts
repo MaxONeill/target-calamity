@@ -87,7 +87,7 @@ describe('scoreSourceOffline — deterministic domain heuristic', () => {
 describe('scoreSource — no-credential fallback', () => {
   it('uses the offline heuristic when neither provider key is present', async () => {
     vi.stubEnv('FIREWORKS_API_KEY', '');
-    vi.stubEnv('FIRECRAWL_API_KEY', '');
+    vi.stubEnv('BRAVE_API_KEY', '');
 
     const input = src({ url: 'https://www.nature.com/x' });
     const result = await scoreSource(input);

@@ -93,7 +93,7 @@ const items: InboundIntelItem[] = [
 beforeEach(() => {
   // Force the offline reputability heuristic (no live credentials).
   vi.stubEnv('FIREWORKS_API_KEY', '');
-  vi.stubEnv('FIRECRAWL_API_KEY', '');
+  vi.stubEnv('BRAVE_API_KEY', '');
 });
 afterEach(() => vi.unstubAllEnvs());
 

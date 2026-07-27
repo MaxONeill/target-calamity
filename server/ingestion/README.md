@@ -13,8 +13,8 @@ deduplicated, cited rows in `factors` — `verified` (in the Clock aggregate) or
 INGEST_TOPICS (or a built-in Calamity+Humanity set)
    │  scheduled worker, every INGEST_INTERVAL_HOURS (default 6), bounded batch
    ▼
-Phase A  researchFactors(topic) ................... /-44 (Firecrawl+Fireworks)
-         · Stage 1 RETRIEVAL  — Firecrawl /v2/search: ranked hits + scraped markdown
+Phase A  researchFactors(topic) ................... /-44 (search+fetch+Fireworks)
+         · Stage 1 RETRIEVAL  — search for ranked hits, then fetch + extract to markdown
          · Stage 2 EXTRACTION — typed candidates via one JSON-schema-constrained
                                 Fireworks (DeepSeek V4 Flash) turn, validated by zod
    ▼
@@ -31,18 +31,18 @@ pg_notify('factor_updates', …) → SSE → browsers ...  (pgRepository)
 ```
 
 **Live ingestion CANNOT run without BOTH provider keys + network.** With
-`FIREWORKS_API_KEY` or `FIRECRAWL_API_KEY` missing (or no `DATABASE_URL`) the
+`FIREWORKS_API_KEY` or a search key missing (or no `DATABASE_URL`) the
 scheduled worker logs and NO-OPS — it never fabricates findings. The
 offline stubs (`researchFactorsOffline`, `scoreSourceOffline`) exist only for
 tests / offline development and are clearly labelled; their placeholder sources
 stay `pending`.
 
 **Required env:** `FIREWORKS_API_KEY` (LLM turns **and** Phase B embeddings),
-`FIRECRAWL_API_KEY` (retrieval), `DATABASE_URL` (target DB). **Optional:**
+`SERPER_API_KEY` or `BRAVE_API_KEY` (retrieval), `DATABASE_URL` (target DB). **Optional:**
 `INGEST_MODEL` (default `accounts/fireworks/models/deepseek-v4-flash`),
 `EMBEDDING_MODEL` (default `nomic-ai/nomic-embed-text-v1.5`),
 `EMBEDDING_DIMENSIONS` (512 — must match the `halfvec(512)` column),
-`FIRECRAWL_MAX_RESULTS` (5), `FIRECRAWL_MAX_CONTENT_CHARS` (10000),
+`RETRIEVAL_MAX_RESULTS` (5), `RETRIEVAL_MAX_CONTENT_CHARS` (10000),
 `INGEST_INTERVAL_HOURS` (default 6), `INGEST_TOPICS` (comma/newline separated),
 `INGEST_BATCH_TOPICS`, `INGEST_MAX_CANDIDATES`.
 
@@ -56,7 +56,7 @@ decisions and exiting 0 (never hanging, never erroring on missing creds).
 > **The live API path is code-complete but must be run by the operator with
 > keys.** It is NOT exercised by the test suite — `npm test` is fully offline
 > (deterministic stubs only) and never makes a live provider call. Set
-> `FIREWORKS_API_KEY` + `FIRECRAWL_API_KEY` (+ optionally `DATABASE_URL`) and run
+> `FIREWORKS_API_KEY` + a search key (+ optionally `DATABASE_URL`) and run
 > `npm run ingest:once` to exercise the live retrieve → extract → gate → resolve
 > → persist path.
 
@@ -85,9 +85,12 @@ Phase D  resolver classifies → server recalculates
 | --------------------- | --------------------------------------------------------------------- |
 | `llmClient.ts`        | Shared Fireworks (OpenAI-protocol) client + `hasLiveCredentials()` + `INGEST_MODEL` + `structuredCompletion()`. |
 | `llmClient.test.ts`   | Offline tests: provider pinning, credential gate, model selection, zod→JSON-Schema derivation. |
-| `firecrawlClient.ts`  | Firecrawl `/v2/search` retrieval + `hasRetrievalCredentials()` + publisher derivation and cost caps. |
-| `firecrawlClient.test.ts` | Offline tests (injected `fetch`): request body contract, response normalisation, provenance, caps. |
-| `websearch.ts`        | Phase A live research (`researchFactors`): Firecrawl retrieval + typed extraction turn. Deterministic offline stub. |
+| `retrieval.ts`  | The retrieval seam: search + page fetch/extract, `hasRetrievalCredentials()`, publisher derivation, caps. |
+| `search.ts`     | Provider selection (`SEARCH_PROVIDER`, else whichever key is set, Serper first). |
+| `serperSearch.ts` / `braveSearch.ts` | One file per engine, both returning `SearchHit[]`. |
+| `extract.ts`    | Fetch a page and convert it to markdown (Readability + node-html-markdown). Tables survive. |
+| `retrieval.test.ts` | Offline tests (injected `fetch`): request body contract, response normalisation, provenance, caps. |
+| `websearch.ts`        | Phase A live research (`researchFactors`): retrieval + typed extraction turn. Deterministic offline stub. |
 | `reputability.ts`     | Source-credibility gate (`scoreSource`) + `REPUTABILITY_VERIFY_THRESHOLD`. LLM judge + offline heuristic. |
 | `noiseFilter.ts`      | Cheap triage in FRONT of the loop for anonymous submissions (`classifySubmission`, ): one constrained call → `plausible`/`spam`/`abuse`/`nonsense`. Injection-hardened; deterministic offline stub. |
 | `noiseFilter.test.ts` | Offline-stub tests: verdicts, injection markers, `shouldAutoBan` thresholds, no live call. |
@@ -129,7 +132,7 @@ Built and wired to a live database:
 Now **built and live**, superseding the earlier Phase-1 scope note:
 
 - **Phase A is a live research engine.** `researchFactors` (`websearch.ts`) runs
-  Firecrawl `/v2/search` (retrieval + scrape in one call) then a typed extraction
+  A web search, then a local fetch/extract per hit, then a typed extraction
   turn on the Fireworks model with JSON-schema constrained decoding. It is
   wired into the pipeline as the `FactorExtractor` via `createResearchExtractor`.
 - **A scheduled worker with cadence.** `worker.ts` runs a bounded batch every
@@ -166,8 +169,8 @@ Now **built** (superseding the earlier out-of-scope notes):
 `llmClient.ts`
 - `getLlmClient(env)` (OpenAI-protocol client pinned to `FIREWORKS_BASE_URL`), `hasLiveCredentials(env)`, `ingestModel(env)`, `DEFAULT_INGEST_MODEL`, `structuredCompletion(args)`, `jsonSchemaOf(zodSchema)`
 
-`firecrawlClient.ts`
-- `firecrawlSearch(query, apiKey, opts)` → `RetrievedDocument[]`, `hasRetrievalCredentials(env)`
+`retrieval.ts`
+- `retrieveDocuments(query, opts)` → `RetrievedDocument[]`, `hasRetrievalCredentials(env)`
 - `normalizeResults`, `publisherFromUrl`, `truncateContent` (pure), `DEFAULT_MAX_RESULTS`, `DEFAULT_MAX_CONTENT_CHARS`
 
 `websearch.ts`
@@ -309,7 +312,7 @@ on credentials, so nothing fakes live data silently:
 
 - **Embeddings** — `FIREWORKS_API_KEY` unset (non-production) → stub vectors with
   a loud warning; `NODE_ENV=production` with no key throws.
-- **Research** — `FIREWORKS_API_KEY` or `FIRECRAWL_API_KEY` missing →
+- **Research** — `FIREWORKS_API_KEY` or a search key missing →
   `researchFactorsOffline` (placeholder sources that stay `pending`). Tested in
   `websearch.test.ts`.
 - **Reputability** — no `FIREWORKS_API_KEY` → `scoreSourceOffline` domain

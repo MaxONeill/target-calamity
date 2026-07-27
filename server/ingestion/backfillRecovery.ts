@@ -21,7 +21,7 @@
  *
  * Prefer the env forms: npm swallows flags it recognises even after `--`.
  *
- * COST: one Firecrawl search plus one LLM turn per crossed threshold. The
+ * COST: one web search plus one LLM turn per crossed threshold. The
  * candidate set is tiny — only anchors whose estimated year is in the past —
  * and already-assessed rows are skipped, so a re-run is usually free.
  *
@@ -38,10 +38,10 @@ import { deriveClock, type ClockFactorInput, type Projection } from '../../src/l
 import { createDatabase, type Database } from '../db.js';
 import { notifyFieldChanged } from './notifyFieldChanged.js';
 import {
-  firecrawlSearch,
+  retrieveDocuments,
   hasRetrievalCredentials,
   publisherFromUrl,
-} from './firecrawlClient.js';
+} from './retrieval.js';
 import {
   getLlmClient,
   hasLiveCredentials,
@@ -211,7 +211,7 @@ export async function backfillRecovery(
   }
   if (!hasLiveCredentials() || !hasRetrievalCredentials()) {
     logger.warn(
-      '[recovery] needs BOTH FIREWORKS_API_KEY and FIRECRAWL_API_KEY. What reversal ' +
+      '[recovery] needs BOTH FIREWORKS_API_KEY and a search key (SERPER_API_KEY or BRAVE_API_KEY). What reversal ' +
         'takes must be READ from sources, not recalled — an invented recovery ' +
         'timescale reads exactly like a measured one. Exiting.',
     );
@@ -247,10 +247,8 @@ export async function backfillRecovery(
 
     for (const row of rows) {
       try {
-        const docs = await firecrawlSearch(
+        const docs = await retrieveDocuments(
           recoveryQuery(row.name),
-          process.env.FIRECRAWL_API_KEY as string,
-          {},
         );
         if (docs.length === 0) {
           logger.warn(`[recovery] no sources for "${row.name.slice(0, 40)}".`);

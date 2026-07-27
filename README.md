@@ -130,7 +130,7 @@ npm run ingest:once           # one bounded ingestion cycle, then exit
 
 Live research needs **both** provider keys — **`FIREWORKS_API_KEY`**
 (Fireworks AI: DeepSeek V4 Flash for the typed turns, plus the embeddings) and
-**`FIRECRAWL_API_KEY`** (Firecrawl `/v2/search` for retrieval) — plus optionally
+**`SERPER_API_KEY`** or **`BRAVE_API_KEY`** (web search; pages are fetched and converted locally) — plus optionally
 **`DATABASE_URL`** to persist (else the cycle runs in-memory and logs). With all
 present, `ingest:once` runs the full live path — retrieve → extract →
 reputability gate → dedupe/resolve → persist. With the keys missing it runs a
@@ -159,7 +159,7 @@ npm test            # vitest: geo, clock model, and field kernel suites
 | Contract       | `zod` schemas in `shared/`, TS types via `z.infer` (one source)    |
 | Database       | PostgreSQL 17 — `vector`, `ltree`, `postgis` — via docker-compose  |
 | Geo data       | `world-atlas` 110m TopoJSON (coastlines + land mask), Open-Meteo elevation |
-| Ingestion LLM  | Fireworks AI (DeepSeek V4 Flash) + embeddings; Firecrawl for retrieval |
+| Ingestion LLM  | Fireworks AI (DeepSeek V4 Flash) + embeddings; Serper/Brave search + local fetch/extract for retrieval |
 | Packaging      | Single root `package.json`                                         |
 
 > The `openai` npm package is a dependency, but **no request is ever made to
@@ -251,7 +251,7 @@ server/        Fastify API (factors, field, stream, submit), pagination, Kysely 
                contentHash.ts, researchExtractor.ts, stubs.ts,
                pgRepository.ts + memoryRepository.ts (the two port adapters),
                worker.ts (npm run ingest / ingest:once).
-               The live Fireworks + Firecrawl path is operator-run; the test
+               The live Fireworks + search path is operator-run; the test
                suite is fully offline.
 db/            migrations, seed SQL, Dockerfile, README
 docs/          ARCHITECTURE.md — why the non-obvious decisions are what they are

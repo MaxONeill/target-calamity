@@ -2,7 +2,7 @@
  * The cheap noise filter — one small model call in FRONT of the
  * expensive vetting pipeline.
  *
- * The existing pipeline (retrieve the cited source with Firecrawl, extract typed
+ * The existing pipeline (retrieve the cited source, extract typed
  * candidates, score reputability, embed, dedupe, resolve) costs real money per
  * item. Anonymous submissions are an open door to that spend. This module is the
  * doorman: ONE small constrained call that answers a single question — is this

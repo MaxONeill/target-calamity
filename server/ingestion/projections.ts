@@ -26,10 +26,11 @@
 import * as z from 'zod/v4';
 import type { Projection } from '../../shared/types.js';
 import {
-  firecrawlSearch,
+  retrieveDocuments,
   hasRetrievalCredentials,
   type RetrievedDocument,
-} from './firecrawlClient.js';
+} from './retrieval.js';
+import { apiKeyFor } from './search.js';
 import {
   getLlmClient,
   hasLiveCredentials,
@@ -240,23 +241,27 @@ export async function researchProjection(
 
   if (!hasLiveCredentials(env) || !hasRetrievalCredentials(env)) {
     logger.warn(
-      `[projections] missing FIREWORKS_API_KEY and/or FIRECRAWL_API_KEY — cannot ` +
+      `[projections] missing FIREWORKS_API_KEY and/or a search key — cannot ` +
         `research "${request.quantity}". No curve is invented; the threshold ` +
         `simply stays undated.`,
     );
     return null;
   }
 
-  const apiKey = env.FIRECRAWL_API_KEY as string;
   // A curve has to come from ONE source, so the odds hinge on at least one
   // retrieved page carrying a full series — more results is the lever. But the
-  // operator's ceiling wins over that preference: FIRECRAWL_MAX_RESULTS is the
+  // operator's ceiling wins over that preference: RETRIEVAL_MAX_RESULTS is the
   // multiplier on every search, and a module hardcoding past it makes the
-  // setting a lie. Unset on both → firecrawlSearch's own default.
-  const envMax = Number.parseInt(env.FIRECRAWL_MAX_RESULTS ?? '', 10);
+  // setting a lie. Unset on both → retrieveDocuments's own default.
+  const envMax = Number.parseInt(env.RETRIEVAL_MAX_RESULTS ?? '', 10);
   const maxResults = opts.maxResults ?? (Number.isFinite(envMax) && envMax > 0 ? envMax : undefined);
 
-  const docs = await firecrawlSearch(projectionQuery(request), apiKey, {
+  const docs = await retrieveDocuments(projectionQuery(request), {
+    // Passed explicitly rather than left to retrieval's process.env fallback:
+    // this function takes `env` injected, and reading a different environment
+    // than the one it was handed is exactly the drift that makes a test pass
+    // while the live path is misconfigured.
+    ...(apiKeyFor(env) !== undefined ? { apiKey: apiKeyFor(env) as string } : {}),
     ...(maxResults !== undefined ? { maxResults } : {}),
     ...(opts.maxContentChars !== undefined ? { maxContentChars: opts.maxContentChars } : {}),
   });

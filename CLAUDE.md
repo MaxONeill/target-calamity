@@ -49,7 +49,8 @@ for server changes.
   ephemeral per-process salt with a loud warning.
 
 Live ingestion additionally needs `FIREWORKS_API_KEY` (LLM turns + embeddings)
-and `FIRECRAWL_API_KEY` (retrieval). Missing either → the worker logs and no-ops;
+and a search key — `SERPER_API_KEY` or `BRAVE_API_KEY` (retrieval). Missing
+either → the worker logs and no-ops;
 it never fabricates findings. Every network dependency has a credential-gated,
 loudly-labelled offline stub.
 

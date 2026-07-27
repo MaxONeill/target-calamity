@@ -26,7 +26,7 @@ import { sql } from 'kysely';
 import { createDatabase, type Database } from '../db.js';
 import { notifyFieldChanged } from './notifyFieldChanged.js';
 import { scoreSource, REPUTABILITY_VERIFY_THRESHOLD } from './reputability.js';
-import { publisherFromUrl } from './firecrawlClient.js';
+import { publisherFromUrl } from './retrieval.js';
 import {
   researchProjection,
   startsInTheFuture,

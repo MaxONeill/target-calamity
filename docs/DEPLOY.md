@@ -56,7 +56,7 @@ which the web service runs on start — nothing to do by hand.
 | Var | Default | Notes |
 | --- | --- | --- |
 | `FIREWORKS_API_KEY` | — | Only if the web service should ever run ingestion. Not needed just to serve. |
-| `FIRECRAWL_API_KEY` | — | Same. |
+| `SERPER_API_KEY` or `BRAVE_API_KEY` | — | Same. One search provider is required. |
 | `LOG_LEVEL` | `info` | |
 
 The elevation grid (`public/elevation-grid.json`) is bundled into `dist/` by the
@@ -64,7 +64,7 @@ build, so terrain works with no extra step.
 
 ## 3. The ingestion worker (defer this)
 
-The worker spends real money on Fireworks + Firecrawl on every cycle, so do
+The worker spends real money on Fireworks + the search provider on every cycle, so do
 **not** wire it to run automatically on first deploy. When you're ready:
 
 - **Cheapest / safest:** a Railway **Cron** service running `npm run ingest:once`
@@ -73,7 +73,7 @@ The worker spends real money on Fireworks + Firecrawl on every cycle, so do
   no-ops without both provider keys + `DATABASE_URL`, so it's inert until you
   set them.
 
-Either way it needs `DATABASE_URL`, `FIREWORKS_API_KEY`, `FIRECRAWL_API_KEY`, and
+Either way it needs `DATABASE_URL`, `FIREWORKS_API_KEY`, a search key, and
 `EMBEDDING_MODEL` (a Matryoshka-capable 512-dim model — see `.env.example`).
 
 ## 4. Domain + TLS

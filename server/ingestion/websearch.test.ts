@@ -2,7 +2,7 @@
  * Tests for the OFFLINE STUB path of Phase A research (server/ingestion/websearch.ts).
  *
  * These never touch the network or the live API — they exercise the deterministic
- * offline stub and the no-credential fallback. The live path (Firecrawl retrieval
+ * offline stub and the no-credential fallback. The live path (retrieval
  * + typed extraction) is intentionally NOT called here.
  */
 import { describe, it, expect, vi, afterEach } from 'vitest';
@@ -55,7 +55,7 @@ describe('researchFactorsOffline — deterministic offline candidates', () => {
 describe('researchFactors — no-credential fallback', () => {
   it('returns the offline stub when neither provider key is present', async () => {
     vi.stubEnv('FIREWORKS_API_KEY', '');
-    vi.stubEnv('FIRECRAWL_API_KEY', '');
+    vi.stubEnv('BRAVE_API_KEY', '');
 
     const topic = 'sea-level rise projections';
     const result = await researchFactors(topic);
@@ -64,7 +64,7 @@ describe('researchFactors — no-credential fallback', () => {
 
   it('honours maxCandidates as an upper bound', async () => {
     vi.stubEnv('FIREWORKS_API_KEY', '');
-    vi.stubEnv('FIRECRAWL_API_KEY', '');
+    vi.stubEnv('BRAVE_API_KEY', '');
 
     const result = await researchFactors('economic inequality trends', {
       maxCandidates: 1,
@@ -74,7 +74,7 @@ describe('researchFactors — no-credential fallback', () => {
 });
 
 /* -------------------------------------------------------------------------- */
-/*  — provenance assembly from Firecrawl results                        */
+/*  — provenance assembly from retrieved documents                        */
 /* -------------------------------------------------------------------------- */
 
 describe('normalizeCandidate — citations resolve to REAL retrieved sources', () => {

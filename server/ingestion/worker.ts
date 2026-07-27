@@ -4,7 +4,7 @@
  * On a cadence (`INGEST_INTERVAL_HOURS`, default 6) it runs one bounded cycle:
  *
  *   for each topic in the batch:
- *     researchFactors(topic)                       ← Phase A, Firecrawl
+ *     researchFactors(topic)                       ← Phase A, retrieval
  *       → for each candidate: score its sources    ← reputability gate
  *         → verified if max score ≥ threshold, else pending
  *     → pipeline.processBatch(...)                 ← Phase B/C/D + write (unchanged)
@@ -17,7 +17,7 @@
  *
  * SEED-MODE / NO-CREDS GUARD: the scheduler will NOT run unattended
  * without BOTH live ingestion credentials (`FIREWORKS_API_KEY` for the LLM +
- * embeddings, `FIRECRAWL_API_KEY` for retrieval) AND a `DATABASE_URL`. Missing any, it
+ * embeddings, `BRAVE_API_KEY` for retrieval) AND a `DATABASE_URL`. Missing any, it
  * logs clearly and no-ops (it never fabricates live findings, and there is nothing
  * to ingest into in seed mode). `runIngestOnce()` is exported for a manual/testable
  * single cycle and applies the same guard.
@@ -27,10 +27,10 @@
  *   npm run ingest -- --once  → run exactly one cycle and exit
  *
  * Required env: FIREWORKS_API_KEY (LLM turns + meaningful Phase B embeddings),
- * FIRECRAWL_API_KEY (retrieval), DATABASE_URL (target DB). Optional: INGEST_MODEL,
+ * BRAVE_API_KEY (retrieval), DATABASE_URL (target DB). Optional: INGEST_MODEL,
  * EMBEDDING_MODEL, EMBEDDING_DIMENSIONS, INGEST_INTERVAL_HOURS, INGEST_TOPICS,
- * INGEST_BATCH_TOPICS, INGEST_MAX_CANDIDATES, FIRECRAWL_MAX_RESULTS,
- * FIRECRAWL_MAX_CONTENT_CHARS.
+ * INGEST_BATCH_TOPICS, INGEST_MAX_CANDIDATES, RETRIEVAL_MAX_RESULTS,
+ * RETRIEVAL_MAX_CONTENT_CHARS.
  */
 import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -54,11 +54,11 @@ import {
   type ReputabilityOptions,
 } from './reputability.js';
 import { hasLiveCredentials } from './llmClient.js';
-import { hasRetrievalCredentials } from './firecrawlClient.js';
+import { hasRetrievalCredentials } from './retrieval.js';
 
 /**
  * Live ingestion needs BOTH providers: Fireworks (reasoning + embeddings) and
- * Firecrawl (retrieval). With either missing there is no honest live cycle to
+ * Brave (retrieval). With either missing there is no honest live cycle to
  * run, so the worker no-ops rather than half-running on stubs.
  */
 function hasIngestionCredentials(env: NodeJS.ProcessEnv): boolean {
@@ -356,7 +356,7 @@ export async function runIngestOnce(
   }
   if (!hasIngestionCredentials(env)) {
     logger.warn(
-      '[ingest] missing FIREWORKS_API_KEY and/or FIRECRAWL_API_KEY — refusing to ' +
+      '[ingest] missing FIREWORKS_API_KEY and/or a search key — refusing to ' +
         'run live research unattended. This cycle is a no-op. Set BOTH keys to ' +
         'enable it.',
     );
@@ -507,7 +507,7 @@ function startScheduler(): void {
   if (!canRun) {
     console.warn(
       '[ingest] scheduled ingestion DISABLED — requires DATABASE_URL, ' +
-        'FIREWORKS_API_KEY and FIRECRAWL_API_KEY. Running neither a first cycle ' +
+        'FIREWORKS_API_KEY and BRAVE_API_KEY. Running neither a first cycle ' +
         'nor a timer. ' +
         '(This is the correct seed-mode / no-creds behavior.)',
     );

@@ -25,7 +25,7 @@
  *
  * COST: one LLM call per factor, NO retrieval. Judged from the factor's own
  * name, description and spatial path — scale is a property of what the factor
- * says, so re-reading its sources would buy nothing and cost Firecrawl credits.
+ * says, so re-reading its sources would buy nothing and cost another round of retrieval.
  */
 import { realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';

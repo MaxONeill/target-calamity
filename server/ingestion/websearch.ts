@@ -5,7 +5,7 @@
  * `researchFactors(topic)` turns a research TOPIC into structured candidate
  * factors, each carrying its own real-world source list. Two stages:
  *
- *   Stage 1 — RETRIEVAL (`firecrawlClient.firecrawlSearch`). Firecrawl's
+ *   Stage 1 — RETRIEVAL (`retrieval.retrieveDocuments`). The retrieval seam
  *             `/v2/search` runs the web search AND scrapes each hit, returning
  *             ranked results with full-page markdown in ONE call. Results and
  *             per-source content length are capped for cost.
@@ -15,7 +15,7 @@
  *             zod schema below and re-validates the decode with that same schema.
  *
  * CITATION CONTRACT: the model NEVER emits a URL. It cites a retrieved source by
- * its `sourceIndex`, and this module substitutes Firecrawl's real `url` and the
+ * its `sourceIndex`, and this module substitutes retrieval's real `url` and the
  * domain-derived `publisher`. A hallucinated index is dropped, so a persisted
  * source is always one that was genuinely retrieved. (Anthropic's server-side
  * citation handling is what we gave up here.)
@@ -30,7 +30,7 @@
  * state. A candidate here is a CLAIM plus its sources, nothing more.
  *
  * OFFLINE: with EITHER credential missing ({@link hasLiveCredentials} for
- * Fireworks, {@link hasRetrievalCredentials} for Firecrawl) we return a
+ * Fireworks, {@link hasRetrievalCredentials} for Brave) we return a
  * clearly-labelled DETERMINISTIC STUB (`researchFactorsOffline`). It never touches
  * the network and must never be mistaken for live research — its sources point at
  * `example.org`, so the reputability gate leaves everything `pending` (off the
@@ -56,10 +56,10 @@ import {
 import {
   DEFAULT_MAX_CONTENT_CHARS,
   DEFAULT_MAX_RESULTS,
-  firecrawlSearch,
+  retrieveDocuments,
   hasRetrievalCredentials,
   type RetrievedDocument,
-} from './firecrawlClient.js';
+} from './retrieval.js';
 
 /* -------------------------------------------------------------------------- */
 /* Public shapes                                                              */
@@ -127,7 +127,7 @@ export interface ResearchOptions {
   blockedDomains?: string[];
   /** Injectable LLM client (tests); defaults to the shared singleton. */
   client?: LlmClient;
-  /** Injectable retrieval function (tests); defaults to the live Firecrawl call. */
+  /** Injectable retrieval function (tests); defaults to the live retrieval call. */
   search?: (topic: string) => Promise<RetrievedDocument[]>;
   /** Model override; defaults to `INGEST_MODEL`. */
   model?: string;
@@ -150,7 +150,7 @@ const DEFAULT_MAX_CANDIDATES = 8;
  *
  * `sourceIndex` — not a URL — is what the model emits: the 1-based index of the
  * retrieved source in the prompt. The real URL/publisher are substituted from the
- * Firecrawl result, so provenance cannot be hallucinated.
+ * retrieved document, so provenance cannot be hallucinated.
  */
 const ExtractionSourceSchema = z.object({
   sourceIndex: z.number(),
@@ -481,7 +481,7 @@ function positiveIntEnv(raw: string | undefined, fallback: number): number {
 
 /**
  * Research one topic into candidate factors. LIVE when BOTH credentials are
- * present (Firecrawl retrieval + one constrained Fireworks extraction turn);
+ * present (retrieval + one constrained Fireworks extraction turn);
  * otherwise the deterministic OFFLINE STUB. The result is capped at
  * `maxCandidates`.
  */
@@ -497,7 +497,7 @@ export async function researchFactors(
   // means we cannot do live research, so we say so and stub — never fabricate.
   if (!hasLiveCredentials(env) || (!opts.search && !hasRetrievalCredentials(env))) {
     logger.warn?.(
-      '[ingestion] missing FIREWORKS_API_KEY and/or FIRECRAWL_API_KEY — ' +
+      '[ingestion] missing FIREWORKS_API_KEY and/or a search key — ' +
         'researchFactors is returning the DETERMINISTIC OFFLINE STUB (NOT live; ' +
         'sources are placeholders and stay pending). Set BOTH keys for live research.',
     );
@@ -507,16 +507,16 @@ export async function researchFactors(
   const client = opts.client ?? getLlmClient(env);
   const model = opts.model ?? ingestModel(env);
   const maxResults =
-    opts.maxResults ?? positiveIntEnv(env.FIRECRAWL_MAX_RESULTS, DEFAULT_MAX_RESULTS);
+    opts.maxResults ?? positiveIntEnv(env.RETRIEVAL_MAX_RESULTS, DEFAULT_MAX_RESULTS);
   const maxContentChars =
     opts.maxContentChars ??
-    positiveIntEnv(env.FIRECRAWL_MAX_CONTENT_CHARS, DEFAULT_MAX_CONTENT_CHARS);
+    positiveIntEnv(env.RETRIEVAL_MAX_CONTENT_CHARS, DEFAULT_MAX_CONTENT_CHARS);
 
   let docs: RetrievedDocument[];
   try {
     docs = opts.search
       ? await opts.search(topic)
-      : await firecrawlSearch(topic, env.FIRECRAWL_API_KEY!.trim(), {
+      : await retrieveDocuments(topic, {
           maxResults,
           maxContentChars,
           ...(opts.allowedDomains && opts.allowedDomains.length > 0
@@ -527,7 +527,7 @@ export async function researchFactors(
         });
   } catch (err) {
     // Retrieval failure yields NO candidates — never a stub dressed up as live.
-    logger.error?.(`[ingestion] Firecrawl retrieval failed for "${topic}": ${String(err)}`);
+    logger.error?.(`[ingestion] retrieval failed for "${topic}": ${String(err)}`);
     return [];
   }
 
