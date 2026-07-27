@@ -47,11 +47,49 @@ function RequirementBranch({
         </a>
       ) : null}
 
-      {/* The routing surface. These are counter-efforts already tracked whose
-          wording is semantically close to this requirement — related work, not
-          a claim that any of them satisfies it. Saying "working on this" would
-          overstate a similarity score, which is the same failure as an invented
-          dependency wearing a friendlier face. */}
+      {/* The routing surface, and the point of the whole tree: a reader who gets
+          this far has been shown a problem, and this is where they are handed
+          somewhere to go.
+
+          Every entry is sourced and links out, because a reader may act on one —
+          follow it, fund it, apply to it — and an unsourced name is worse here
+          than anywhere else in the product. Deliberately unordered and unranked:
+          reporting who is working on something is defensible, judging which of
+          them is most promising is not. */}
+      {node.counterEfforts.length > 0 ? (
+        <div className="tc-req-counter">
+          <span className="tc-req-counter-head">Who is working on this</span>
+          <ul className="tc-req-counter-list">
+            {node.counterEfforts.map((c) => (
+              <li key={c.id} className="tc-req-counter-item">
+                <a
+                  className="tc-req-counter-name"
+                  href={c.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                >
+                  {c.name}
+                </a>
+                {c.stage ? <span className="tc-req-counter-stage">{c.stage}</span> : null}
+                <p className="tc-req-counter-desc">{c.description}</p>
+                {c.publisher ? (
+                  <span className="tc-req-counter-src">via {c.publisher}</span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : node.status !== 'exists' ? (
+        // Not a rendering gap. The retrieval went looking and found nobody, and
+        // an open requirement with no organised effort behind it is one of the
+        // more actionable things this tracker can report.
+        <p className="tc-req-untracked">No effort found addressing this.</p>
+      ) : null}
+
+      {/* Secondary and clearly separated: factors already tracked whose wording
+          is semantically close. Related reading, NOT a claim any of them
+          satisfies the requirement — overstating a similarity score is the same
+          failure as an invented dependency wearing a friendlier face. */}
       {node.efforts.length > 0 ? (
         <div className="tc-req-efforts">
           <span className="tc-req-efforts-head">Related work being tracked</span>
@@ -61,8 +99,6 @@ function RequirementBranch({
             ))}
           </ul>
         </div>
-      ) : node.status !== 'exists' ? (
-        <p className="tc-req-untracked">Nothing in the set addresses this yet.</p>
       ) : null}
 
       {children.length > 0 ? (

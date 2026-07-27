@@ -20,6 +20,7 @@
     "ingest:projections": "tsx --env-file-if-exists=.env server/ingestion/fetchProjections.ts",
     "backfill:quantities": "tsx --env-file-if-exists=.env server/ingestion/backfillQuantityThresholds.ts",
     "resolve:efforts": "tsx --env-file-if-exists=.env server/ingestion/resolveEfforts.ts",
+    "research:efforts": "tsx --env-file-if-exists=.env server/ingestion/researchCounterEfforts.ts",
     "resolve:quantities": "tsx --env-file-if-exists=.env server/ingestion/resolveQuantities.ts",
     "report:coverage": "tsx --env-file-if-exists=.env server/ingestion/coverageReport.ts",
     "backfill:significance": "tsx --env-file-if-exists=.env server/ingestion/backfillSignificance.ts",

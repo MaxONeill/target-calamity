@@ -138,6 +138,40 @@ export const RecoverySchema = z.object({
 export const RequirementStatusSchema = z.enum(['exists', 'partial', 'absent', 'unknown']);
 
 /**
+ * Someone actually working on an open requirement — the router half of the
+ * product. Detecting a problem and leaving a reader at it is only half a job.
+ *
+ * RESEARCHED, not inferred. The first attempt matched requirements against
+ * Humanity factors already ingested and matched nothing at all, because the
+ * factor set records what is happening TO the world rather than who is working
+ * on what. So these are retrieved on their own terms.
+ *
+ * `sourceUrl` and `quote` are required, unlike almost everywhere else in this
+ * schema, and that asymmetry is deliberate: "name organisations working on X" is
+ * the easiest prompt here to answer fluently and wrongly, and a reader may
+ * FOLLOW one of these — donate, apply, cite. An unsourced list of plausible
+ * names is worse than an empty section.
+ *
+ * Unranked on purpose. Reporting who is working on something is journalism;
+ * ordering them by promise is an opinion this system has no basis for.
+ */
+export const CounterEffortSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1),
+  description: z.string().min(1),
+  /**
+   * How far along, in the source's words — research, pilot, deploying,
+   * operating, unclear. Free text rather than an enum: maturity vocabulary
+   * differs between a policy campaign and a hardware programme, and one ladder
+   * for both would mean inventing the rungs.
+   */
+  stage: z.string().optional(),
+  sourceUrl: z.string().url(),
+  publisher: z.string().optional(),
+  quote: z.string().min(1),
+});
+
+/**
  * One link in the chain of what it would take to reverse a crossed threshold.
  *
  * Flat at the wire — `parentId` reconstructs the tree client-side — because the
@@ -187,6 +221,15 @@ export const RequirementSchema = z.object({
       }),
     )
     .default([]),
+  /**
+   * Researched counter-efforts: who is working on this, each with the source
+   * that says so. Distinct from `efforts` above, which is only a semantic
+   * neighbour among already-tracked factors — these were gone and found.
+   *
+   * An empty array on an open requirement is a real finding, not a rendering
+   * gap: nobody the retrieval could reach is working on this.
+   */
+  counterEfforts: z.array(CounterEffortSchema).default([]),
 });
 
 export const TippingPointSchema = z.object({

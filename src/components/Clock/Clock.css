@@ -449,29 +449,89 @@
   border-bottom-color: var(--tc-accent);
 }
 
-/* The routing surface — related work, tinted Humanity because that is what it
-   is. Deliberately understated: these are semantic matches, and styling them
-   as answers would claim more than a similarity score supports. */
-.tc-req-efforts {
-  margin-top: 5px;
-  padding: 5px 8px;
+/* THE ROUTING SURFACE. Researched counter-efforts, tinted Humanity because that
+   is exactly what they are, and given the most visual weight in the tree: a
+   reader who has followed a crossed threshold down to an open requirement is
+   the reader most in need of somewhere to go, and this is the answer. Everything
+   else in this panel explains a problem; only this points out of it. */
+.tc-req-counter {
+  margin-top: 6px;
+  padding: 6px 9px;
   border-left: 2px solid var(--tc-humanity);
-  background: rgba(74, 155, 230, 0.07);
+  background: rgba(74, 155, 230, 0.1);
 }
-.tc-req-efforts-head {
+.tc-req-counter-head {
   font-size: 9.5px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--tc-humanity);
 }
+.tc-req-counter-list {
+  /* No bullets or numbers. A numbered list reads as a ranking, and this system
+     has no basis for judging which effort is most promising. */
+  margin: 5px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.tc-req-counter-item + .tc-req-counter-item {
+  margin-top: 7px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(74, 155, 230, 0.16);
+}
+.tc-req-counter-name {
+  color: var(--tc-humanity);
+  text-decoration: none;
+  font-weight: 600;
+  border-bottom: 1px solid transparent;
+}
+.tc-req-counter-name:hover {
+  border-bottom-color: var(--tc-humanity);
+}
+/* Stage, verbatim from the source. Styled as a neutral tag rather than a
+   progress indicator — "pilot" is a fact about the effort, not a score. */
+.tc-req-counter-stage {
+  margin-left: 6px;
+  padding: 1px 5px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tc-text-dim);
+  border: 1px solid var(--tc-hairline);
+  border-radius: 2px;
+}
+.tc-req-counter-desc {
+  margin: 3px 0 0;
+  font-size: 11px;
+  color: var(--tc-text-dim);
+}
+.tc-req-counter-src {
+  font-size: 9.5px;
+  color: var(--tc-text-faint);
+}
+
+/* Secondary: semantic neighbours among factors already tracked. Understated
+   relative to the researched efforts above, because a similarity score supports
+   "related reading" and not "here is who is doing it". */
+.tc-req-efforts {
+  margin-top: 5px;
+  padding-left: 9px;
+  border-left: 1px solid var(--tc-hairline);
+}
+.tc-req-efforts-head {
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--tc-text-faint);
+}
 .tc-req-efforts-list {
   margin: 3px 0 0;
   padding-left: 14px;
+  font-size: 11px;
   color: var(--tc-text-dim);
 }
 
-/* A requirement nothing tracked addresses. Shown, not hidden: it is a gap in
-   what the tracker knows about, which is exactly the kind of thing a reader
+/* An open requirement the retrieval found nobody for. Shown, not hidden: we
+   went looking and came back empty, which is exactly the kind of thing a reader
    looking for where to help should be able to find. */
 .tc-req-untracked {
   margin: 4px 0 0;

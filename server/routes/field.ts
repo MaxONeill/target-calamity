@@ -160,6 +160,31 @@ interface RequirementRow {
   reasoning: string | null;
   /** Aggregated in the query; `[]` when nothing tracked addresses this. */
   efforts: { factorId: string; name: string; distance: number }[];
+  /** Aggregated in the query; `[]` when nobody researched turned up. */
+  counter_efforts: {
+    id: string;
+    name: string;
+    description: string;
+    stage: string | null;
+    sourceUrl: string;
+    publisher: string | null;
+    quote: string;
+  }[];
+}
+
+/** Strip the SQL nulls the aggregate carries, per the read-path rule. */
+function toCounterEfforts(
+  rows: RequirementRow['counter_efforts'],
+): FieldResponse['requirements'][number]['counterEfforts'] {
+  return rows.map((c) => ({
+    id: c.id,
+    name: c.name,
+    description: c.description,
+    sourceUrl: c.sourceUrl,
+    quote: c.quote,
+    ...(c.stage !== null ? { stage: c.stage } : {}),
+    ...(c.publisher !== null ? { publisher: c.publisher } : {}),
+  }));
 }
 
 /**
@@ -171,25 +196,41 @@ interface RequirementRow {
  * it could drift. The set is small â€” a handful of nodes per crossed threshold.
  */
 async function requirementsDb(db: Database): Promise<FieldResponse['requirements']> {
+  // Both effort sets arrive as correlated scalar subqueries rather than joins.
+  // Two LEFT JOINs against two one-to-many tables would cross-multiply — three
+  // researched efforts and two tracked matches yield six rows, and every
+  // aggregate over them silently sextuples. COALESCE to an empty array so a
+  // requirement nothing addresses survives the read path as a real finding
+  // rather than a row of nulls.
   const { rows } = await sql<RequirementRow>`
     SELECT r.id, r.factor_id, r.parent_id, r.statement, r.status, r.depth,
            r.source_url, r.publisher, r.quote, r.reasoning,
-           -- Counter-efforts inline, closest first. json_agg with a FILTER so a
-           -- requirement nothing addresses yields an empty array rather than a
-           -- row of nulls — an untracked requirement is a real finding and has
-           -- to survive the read path intact.
-           COALESCE(
-             json_agg(
-               json_build_object('factorId', ef.id, 'name', ef.name, 'distance', e.distance)
-               ORDER BY e.distance
-             ) FILTER (WHERE ef.id IS NOT NULL),
-             '[]'::json
-           ) AS efforts
+           COALESCE((
+             SELECT json_agg(
+                      json_build_object('factorId', ef.id, 'name', ef.name, 'distance', e.distance)
+                      ORDER BY e.distance
+                    )
+               FROM requirement_efforts e
+               JOIN factors ef ON ef.id = e.factor_id
+              WHERE e.requirement_id = r.id
+           ), '[]'::json) AS efforts,
+           COALESCE((
+             SELECT json_agg(
+                      json_build_object(
+                        'id', c.id, 'name', c.name, 'description', c.description,
+                        'stage', c.stage, 'sourceUrl', c.source_url,
+                        'publisher', c.publisher, 'quote', c.quote
+                      )
+                      -- Insertion order, which is the order the model returned
+                      -- them in. Not a ranking, and nothing here should imply
+                      -- one: this system has no basis for judging which effort
+                      -- is most promising.
+                      ORDER BY c.created_at, c.id
+                    )
+               FROM counter_efforts c
+              WHERE c.requirement_id = r.id
+           ), '[]'::json) AS counter_efforts
       FROM requirements r
-      LEFT JOIN requirement_efforts e ON e.requirement_id = r.id
-      LEFT JOIN factors ef ON ef.id = e.factor_id
-     GROUP BY r.id, r.factor_id, r.parent_id, r.statement, r.status, r.depth,
-              r.source_url, r.publisher, r.quote, r.reasoning
      ORDER BY r.factor_id, r.depth, r.id
   `.execute(db);
 
@@ -201,6 +242,7 @@ async function requirementsDb(db: Database): Promise<FieldResponse['requirements
     status: r.status as FieldResponse['requirements'][number]['status'],
     depth: r.depth,
     efforts: r.efforts,
+    counterEfforts: toCounterEfforts(r.counter_efforts),
     // SQL nulls stripped rather than passed through: the schemas are
     // `.optional()` and never `.nullable()`, per the project's read-path rule.
     ...(r.source_url !== null ? { sourceUrl: r.source_url } : {}),
