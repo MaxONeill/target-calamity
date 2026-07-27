@@ -172,6 +172,61 @@ const DEFAULT_TOPICS: readonly string[] = [
   'recent milestones in energy efficiency and industrial decarbonization', // H
 ];
 
+/**
+ * The WHERE axis, rotated independently of the topic list.
+ *
+ * Every topic above is phrased globally, and the corpus showed exactly that: 86
+ * of 91 verified factors were placeless "global", with three in the US, one in
+ * China, one in Syria, and only a third carrying coordinates at all. Asking
+ * "newest data on biodiversity loss" gets a worldwide aggregate every time,
+ * because that is what the question asked for. Nothing ever asked what is
+ * happening in the Sahel.
+ *
+ * That is a real gap twice over. The product's centrepiece is a globe, and a
+ * globe with five pins is showing an absence of research rather than an absence
+ * of events. And a corpus of only worldwide averages cannot see a regional
+ * collapse until it is large enough to move a global number — by which point it
+ * is not news.
+ *
+ * ELEVEN regions, deliberately a prime: the topic window advances by the batch
+ * size each cycle and the region by one, so a prime length that shares no factor
+ * with the topic count walks the whole (topic × region) matrix instead of
+ * pairing the same topic with the same region forever.
+ *
+ * Chosen for where people and ecosystems are, not for landmass. Ocean basins are
+ * included because `ocean` is one of the causal domains and a basin is where its
+ * thresholds actually live.
+ */
+export const REGIONS: readonly string[] = [
+  'Sub-Saharan Africa',
+  'the Sahel and North Africa',
+  'South Asia',
+  'Southeast Asia and the Pacific islands',
+  'East Asia',
+  'the Middle East',
+  'Latin America and the Caribbean',
+  'the Amazon basin',
+  'Europe',
+  'North America',
+  'the Arctic and the Southern Ocean',
+];
+
+/**
+ * Alternate global and regional framings of the same topic list.
+ *
+ * Kept at half and not more: the planetary aggregates are what the Clock anchors
+ * on — a tipping point is a property of an Earth system, not of a country — so a
+ * corpus tilted entirely regional would be richer on the globe and poorer at the
+ * thing the countdown is computed from.
+ */
+let regionCursor = 0;
+function withRegion(topic: string): string {
+  const scoped = regionCursor % 2 === 1;
+  const region = REGIONS[Math.floor(regionCursor / 2) % REGIONS.length]!;
+  regionCursor += 1;
+  return scoped ? `${topic} — specifically in ${region}` : topic;
+}
+
 const DEFAULT_INTERVAL_HOURS = 6;
 const DEFAULT_BATCH_TOPICS = 3;
 const DEFAULT_MAX_CANDIDATES = 6;
@@ -217,9 +272,15 @@ function topicsFromEnv(env: NodeJS.ProcessEnv): string[] {
  */
 function sweepsForCycle(env: NodeJS.ProcessEnv, newsBatch: string[]): Sweep[] {
   const maxCandidates = positiveIntEnv(env.INGEST_MAX_CANDIDATES, DEFAULT_MAX_CANDIDATES);
-  const news: Sweep[] = newsBatch.map((topic) => ({ topic, maxCandidates }));
 
-  if (env.INGEST_TOPICS?.trim()) return news;
+  // An operator-supplied topic list is taken EXACTLY as written — no region is
+  // appended. Someone who names their own topic is asking a specific question,
+  // and silently rewriting it would make the setting a lie.
+  if (env.INGEST_TOPICS?.trim()) {
+    return newsBatch.map((topic) => ({ topic, maxCandidates }));
+  }
+
+  const news: Sweep[] = newsBatch.map((topic) => ({ topic: withRegion(topic), maxCandidates }));
 
   const assessmentMax = positiveIntEnv(
     env.INGEST_ASSESSMENT_MAX_CANDIDATES,

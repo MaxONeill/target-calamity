@@ -100,6 +100,26 @@ const OutcomeSchema = z.object({
   scale: z.enum(['planetary', 'continental', 'national', 'subnational', 'site']),
   /** The year the result was measured. */
   year: z.number().nullable(),
+  /**
+   * Where it happened, when the source names somewhere.
+   *
+   * An earlier version hardcoded every outcome to placeless "global", which put
+   * "70% reduction in deforestation in Gunung Palung National Park" on the globe
+   * as nowhere at all. Most outcomes ARE somewhere — that is what makes them
+   * measurable — and a tracker whose centrepiece is a globe should show them
+   * there.
+   *
+   * Null when the result is genuinely worldwide (doses delivered across 90
+   * countries) or the source names no place. Never guessed: a pin in the wrong
+   * country is a claim the source did not make.
+   */
+  lat: z.number().nullable(),
+  lon: z.number().nullable(),
+  /**
+   * Lower-case ISO-3166 alpha-2 for the country, or null when worldwide.
+   * Becomes the `global.<cc>` ltree path the feed and viewport filter key on.
+   */
+  countryCode: z.string().nullable(),
   /** The sentence stating the measured result, verbatim. */
   quote: z.string(),
   sourceIndex: z.number(),
@@ -116,7 +136,15 @@ const OUTCOME_SYSTEM =
   'organisation received. Money committed is an input, not a result, and an ' +
   "award is somebody else's opinion of the work rather than a measurement of " +
   'it. A report merely being published is not an outcome either — the numbers ' +
-  'inside it might be. ' +
+  "inside it might be. Nor is a COUNT OF THE ORGANISATION'S OWN ACTIVITY: " +
+  '"three reviews completed", "twelve workshops held", "five reports issued" ' +
+  'are things they did, not changes in the world, and one of those slipped ' +
+  'through as an achievement. Ask what CHANGED, and for whom. ' +
+  'lat, lon and countryCode locate the result when the source names a place — ' +
+  'a park, a district, a country. Use null for all three when the outcome is ' +
+  'genuinely worldwide or no place is stated, and NEVER guess coordinates: a pin ' +
+  'in the wrong country is a claim the source did not make. countryCode is ' +
+  'lower-case ISO-3166 alpha-2. ' +
   'This matters more than usual. What you return becomes a factor that moves a ' +
   'public countdown, so an ambition scored as an achievement puts an unearned ' +
   'positive force into it. found=false is the common and correct answer — most ' +
@@ -284,7 +312,22 @@ export async function researchOutcomes(
         // means a mis-typed value cannot quietly reintroduce it.
         const [lo, hi] = SIGNIFICANCE_BANDS[out.scale];
         const significance = Math.max(lo, Math.min(hi, out.significance));
-        const domains = classifyDomains(out.name, out.description, 'global');
+        // Location, validated rather than trusted. A two-letter code becomes an
+        // ltree label; anything else is treated as absent, because a malformed
+        // path is a query error and a wrong one is a pin the source never placed.
+        const cc = out.countryCode?.trim().toLowerCase() ?? '';
+        const spatialPath = /^[a-z]{2}$/.test(cc) ? `global.${cc}` : 'global';
+        // Coordinates travel TOGETHER or not at all — the schema requires both
+        // or neither, and half a coordinate would place a pin on the equator.
+        const hasCoords =
+          out.lat !== null &&
+          out.lon !== null &&
+          Math.abs(out.lat) <= 90 &&
+          Math.abs(out.lon) <= 180;
+        const lat = hasCoords ? out.lat : null;
+        const lon = hasCoords ? out.lon : null;
+
+        const domains = classifyDomains(out.name, out.description, spatialPath);
         const [vector] = await embeddings.embed([`${out.name}: ${out.description}`]);
 
         // ONE TRANSACTION. The factor, its citation and its link are a single
@@ -299,9 +342,9 @@ export async function researchOutcomes(
             INSERT INTO factors
               (spatial_path, name, description, effect, significance, lat, lon,
                verification_state, domains, embedding, reputability_score, reputability_reasoning)
-            VALUES ('global', ${out.name.trim().slice(0, 300)},
+            VALUES (${spatialPath}::ltree, ${out.name.trim().slice(0, 300)},
                     ${out.description.trim().slice(0, 2000)},
-                    ${effect}, ${significance}, NULL, NULL,
+                    ${effect}, ${significance}, ${lat}, ${lon},
                     'verified', ${domains}::text[],
                     ${vector ? `[${vector.join(',')}]` : null}::halfvec,
                     ${score.score}, ${score.reasoning})
