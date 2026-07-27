@@ -180,7 +180,7 @@ export function createLandMask(options: LandMaskOptions = {}): LandMask {
     sampleLand(latDeg: number, lonDeg: number): number {
       if (!image) return 0;
       // Wrap lon into [-180, 180), clamp lat, then nearest-texel lookup.
-      let lon = ((((lonDeg + 180) % 360) + 360) % 360) - 180;
+      const lon = ((((lonDeg + 180) % 360) + 360) % 360) - 180;
       const lat = latDeg > 90 ? 90 : latDeg < -90 ? -90 : latDeg;
       const x = Math.min(width - 1, Math.max(0, Math.floor(((lon + 180) / 360) * width)));
       const y = Math.min(height - 1, Math.max(0, Math.floor(((90 - lat) / 180) * height)));

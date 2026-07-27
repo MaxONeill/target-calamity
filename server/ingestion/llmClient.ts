@@ -163,12 +163,18 @@ export async function structuredCompletion<T>(
       },
       { role: 'user', content: args.user },
     ],
+    // The OpenAI SDK's types describe OpenAI's narrower variant of this field;
+    // Fireworks accepts the same envelope with a plain schema object.
+    //
+    // The assertion is a deliberate escape from a third-party type that does not
+    // describe this provider — not the object-literal cast the rule guards
+    // against (one that silently drops fields under exactOptionalPropertyTypes).
+    // Nothing is omitted here: the envelope is built whole, immediately below.
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     response_format: {
       // Fireworks' JSON-schema constrained decoding (docs.fireworks.ai).
       type: 'json_schema',
       json_schema: { name: args.schemaName, schema },
-      // The OpenAI SDK's types describe OpenAI's narrower variant of this field;
-      // Fireworks accepts the same envelope with a plain schema object.
     } as never,
   });
 

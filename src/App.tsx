@@ -111,9 +111,16 @@ export function App(): JSX.Element {
     onInterrupt: useCallback(() => {}, []),
   });
 
+  // `void`: reloadField swallows and logs its own fetch failures, so the stream
+  // callback stays synchronous. Wrapped in useCallback rather than inlined so the
+  // identity is stable and the SSE subscription is not torn down each render.
+  const onFieldInvalidated = useCallback(() => {
+    void reloadField();
+  }, [reloadField]);
+
   const streamStatus = useFactorStream({
     onFactorChanged: feed.patchFactor,
-    onFieldInvalidated: reloadField,
+    onFieldInvalidated,
   });
 
   // The full record for the selected factor: the feed row when it is loaded,

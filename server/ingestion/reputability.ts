@@ -58,6 +58,41 @@ export interface ReputabilityScore {
   /** Human-readable justification — stored/logged for auditability. */
   reasoning: string;
   provenance: ScoreProvenance;
+  /**
+   * The two axes behind {@link score}, exposed so a caller can gate on them
+   * SEPARATELY rather than re-deriving them by parsing `reasoning`.
+   *
+   * Needed because the axes mean different things to different callers. Factor
+   * ingestion asks "is this claim about the world true?", where publisher
+   * primacy is decisive. The counter-efforts pass asks "does this organisation
+   * exist and do this work?", where the organisation's own site is a PRIMARY
+   * source and the credibility axis penalises it for being self-published. The
+   * support axis — does the quote actually name them — remains the guard that
+   * matters there, and must not be relaxed with it.
+   */
+  credibility: number;
+  support: number;
+}
+
+/**
+ * Gate for the counter-efforts pass, deliberately not {@link REPUTABILITY_VERIFY_THRESHOLD}.
+ *
+ * Support is held HIGHER than the combined gate's floor, not lower: it is the
+ * anti-fabrication guard, and an invented organisation is the worst output this
+ * system can produce because a reader may act on it. What is relaxed is only the
+ * expectation of publisher primacy, which is measuring the wrong thing here —
+ * `globalfundcoralreefs.org` scored 0.68 on a real federal body (the U.S. Coral
+ * Reef Task Force) and lost it by 0.02, while the same organisations sit happily
+ * on neighbouring factors that happened to draw luckier URLs.
+ *
+ * A domain that fails BOTH axes is still refused: facebook.com at 0.15 stays out.
+ */
+export const EFFORT_SUPPORT_MIN = 0.55;
+export const EFFORT_CREDIBILITY_MIN = 0.45;
+
+/** Does this score admit an effort? Both axes, judged on their own terms. */
+export function admitsEffort(score: ReputabilityScore): boolean {
+  return score.support >= EFFORT_SUPPORT_MIN && score.credibility >= EFFORT_CREDIBILITY_MIN;
 }
 
 export interface ReputabilityOptions {
@@ -264,6 +299,13 @@ export function scoreSourceOffline(input: SourceToScore): ReputabilityScore {
     score: clamp01(score),
     reasoning: `[offline heuristic] ${why}`,
     provenance: 'offline-stub',
+    // The heuristic judges the DOMAIN only; it never reads the quote. Reporting
+    // the same number on both axes would let an effort clear the support gate on
+    // evidence the stub never looked at, so support is reported as 0 — the stub
+    // cannot admit an effort, which is the honest behaviour for a scorer that
+    // has not read anything.
+    credibility: clamp01(score),
+    support: 0,
   };
 }
 
@@ -319,6 +361,8 @@ export async function scoreSource(
     const support = clamp01(out.claimSupport);
     return {
       score: clamp01(combineScores(credibility, support)),
+      credibility,
+      support,
       // Both axes go into the persisted audit trail: "0.62" is not reviewable,
       // "credible publisher, weak quote" is — and it names which half to fix.
       reasoning:

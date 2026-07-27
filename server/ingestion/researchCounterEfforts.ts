@@ -77,7 +77,7 @@ import {
   ingestModel,
   structuredCompletion,
 } from './llmClient.js';
-import { scoreSource, REPUTABILITY_VERIFY_THRESHOLD } from './reputability.js';
+import { scoreSource, admitsEffort } from './reputability.js';
 import { renderSourceBlocks } from './websearch.js';
 
 /**
@@ -310,6 +310,51 @@ async function insertEffort(
   return rows.length > 0;
 }
 
+/**
+ * Persist a candidate and its two axes, whether or not it was admitted.
+ *
+ * Best-effort: a bookkeeping failure must never cost an effort that passed the
+ * gate, so this logs and returns rather than propagating.
+ */
+async function recordCandidate(
+  db: Database,
+  target: Target,
+  c: {
+    name: string;
+    description: string;
+    stage: string;
+    sourceUrl: string;
+    publisher: string;
+    quote: string;
+    credibility: number;
+    support: number;
+    admitted: boolean;
+  },
+  logger: Pick<Console, 'warn'> = console,
+): Promise<void> {
+  const requirementId = target.kind === 'requirement' ? target.id : null;
+  const factorId = target.kind === 'factor' ? target.id : null;
+  try {
+    await sql`
+    INSERT INTO counter_effort_candidates
+      (requirement_id, factor_id, name, description, stage, source_url, publisher,
+       quote, credibility, support, admitted)
+    VALUES (${requirementId}::uuid, ${factorId}::uuid, ${c.name}, ${c.description},
+            ${c.stage}, ${c.sourceUrl}, ${c.publisher}, ${c.quote},
+            ${c.credibility}, ${c.support}, ${c.admitted})
+    ON CONFLICT (COALESCE(requirement_id, '00000000-0000-0000-0000-000000000000'::uuid),
+                 COALESCE(factor_id, '00000000-0000-0000-0000-000000000000'::uuid),
+                 lower(name))
+    DO UPDATE SET credibility = EXCLUDED.credibility,
+                  support     = EXCLUDED.support,
+                  admitted    = EXCLUDED.admitted,
+                  seen_at     = NOW()
+  `.execute(db);
+  } catch (err) {
+    logger.warn(`[counter] candidate bookkeeping failed: ${(err as Error).message}`);
+  }
+}
+
 async function clearEfforts(db: Database, target: Target): Promise<void> {
   if (target.kind === 'requirement') {
     await sql`DELETE FROM counter_efforts WHERE requirement_id = ${target.id}::uuid`.execute(db);
@@ -428,9 +473,30 @@ export async function researchCounterEfforts(
             claim: effortClaim(e.name, r.subject, r.stance),
             quoteSnippet: e.quote,
           });
-          if (score.score < REPUTABILITY_VERIFY_THRESHOLD) {
+          const admitted = admitsEffort(score);
+
+          // Every candidate is persisted, admitted or not, WITH its two axes.
+          // Re-crawling to revisit a threshold decision is the expensive part of
+          // this pipeline, and a log line cannot be replayed — it carries no URL,
+          // no quote and a truncated name, so rebuilding a row from one would
+          // mean inventing the very fields that make an effort citable. Storing
+          // the candidate makes a future threshold change a SQL update.
+          await recordCandidate(db, r, {
+            name: e.name.trim().slice(0, 200),
+            description: e.description.trim().slice(0, 1000),
+            stage: e.stage.trim().slice(0, 60),
+            sourceUrl: doc.url,
+            publisher,
+            quote: e.quote.trim().slice(0, 2000),
+            credibility: score.credibility,
+            support: score.support,
+            admitted,
+          });
+
+          if (!admitted) {
             logger.warn(
-              `[counter] rejected ${publisher} (${score.score.toFixed(2)}) for "${e.name.slice(0, 40)}"`,
+              `[counter] rejected ${publisher} (cred ${score.credibility.toFixed(2)} · ` +
+                `sup ${score.support.toFixed(2)}) for "${e.name.slice(0, 40)}"`,
             );
             continue;
           }

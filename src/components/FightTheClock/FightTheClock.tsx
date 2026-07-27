@@ -95,6 +95,9 @@ export function FightTheClock(): JSX.Element {
 
     return () => {
       body.style.overflow = previousOverflow;
+      // Read at CLEANUP time on purpose — focus should return to the trigger as
+      // it exists when the panel closes, not to the node captured on open.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       (triggerRef.current ?? previouslyFocused)?.focus();
     };
   }, [open]);
@@ -210,7 +213,10 @@ export function FightTheClock(): JSX.Element {
                     aria-label="Shareable link"
                     onFocus={(e) => e.currentTarget.select()}
                   />
-                  <button type="button" className="tc-fight__copy" onClick={onCopy}>
+                  {/* `void`: onCopy handles its own failure (it falls back to
+                      selecting the field), so the promise is intentionally not
+                      awaited here. Same pattern as onNativeShare. */}
+                  <button type="button" className="tc-fight__copy" onClick={() => void onCopy()}>
                     {copied ? 'Copied' : 'Copy'}
                   </button>
                 </div>

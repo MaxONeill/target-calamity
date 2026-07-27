@@ -9,6 +9,8 @@ npm install
 npm run dev            # Vite client on :5173, proxies /api → :3001 (no CORS surface)
 npm run server         # Fastify API on :3001 (tsx watch)
 npm run typecheck      # tsc --noEmit — the strict gate, run before claiming done
+npm run lint           # eslint . — hazards tsc cannot see; run with typecheck
+npm run lint:fix       # eslint . --fix
 npm run build          # typecheck + vite production build
 npm test               # vitest run (fully offline; never makes a live provider call)
 npx vitest run src/lib/geo.test.ts          # a single suite
@@ -18,8 +20,17 @@ npm run db:migrate     # apply db/migrations/*.sql via the schema_migrations led
 npm run ingest:once    # one bounded ingestion cycle, then exit
 ```
 
-There is no linter and no vitest config file — vitest picks up `**/*.test.ts`
-and `tsconfig.json` supplies `vitest/globals`.
+There is no vitest config file — vitest picks up `**/*.test.ts` and
+`tsconfig.json` supplies `vitest/globals`.
+
+ESLint is scoped to what `tsc` cannot see, and carries NO formatting rules
+(no Prettier): reformatting the tree would bury real history in whitespace.
+Its rules encode incidents this repo actually had — object-literal assertions
+that silently drop fields under `exactOptionalPropertyTypes`, and floating
+promises in ingestion scripts, where an unawaited write looks exactly like
+"the model found nothing" after the retrieval was already paid for. Where a
+rule is knowingly violated the line carries a disable comment WITH the reason;
+add the reason, never just the disable.
 
 `npm run ingest:once` with no credentials runs a fully offline cycle against an
 in-memory repository and exits 0, which makes it a good end-to-end smoke test

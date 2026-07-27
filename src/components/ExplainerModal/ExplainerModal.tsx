@@ -63,6 +63,11 @@ export function ExplainerModal({ onOpenChange }: ExplainerModalProps): JSX.Eleme
     return () => {
       body.style.overflow = previousOverflow;
       // Prefer the trigger; fall back to whatever had focus before opening.
+      // Read at CLEANUP time on purpose — the point is to focus the trigger as
+      // it exists when the modal closes. Copying it in at effect time (what the
+      // lint rule suggests) would capture the node from open time and focus a
+      // detached element if the trigger re-rendered while the modal was up.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       (triggerRef.current ?? previouslyFocused)?.focus();
     };
   }, [open]);

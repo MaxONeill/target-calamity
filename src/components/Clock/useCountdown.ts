@@ -21,6 +21,11 @@ export interface Countdown {
  * toward an invented instant.
  */
 export function useCountdown(model: ClockModel): Countdown {
+  // Keyed on targetYear, NOT on `model`. `deriveClock` returns a fresh object
+  // every render, so depending on the whole model would recompute the deadline
+  // and retrigger the effect below on every tick — tearing down and rearming the
+  // interval once a second. The deadline is a function of targetYear alone.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const deadlineMs = useMemo(() => targetDeadlineMs(model), [model.targetYear]);
   const [nowMs, setNowMs] = useState(() => Date.now());
 
