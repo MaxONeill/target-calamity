@@ -32,6 +32,7 @@ import { pathToFileURL } from 'node:url';
 import { sql } from 'kysely';
 import * as z from 'zod/v4';
 import { createDatabase, type Database } from '../db.js';
+import { notifyFieldChanged } from './notifyFieldChanged.js';
 import {
   getLlmClient,
   hasLiveCredentials,
@@ -202,6 +203,9 @@ export async function backfillSignificance(
     await Promise.all(Array.from({ length: CONCURRENCY }, worker));
 
     logger.info(`[significance] done — ${done} scored, ${moved} moved by ≥${MIN_DELTA}.`);
+    // Open clients fetched the field once; without this they keep rendering
+    // the values this run replaced.
+    await notifyFieldChanged(db);
   } finally {
     await pool.end();
   }
@@ -216,4 +220,5 @@ if (invokedDirectly) {
     process.exitCode = 1;
   });
 }
+
 

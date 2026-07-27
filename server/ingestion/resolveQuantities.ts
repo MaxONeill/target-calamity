@@ -1,8 +1,8 @@
-/**
+﻿/**
  * Resolve each quantity-stated threshold to the projection that dates it.
  *
  * Quantity identity is a semantic problem, and the data proves it: four
- * thresholds produced four different strings for one or two quantities —
+ * thresholds produced four different strings for one or two quantities â€”
  * "global warming", "global mean temperature increase", "global mean
  * temperature increase above pre-industrial". Exact matching cannot join those,
  * so four near-duplicate curves were fetched where one would do, and a
@@ -31,6 +31,7 @@ import { realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { sql } from 'kysely';
 import { createDatabase, type Database } from '../db.js';
+import { notifyFieldChanged } from './notifyFieldChanged.js';
 import { createEmbeddingClient } from './embeddings.js';
 import { hasLiveCredentials } from './llmClient.js';
 
@@ -107,12 +108,12 @@ export async function resolveQuantities(
 ): Promise<void> {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl || databaseUrl.trim() === '') {
-    logger.warn('[resolve] no DATABASE_URL — nothing to do, exiting.');
+    logger.warn('[resolve] no DATABASE_URL â€” nothing to do, exiting.');
     return;
   }
   if (!hasLiveCredentials()) {
     logger.warn(
-      '[resolve] no FIREWORKS_API_KEY — the stub embedding client is non-semantic, ' +
+      '[resolve] no FIREWORKS_API_KEY â€” the stub embedding client is non-semantic, ' +
         'so matching on it would pair unrelated quantities. Exiting; thresholds ' +
         'fall back to exact string matching.',
     );
@@ -140,10 +141,10 @@ export async function resolveQuantities(
       for (const t of thresholds) {
         logger.info(
           `[resolve]   ${t.projection_id ? 'resolved' : 'UNRESOLVED'}  ` +
-            `${t.quantity} (${t.unit})${t.baseline ? ` vs ${t.baseline}` : ''} · ${t.name.slice(0, 40)}`,
+            `${t.quantity} (${t.unit})${t.baseline ? ` vs ${t.baseline}` : ''} Â· ${t.name.slice(0, 40)}`,
         );
       }
-      logger.info('[resolve] dry run — no calls, no writes.');
+      logger.info('[resolve] dry run â€” no calls, no writes.');
       return;
     }
 
@@ -172,7 +173,7 @@ export async function resolveQuantities(
       const byId = new Map(projections.map((p) => [p.id, p]));
 
       // Semantic proximity proposes; unit and baseline dispose. Embeddings will
-      // happily rate two baselines identical — they read as the same sentence —
+      // happily rate two baselines identical â€” they read as the same sentence â€”
       // which is exactly the mistake that produces a wrong year.
       const winner = candidates.find((c) => {
         if (c.distance > QUANTITY_DISTANCE_CEILING) return false;
@@ -186,7 +187,7 @@ export async function resolveQuantities(
         const nearest = candidates[0];
         logger.warn(
           `[resolve] no match for "${t.quantity}" (${t.unit})` +
-            `${t.baseline ? ` vs ${t.baseline}` : ''} — left undated` +
+            `${t.baseline ? ` vs ${t.baseline}` : ''} â€” left undated` +
             (nearest ? ` (nearest distance ${nearest.distance.toFixed(3)})` : ''),
         );
         continue;
@@ -201,12 +202,15 @@ export async function resolveQuantities(
       `.execute(db);
       matched += 1;
       logger.info(
-        `[resolve] ${t.quantity} → ${byId.get(winner.id)?.quantity} ` +
-          `(distance ${winner.distance.toFixed(3)}) · ${t.name.slice(0, 40)}`,
+        `[resolve] ${t.quantity} â†’ ${byId.get(winner.id)?.quantity} ` +
+          `(distance ${winner.distance.toFixed(3)}) Â· ${t.name.slice(0, 40)}`,
       );
     }
 
-    logger.info(`[resolve] done — ${matched} resolved, ${unmatched} left undated.`);
+    logger.info(`[resolve] done â€” ${matched} resolved, ${unmatched} left undated.`);
+    // Open clients fetched the field once; without this they keep rendering
+    // the values this run replaced.
+    await notifyFieldChanged(db);
   } finally {
     await pool.end();
   }
@@ -221,3 +225,4 @@ if (invokedDirectly) {
     process.exitCode = 1;
   });
 }
+

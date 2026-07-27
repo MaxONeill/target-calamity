@@ -24,6 +24,7 @@ import { realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { sql } from 'kysely';
 import { createDatabase, type Database } from '../db.js';
+import { notifyFieldChanged } from './notifyFieldChanged.js';
 import { scoreSource, REPUTABILITY_VERIFY_THRESHOLD } from './reputability.js';
 import { publisherFromUrl } from './firecrawlClient.js';
 import { researchProjection, type ProjectionCandidate, type QuantityRequest } from './projections.js';
@@ -163,6 +164,9 @@ export async function fetchProjections(
     }
 
     logger.info(`[projections] done â€” ${stored}/${wanted.length} stored.`);
+    // Open clients fetched the field once; without this they keep rendering
+    // the values this run replaced.
+    await notifyFieldChanged(db);
   } finally {
     await pool.end();
   }
@@ -178,4 +182,5 @@ if (invokedDirectly) {
     process.exitCode = 1;
   });
 }
+
 
