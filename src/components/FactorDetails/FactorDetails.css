@@ -166,6 +166,10 @@
   display: flex;
   align-items: baseline;
   gap: 8px;
+  /* Let the RANGE drop to its own line when the panel is narrow. Without this
+     the row cannot wrap, so the pressure lands inside the value instead and
+     "1.2 °C" splits across two lines. */
+  flex-wrap: wrap;
 }
 .tc-details__tipping-approx {
   color: var(--tc-ink-faint);
@@ -176,10 +180,19 @@
   font-weight: 600;
   letter-spacing: 0.04em;
   color: var(--tc-signal);
+  /* A quantity and its unit are one reading — "1.2" alone on a line is not a
+     threshold. Kept in CSS rather than as a non-breaking space in the JSX,
+     where an invisible character is unreviewable and the linter flags it. */
+  white-space: nowrap;
 }
 .tc-details__tipping-range {
   font-size: 11px;
   color: var(--tc-ink-dim);
+  /* On the quantity form this is descriptive prose ("global mean surface
+     temperature vs pre-industrial"), not a short "(2027–2035)". It needs to be
+     able to shrink and break, or it pushes the row wider than the panel. */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .tc-details__tipping-label {
   margin: 6px 0 0;
