@@ -32,6 +32,7 @@ const base = {
     { year: 2100, value: 2.7 },
   ],
   sourceIndex: 1,
+  quote: 'Warming reaches 2.7C by 2100 under current policies, from 1.1C in 2020.',
 };
 
 describe('normalizeProjection', () => {

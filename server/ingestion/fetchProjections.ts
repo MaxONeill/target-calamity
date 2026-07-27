@@ -27,7 +27,12 @@ import { createDatabase, type Database } from '../db.js';
 import { notifyFieldChanged } from './notifyFieldChanged.js';
 import { scoreSource, REPUTABILITY_VERIFY_THRESHOLD } from './reputability.js';
 import { publisherFromUrl } from './firecrawlClient.js';
-import { researchProjection, type ProjectionCandidate, type QuantityRequest } from './projections.js';
+import {
+  researchProjection,
+  startsInTheFuture,
+  type ProjectionCandidate,
+  type QuantityRequest,
+} from './projections.js';
 
 /** Rows: the quantity thresholds currently in the factor set. */
 interface WantedRow {
@@ -129,8 +134,8 @@ export async function fetchProjections(
 
     let stored = 0;
     for (const request of wanted) {
-      const candidate = await researchProjection(request, { logger });
-      if (!candidate) {
+      const researched = await researchProjection(request, { logger });
+      if (!researched) {
         logger.warn(`[projections] no usable curve for "${request.quantity}" â€” left undated.`);
         continue;
       }
@@ -139,27 +144,38 @@ export async function fetchProjections(
       // radius. Failing it drops the curve: an undated threshold is recoverable,
       // a wrongly-dated one is not visibly wrong at all.
       const verdict = await scoreSource({
-        url: candidate.sourceUrl,
-        publisher: publisherFromUrl(candidate.sourceUrl),
+        url: researched.candidate.sourceUrl,
+        publisher: publisherFromUrl(researched.candidate.sourceUrl),
         claim:
-          `${candidate.quantity} projected trajectory in ${candidate.unit}` +
-          (candidate.scenario ? ` under "${candidate.scenario}"` : ''),
-        quoteSnippet: candidate.sourceTitle ?? candidate.quantity,
+          `${researched.candidate.quantity} projected trajectory in ${researched.candidate.unit}` +
+          (researched.candidate.scenario ? ` under "${researched.candidate.scenario}"` : ''),
+        // The verbatim sentence from the source, not its title: the gate scores
+        // whether THIS quote supports THIS claim, and a title supports nothing.
+        quoteSnippet: researched.quote,
       });
       if (verdict.score < REPUTABILITY_VERIFY_THRESHOLD) {
         logger.warn(
-          `[projections] rejected ${candidate.sourceUrl} for "${candidate.quantity}" ` +
+          `[projections] rejected ${researched.candidate.sourceUrl} for "${researched.candidate.quantity}" ` +
             `(reputability ${verdict.score.toFixed(2)}): ${verdict.reasoning.slice(0, 120)}`,
         );
         continue;
       }
 
-      await storeProjection(db, candidate);
+      if (startsInTheFuture(researched.candidate, new Date().getFullYear())) {
+        logger.warn(
+          `[projections] "${researched.candidate.quantity}" curve begins at ` +
+            `${Math.min(...researched.candidate.points.map((p) => p.year))}, after today. It can ` +
+            `date thresholds ahead of us but NOT any already crossed, which will ` +
+            `read as "not dateable" rather than "already behind us".`,
+        );
+      }
+
+      await storeProjection(db, researched.candidate);
       stored += 1;
       logger.info(
-        `[projections] stored ${candidate.quantity} (${candidate.unit}) ` +
-          `${candidate.points.length} points Â· scenario=${candidate.scenario ?? 'unstated'} ` +
-          `Â· assumesFutureAction=${candidate.assumesFutureAction} Â· ${candidate.sourceUrl}`,
+        `[projections] stored ${researched.candidate.quantity} (${researched.candidate.unit}) ` +
+          `${researched.candidate.points.length} points Â· scenario=${researched.candidate.scenario ?? 'unstated'} ` +
+          `Â· assumesFutureAction=${researched.candidate.assumesFutureAction} Â· ${researched.candidate.sourceUrl}`,
       );
     }
 
@@ -182,5 +198,7 @@ if (invokedDirectly) {
     process.exitCode = 1;
   });
 }
+
+
 
 
