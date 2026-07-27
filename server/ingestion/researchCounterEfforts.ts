@@ -270,7 +270,7 @@ async function requirementTargets(db: Database, force: boolean): Promise<Target[
       JOIN factors f ON f.id = r.factor_id
      WHERE r.status = ANY(${sql.val(OPEN_STATUSES as unknown as string[])}::text[])
        AND (${force} OR NOT EXISTS (
-         SELECT 1 FROM counter_efforts c WHERE c.requirement_id = r.id
+         SELECT 1 FROM organisation_links l WHERE l.requirement_id = r.id
        ))
      ORDER BY r.depth, r.id
   `.execute(db);
@@ -308,7 +308,7 @@ async function factorTargets(db: Database, force: boolean): Promise<Target[]> {
      WHERE f.verification_state = 'verified'
        AND f.effect <> 0
        AND (${force} OR NOT EXISTS (
-         SELECT 1 FROM counter_efforts c WHERE c.factor_id = f.id
+         SELECT 1 FROM organisation_links l WHERE l.factor_id = f.id
        ))
      ORDER BY ABS(f.effect * f.significance) DESC, f.id
   `.execute(db);
@@ -343,15 +343,35 @@ async function insertEffort(
   },
 ): Promise<boolean> {
   const vec = effort.embedding ? `[${effort.embedding.join(',')}]` : null;
-  // Exactly one of the two scope columns is set, per the table's CHECK.
+  // Exactly one of the two scope columns is set, per the link table's CHECK.
   const requirementId = target.kind === 'requirement' ? target.id : null;
   const factorId = target.kind === 'factor' ? target.id : null;
+
+  // The organisation is an IDENTITY, upserted by name: the same body found again
+  // under another threshold must be the same row, or the panel cannot show that
+  // it works across several. The description is refreshed only when the new one
+  // says more — a terser second page should not overwrite a fuller first.
+  const { rows: orgRows } = await sql<{ id: string }>`
+    INSERT INTO organisations (name, description, stage, embedding)
+    VALUES (${effort.name}, ${effort.description}, ${effort.stage}, ${vec}::halfvec)
+    ON CONFLICT (lower(name)) DO UPDATE
+      SET description = CASE
+            WHEN length(EXCLUDED.description) > length(organisations.description)
+            THEN EXCLUDED.description ELSE organisations.description END,
+          stage     = COALESCE(organisations.stage, EXCLUDED.stage),
+          embedding = COALESCE(organisations.embedding, EXCLUDED.embedding)
+    RETURNING id
+  `.execute(db);
+  const organisationId = orgRows[0]?.id;
+  if (organisationId === undefined) return false;
+
+  // The LINK carries the provenance, because the source saying this body works
+  // on THIS threshold is a different citation from the one for another.
   const { rows } = await sql<{ id: string }>`
-    INSERT INTO counter_efforts
-      (requirement_id, factor_id, name, description, stage, source_url, publisher, quote, embedding)
-    VALUES (${requirementId}::uuid, ${factorId}::uuid,
-            ${effort.name}, ${effort.description}, ${effort.stage},
-            ${effort.sourceUrl}, ${effort.publisher}, ${effort.quote}, ${vec}::halfvec)
+    INSERT INTO organisation_links
+      (organisation_id, requirement_id, factor_id, relation, source_url, publisher, quote)
+    VALUES (${organisationId}::uuid, ${requirementId}::uuid, ${factorId}::uuid, 'addresses',
+            ${effort.sourceUrl}, ${effort.publisher}, ${effort.quote})
     ON CONFLICT DO NOTHING
     RETURNING id
   `.execute(db);
@@ -405,9 +425,11 @@ async function recordCandidate(
 
 async function clearEfforts(db: Database, target: Target): Promise<void> {
   if (target.kind === 'requirement') {
-    await sql`DELETE FROM counter_efforts WHERE requirement_id = ${target.id}::uuid`.execute(db);
+    await sql`DELETE FROM organisation_links WHERE requirement_id = ${target.id}::uuid`.execute(db);
   } else {
-    await sql`DELETE FROM counter_efforts WHERE factor_id = ${target.id}::uuid`.execute(db);
+    await sql`DELETE FROM organisation_links WHERE factor_id = ${target.id}::uuid AND relation = 'addresses'`.execute(
+      db,
+    );
   }
 }
 

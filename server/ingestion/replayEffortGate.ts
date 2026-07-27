@@ -51,10 +51,13 @@ async function candidates(db: Database): Promise<CandidateRow[]> {
     SELECT c.id, c.requirement_id, c.factor_id, c.name, c.description, c.stage,
            c.source_url, c.publisher, c.quote, c.credibility, c.support, c.admitted,
            EXISTS (
-             SELECT 1 FROM counter_efforts e
-              WHERE lower(e.name) = lower(c.name)
-                AND e.requirement_id IS NOT DISTINCT FROM c.requirement_id
-                AND e.factor_id IS NOT DISTINCT FROM c.factor_id
+             SELECT 1
+               FROM organisation_links l
+               JOIN organisations o ON o.id = l.organisation_id
+              WHERE lower(o.name) = lower(c.name)
+                AND l.relation = 'addresses'
+                AND l.requirement_id IS NOT DISTINCT FROM c.requirement_id
+                AND l.factor_id IS NOT DISTINCT FROM c.factor_id
            ) AS present
       FROM counter_effort_candidates c
      ORDER BY c.credibility DESC, c.id
@@ -103,23 +106,45 @@ export async function replayEffortGate(
             `sup ${c.support.toFixed(2)}) · ${c.publisher ?? 'source'}`,
         );
         if (!dryRun) {
-          await sql`
-            INSERT INTO counter_efforts
-              (requirement_id, factor_id, name, description, stage, source_url, publisher, quote)
-            VALUES (${c.requirement_id}::uuid, ${c.factor_id}::uuid, ${c.name}, ${c.description},
-                    ${c.stage}, ${c.source_url}, ${c.publisher}, ${c.quote})
-            ON CONFLICT DO NOTHING
+          // Upsert the identity, then the link — same two steps the research
+          // pass uses, so a promoted candidate is indistinguishable from one
+          // admitted on the day it was found.
+          const { rows: orgRows } = await sql<{ id: string }>`
+            INSERT INTO organisations (name, description, stage)
+            VALUES (${c.name}, ${c.description}, ${c.stage})
+            ON CONFLICT (lower(name)) DO UPDATE
+              SET description = CASE
+                    WHEN length(EXCLUDED.description) > length(organisations.description)
+                    THEN EXCLUDED.description ELSE organisations.description END
+            RETURNING id
           `.execute(db);
+          const orgId = orgRows[0]?.id;
+          if (orgId !== undefined) {
+            await sql`
+              INSERT INTO organisation_links
+                (organisation_id, requirement_id, factor_id, relation, source_url, publisher, quote)
+              VALUES (${orgId}::uuid, ${c.requirement_id}::uuid, ${c.factor_id}::uuid,
+                      'addresses', ${c.source_url}, ${c.publisher}, ${c.quote})
+              ON CONFLICT DO NOTHING
+            `.execute(db);
+          }
         }
       } else if (!passes && c.present) {
         retire += 1;
         logger.info(`[replay] − ${c.name.slice(0, 46)} (no longer clears the gate)`);
         if (!dryRun) {
+          // Retire the LINK, never the organisation: the same body may still
+          // legitimately address another threshold on a source that passed.
+          // An orphan organisation row is harmless; a deleted one takes its
+          // other links with it by cascade.
           await sql`
-            DELETE FROM counter_efforts
-             WHERE lower(name) = lower(${c.name})
-               AND requirement_id IS NOT DISTINCT FROM ${c.requirement_id}::uuid
-               AND factor_id IS NOT DISTINCT FROM ${c.factor_id}::uuid
+            DELETE FROM organisation_links l
+             USING organisations o
+             WHERE o.id = l.organisation_id
+               AND lower(o.name) = lower(${c.name})
+               AND l.relation = 'addresses'
+               AND l.requirement_id IS NOT DISTINCT FROM ${c.requirement_id}::uuid
+               AND l.factor_id IS NOT DISTINCT FROM ${c.factor_id}::uuid
           `.execute(db);
         }
       }

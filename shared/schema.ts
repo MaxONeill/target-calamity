@@ -160,6 +160,35 @@ export const CounterEffortSchema = z.object({
   name: z.string().min(1),
   description: z.string().min(1),
   /**
+   * How many other factors and requirements this organisation is linked to.
+   *
+   * The reason organisations have one identity rather than a row per target: a
+   * body working across several thresholds is a stronger signal than one
+   * appearing beside a single problem, and the per-target model could not
+   * express it.
+   */
+  linkCount: z.number().int().min(1).default(1),
+  /**
+   * Measured outcomes attributed to this organisation — the factors it has
+   * PRODUCED, as opposed to the problems it addresses.
+   *
+   * These are ordinary factors with a real effect and significance, so they are
+   * the channel by which an effort reaches the Clock. The organisation itself
+   * never carries a score: no source publishes how many years a programme shifts
+   * a threshold, and if mere existence moved the countdown it would measure how
+   * hard we searched rather than the state of the world.
+   */
+  outcomes: z
+    .array(
+      z.object({
+        factorId: z.string().uuid(),
+        name: z.string(),
+        effect: z.number(),
+        significance: z.number(),
+      }),
+    )
+    .default([]),
+  /**
    * How far along, in the source's words — research, pilot, deploying,
    * operating, unclear. Free text rather than an enum: maturity vocabulary
    * differs between a policy campaign and a hardware programme, and one ladder

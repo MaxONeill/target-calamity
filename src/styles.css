@@ -198,36 +198,41 @@ body {
   white-space: nowrap;
 }
 
-.tc-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 10.5px;
-  letter-spacing: 0.1em;
-  color: var(--tc-ink-dim);
-  white-space: nowrap;
-}
-.tc-status-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--tc-ink-faint);
-  box-shadow: 0 0 0 0 currentColor;
-}
-.tc-status-dot--connecting {
-  background: var(--tc-signal);
+/* The brand mark IS the stream indicator now. Same states, same palette, one
+   less thing competing for the header. */
+.tc-brand-mark--connecting {
+  color: var(--tc-signal);
   animation: tc-pulse 1.4s ease-in-out infinite;
 }
-.tc-status-dot--live {
-  background: var(--tc-live);
+.tc-brand-mark--live {
+  color: var(--tc-live);
   animation: tc-pulse 2.4s ease-in-out infinite;
 }
-.tc-status-dot--seed {
-  background: var(--tc-humanity);
+.tc-brand-mark--seed {
+  color: var(--tc-humanity);
 }
-.tc-status-dot--closed {
-  background: var(--tc-calamity);
+.tc-brand-mark--closed {
+  color: var(--tc-calamity);
   animation: tc-pulse 1s ease-in-out infinite;
+}
+
+/* Source link, right corner. Quiet by default: it is a way out to the code,
+   not a call to action competing with the Clock. */
+.tc-source-link {
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  color: var(--tc-ink-dim);
+  text-decoration: none;
+  white-space: nowrap;
+  border-bottom: 1px solid transparent;
+}
+.tc-source-link:hover {
+  color: var(--tc-ink);
+  border-bottom-color: var(--tc-hairline-strong);
+}
+.tc-source-link:focus-visible {
+  outline: 2px solid var(--tc-humanity);
+  outline-offset: 2px;
 }
 
 @keyframes tc-pulse {
@@ -240,7 +245,7 @@ body {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .tc-status-dot {
+  .tc-brand-mark {
     animation: none !important;
   }
 }
@@ -445,4 +450,20 @@ body {
     margin: 12px;
     max-width: calc(100vw - 24px);
   }
+}
+
+/* Available to assistive tech, absent from the page. A shared utility: the
+   header and the Clock both spell out state that is otherwise carried by
+   colour alone. NOT display:none, which would hide it from screen readers
+   too — the whole point is that it stays readable to them. */
+.tc-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

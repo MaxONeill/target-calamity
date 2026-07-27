@@ -400,3 +400,30 @@
   font-size: 10px;
   color: var(--tc-ink-dim);
 }
+
+/* Reach: this organisation also appears under other thresholds. Understated —
+   it is a fact about our link graph, not a claim about their importance. */
+.tc-details__effort-reach {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--tc-ink-dim);
+}
+
+/* Measured outcomes. The only part of an organisation that reaches the Clock,
+   so it is marked as achieved rather than styled like more description. */
+.tc-details__effort-outcomes {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--tc-humanity);
+}
+.tc-details__effort-outcome-mark {
+  margin-right: 5px;
+}

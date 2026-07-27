@@ -137,18 +137,37 @@ const EFFORTS_LATERAL = sql`
   LEFT JOIN LATERAL (
     SELECT json_agg(
              json_build_object(
-               'id',          ce.id,
-               'name',        ce.name,
-               'description', ce.description,
-               'stage',       ce.stage,
-               'sourceUrl',   ce.source_url,
-               'publisher',   ce.publisher,
-               'quote',       ce.quote
+               'id',          o.id,
+               'name',        o.name,
+               'description', o.description,
+               'stage',       o.stage,
+               'sourceUrl',   l.source_url,
+               'publisher',   l.publisher,
+               'quote',       l.quote,
+               -- Reach across the whole set, so the panel can say this body
+               -- also works on other thresholds. Counted over ALL its links,
+               -- not just this one.
+               'linkCount',   (SELECT count(*) FROM organisation_links l2
+                                WHERE l2.organisation_id = o.id),
+               -- What it has measurably achieved. These are real factors with a
+               -- real effect, and they are how an effort reaches the Clock.
+               'outcomes',    COALESCE((
+                 SELECT json_agg(json_build_object(
+                          'factorId', pf.id, 'name', pf.name,
+                          'effect', pf.effect, 'significance', pf.significance))
+                   FROM organisation_links pl
+                   JOIN factors pf ON pf.id = pl.factor_id
+                  WHERE pl.organisation_id = o.id AND pl.relation = 'produced'
+               ), '[]'::json)
              )
-             ORDER BY ce.created_at, ce.id
+             ORDER BY l.created_at, o.id
            ) AS efforts
-    FROM counter_efforts ce
-    WHERE ce.factor_id = f.id
+    FROM organisation_links l
+    JOIN organisations o ON o.id = l.organisation_id
+    -- Relation 'addresses' only. A factor's own outcome link would otherwise
+    -- list the organisation beneath the very achievement it produced.
+    -- (No backticks in here: this is a template literal.)
+    WHERE l.factor_id = f.id AND l.relation = 'addresses'
   ) e ON true`;
 
 /**

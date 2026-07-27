@@ -308,8 +308,34 @@ function EffortsBlock({
                   <span className="tc-cite__link-glyph"> {'↗'}</span>
                 </a>
                 {e.stage ? <span className="tc-details__effort-stage">{e.stage}</span> : null}
+                {/* Reach across the set. One organisation appearing under
+                    several thresholds is a stronger signal than one beside a
+                    single problem, and the old per-target storage could not
+                    express it at all. */}
+                {e.linkCount > 1 ? (
+                  <span className="tc-details__effort-reach">
+                    also on {e.linkCount - 1} other
+                    {e.linkCount - 1 === 1 ? '' : 's'}
+                  </span>
+                ) : null}
               </div>
               <p className="tc-details__effort-desc">{e.description}</p>
+              {/* What they have MEASURABLY achieved. These are real factors with
+                  a real effect, and they are the only channel by which an effort
+                  reaches the Clock — the organisation itself is never scored,
+                  because existence is not impact. */}
+              {e.outcomes.length > 0 ? (
+                <ul className="tc-details__effort-outcomes">
+                  {e.outcomes.map((o) => (
+                    <li key={o.factorId}>
+                      <span className="tc-details__effort-outcome-mark" aria-hidden="true">
+                        ✓
+                      </span>
+                      {o.name}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
               {e.publisher ? (
                 <span className="tc-details__effort-src">via {e.publisher}</span>
               ) : null}

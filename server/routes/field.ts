@@ -167,6 +167,8 @@ interface RequirementRow {
     sourceUrl: string;
     publisher: string | null;
     quote: string;
+    linkCount: number;
+    outcomes: { factorId: string; name: string; effect: number; significance: number }[];
   }[];
 }
 
@@ -180,6 +182,8 @@ function toCounterEfforts(
     description: c.description,
     sourceUrl: c.sourceUrl,
     quote: c.quote,
+    linkCount: c.linkCount,
+    outcomes: c.outcomes,
     ...(c.stage !== null ? { stage: c.stage } : {}),
     ...(c.publisher !== null ? { publisher: c.publisher } : {}),
   }));
@@ -215,18 +219,29 @@ async function requirementsDb(db: Database): Promise<FieldResponse['requirements
            COALESCE((
              SELECT json_agg(
                       json_build_object(
-                        'id', c.id, 'name', c.name, 'description', c.description,
-                        'stage', c.stage, 'sourceUrl', c.source_url,
-                        'publisher', c.publisher, 'quote', c.quote
+                        'id', o.id, 'name', o.name, 'description', o.description,
+                        'stage', o.stage, 'sourceUrl', l.source_url,
+                        'publisher', l.publisher, 'quote', l.quote,
+                        'linkCount', (SELECT count(*) FROM organisation_links l2
+                                       WHERE l2.organisation_id = o.id),
+                        'outcomes', COALESCE((
+                          SELECT json_agg(json_build_object(
+                                   'factorId', pf.id, 'name', pf.name,
+                                   'effect', pf.effect, 'significance', pf.significance))
+                            FROM organisation_links pl
+                            JOIN factors pf ON pf.id = pl.factor_id
+                           WHERE pl.organisation_id = o.id AND pl.relation = 'produced'
+                        ), '[]'::json)
                       )
                       -- Insertion order, which is the order the model returned
                       -- them in. Not a ranking, and nothing here should imply
                       -- one: this system has no basis for judging which effort
                       -- is most promising.
-                      ORDER BY c.created_at, c.id
+                      ORDER BY l.created_at, o.id
                     )
-               FROM counter_efforts c
-              WHERE c.requirement_id = r.id
+               FROM organisation_links l
+               JOIN organisations o ON o.id = l.organisation_id
+              WHERE l.requirement_id = r.id AND l.relation = 'addresses'
            ), '[]'::json) AS counter_efforts
       FROM requirements r
      ORDER BY r.factor_id, r.depth, r.id
