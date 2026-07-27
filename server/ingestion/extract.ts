@@ -103,6 +103,111 @@ export function truncateContent(text: string, max: number): string {
   return `${cut}\n…[truncated]`;
 }
 
+/** Share of the budget reserved for tables when the page has them. */
+const TABLE_BUDGET_SHARE = 0.6;
+
+/** A run of consecutive markdown table lines. */
+interface TableBlock {
+  start: number;
+  lines: string[];
+  chars: number;
+}
+
+/** Group consecutive pipe-leading lines into blocks. */
+function tableBlocks(lines: readonly string[]): TableBlock[] {
+  const blocks: TableBlock[] = [];
+  let current: TableBlock | null = null;
+  for (const [i, line] of lines.entries()) {
+    if (line.trimStart().startsWith('|')) {
+      if (current === null) current = { start: i, lines: [], chars: 0 };
+      current.lines.push(line);
+      current.chars += line.length + 1;
+    } else if (current !== null) {
+      blocks.push(current);
+      current = null;
+    }
+  }
+  if (current !== null) blocks.push(current);
+  return blocks;
+}
+
+/**
+ * Truncate to `max` characters while KEEPING the tables.
+ *
+ * Plain head-truncation is wrong for this project's most valuable pages. On a
+ * Wikipedia emissions page the data table begins 195,000 characters in; a 10,000
+ * character budget cuts it off entirely, and the model is handed a lead section
+ * and navigation while the numbers the page exists to publish never arrive. The
+ * result reads as "the sources do not say" — a wrong finding, not a visible
+ * failure.
+ *
+ * So when a page has tables, most of the budget goes to them and the rest to the
+ * opening prose, which is where the units, baseline and scenario are usually
+ * stated. Both elisions are marked, because a reader (human or model) must be
+ * able to tell that material was dropped rather than absent.
+ *
+ * Pages with no tables fall through to ordinary truncation.
+ */
+export function truncatePreservingTables(text: string, max: number): string {
+  if (max <= 0) return '';
+  if (text.length <= max) return text;
+
+  const lines = text.split('\n');
+  const blocks = tableBlocks(lines);
+  // A stray row or two is a notice box, not data — not worth distorting the
+  // extract to keep.
+  const dataBlocks = blocks.filter((b) => b.lines.length >= 3);
+  if (dataBlocks.length === 0) return truncateContent(text, max);
+
+  // Largest first: on a page with several tables the biggest is the series.
+  const ranked = [...dataBlocks].sort((a, b) => b.chars - a.chars);
+  const tableBudget = Math.floor(max * TABLE_BUDGET_SHARE);
+  const kept: TableBlock[] = [];
+  let used = 0;
+  for (const block of ranked) {
+    if (used + block.chars > tableBudget) continue;
+    kept.push(block);
+    used += block.chars;
+  }
+  // Nothing fits whole — keep the head of the largest rather than no table at
+  // all, since even a partial series is readable and its header carries units.
+  if (kept.length === 0 && ranked[0]) {
+    const head = ranked[0].lines.join('\n').slice(0, tableBudget);
+    kept.push({ start: ranked[0].start, lines: [`${head}\n…[table truncated]`], chars: head.length });
+    used = head.length;
+  }
+
+  // Restore document order so the tables read as they appeared on the page.
+  kept.sort((a, b) => a.start - b.start);
+
+  const SEPARATOR = '\n\n…[non-table content omitted]\n\n';
+  const TAIL = '\n…[truncated]';
+  const tableParts = kept.map((b) => b.lines.join('\n'));
+
+  // Budget the markers explicitly. Leaving them out overran `max` by the width
+  // of the separators — small, but `max` is a promise the caller sizes its token
+  // spend against, so it has to hold exactly.
+  const overhead = SEPARATOR.length * tableParts.length + TAIL.length;
+  const proseBudget = max - used - overhead;
+
+  const firstTableAt = Math.min(...kept.map((b) => b.start));
+  const prose = lines.slice(0, firstTableAt).join('\n');
+  const head =
+    proseBudget <= 0
+      ? ''
+      : prose.length > proseBudget
+        ? truncateContent(prose, proseBudget - TAIL.length)
+        : prose;
+
+  // Say plainly that this is an extract assembled around the tables, so neither
+  // a reader nor the model mistakes the join for contiguous page text.
+  const parts = head === '' ? tableParts : [head, ...tableParts];
+  const out = `${parts.join(SEPARATOR)}${TAIL}`;
+  // Belt and braces: a pathological block could still overshoot, and silently
+  // blowing a token budget is worse than a blunt cut.
+  return out.length <= max ? out : `${out.slice(0, max - TAIL.length)}${TAIL}`;
+}
+
 /**
  * Extract readable text from an HTML string. Pure — no network — so the
  * extraction contract is unit-testable offline.
@@ -125,18 +230,32 @@ function stripNoise(doc: { querySelectorAll: (s: string) => Iterable<{ remove: (
 }
 
 /**
- * Does the source carry a table with actual rows — as opposed to a one-row
- * layout table? Three is enough to distinguish a series from a header plus a
- * spacer, and low enough not to miss a short published range.
+ * Rows across the source's tables. Three or more means a real series rather
+ * than a one-row layout table.
  */
-function hasDataTable(doc: { querySelectorAll: (s: string) => ArrayLike<unknown> }): boolean {
-  return doc.querySelectorAll('table tr').length >= 3;
+function sourceTableRows(doc: { querySelectorAll: (s: string) => ArrayLike<unknown> }): number {
+  return doc.querySelectorAll('table tr').length;
 }
 
-/** Did the converted markdown keep a table? A GFM row starts with a pipe. */
-function hasMarkdownTable(md: string): boolean {
-  return /^\s*\|/m.test(md);
+/** GFM table rows in converted markdown. A row starts with a pipe. */
+export function markdownTableRows(md: string): number {
+  let n = 0;
+  for (const line of md.split('\n')) if (line.trimStart().startsWith('|')) n += 1;
+  return n;
 }
+
+/**
+ * Fraction of the source's table rows an extract must keep to count as having
+ * preserved the tables.
+ *
+ * Presence is NOT enough, which an earlier version of this got wrong: a
+ * Wikipedia emissions page has 688 source rows, and Readability's extract kept
+ * 2 — both from a "this article needs updating" notice box. A presence check saw
+ * a table, declared success, and threw away the data the page exists to publish.
+ * Comparing counts catches that; the threshold is loose because conversion
+ * legitimately drops layout tables and merges header rows.
+ */
+const TABLE_RETENTION_MIN = 0.5;
 
 export function extractText(html: string, url: string): { title: string; text: string } {
   const { document } = parseHTML(html);
@@ -157,12 +276,14 @@ export function extractText(html: string, url: string): { title: string; text: s
     if (article?.content && (article.textContent ?? '').trim().length >= MIN_USEFUL_CHARS) {
       const md = tidyText(toMarkdown.translate(article.content));
       // Readability discards tables it judges to be layout, and it misjudges
-      // data tables on sparse pages — the exact pages that exist to publish a
-      // series. When the source had a real table and the extract has none, the
-      // extraction dropped the most valuable thing on the page, so fall through
-      // to the whole-body conversion instead of accepting the loss.
-      const lostATable = hasDataTable(document) && !hasMarkdownTable(md);
-      if (md.length >= MIN_USEFUL_CHARS && !lostATable) {
+      // data tables — including the ones a page exists to publish. When the
+      // source had real rows and the extract kept few of them, extraction
+      // dropped the most valuable thing on the page, so fall through to the
+      // whole-body conversion rather than accept the loss.
+      const srcRows = sourceTableRows(document);
+      const lostTables =
+        srcRows >= 3 && markdownTableRows(md) < srcRows * TABLE_RETENTION_MIN;
+      if (md.length >= MIN_USEFUL_CHARS && !lostTables) {
         return { title: (article.title ?? title).trim() || title, text: md };
       }
     }
@@ -230,7 +351,7 @@ export async function fetchPage(
       // actually came from rather than at a shortener or a tracking wrapper.
       url: res.url || url,
       title,
-      text: truncateContent(text, opts.maxContentChars ?? DEFAULT_MAX_CONTENT_CHARS),
+      text: truncatePreservingTables(text, opts.maxContentChars ?? DEFAULT_MAX_CONTENT_CHARS),
     };
   } catch {
     return null;

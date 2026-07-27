@@ -28,6 +28,7 @@ import {
   DEFAULT_MAX_CONTENT_CHARS,
   fetchPage,
   truncateContent,
+  truncatePreservingTables,
   type FetchedPage,
 } from './extract.js';
 
@@ -155,7 +156,7 @@ function toDocument(hit: SearchHit, page: FetchedPage, maxChars: number): Retrie
     title,
     publisher: publisherFromUrl(url, title),
     description: hit.description,
-    markdown: truncateContent(page.text, maxChars),
+    markdown: truncatePreservingTables(page.text, maxChars),
   };
 }
 

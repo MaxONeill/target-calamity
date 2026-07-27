@@ -9,13 +9,20 @@ import { describe, expect, it, vi } from 'vitest';
 import { normalizeBraveResults, hasBraveCredentials } from './braveSearch.js';
 import { normalizeSerperResults, hasSerperCredentials } from './serperSearch.js';
 import { activeProvider } from './search.js';
-import { extractText, tidyText, truncateContent } from './extract.js';
+import {
+  extractText,
+  markdownTableRows,
+  tidyText,
+  truncateContent,
+  truncatePreservingTables,
+} from './extract.js';
 import {
   filterByDomain,
   hasRetrievalCredentials,
   publisherFromUrl,
   retrieveDocuments,
 } from './retrieval.js';
+import { resolveSourceDoc } from './researchCounterEfforts.js';
 
 /** A Brave body with the given results. */
 function braveBody(results: unknown[]): unknown {
@@ -225,6 +232,128 @@ describe('truncateContent', () => {
 
   it('leaves text within budget untouched', () => {
     expect(truncateContent('short', 50)).toBe('short');
+  });
+});
+
+describe('truncatePreservingTables', () => {
+  /** Prose, then a table far past any sane budget — the Wikipedia shape. */
+  function proseThenTable(proseChars: number, rows: number): string {
+    const prose = 'Background on the published series. '.repeat(
+      Math.ceil(proseChars / 36),
+    );
+    const table = [
+      '| Year | Value |',
+      '| --- | --- |',
+      ...Array.from({ length: rows }, (_, i) => `| ${2000 + i} | ${i * 1.5} |`),
+    ].join('\n');
+    return `${prose}\n\n${table}`;
+  }
+
+  it('keeps the table even when it starts far past the budget', () => {
+    // The defect this exists for: on a real page the data table began 195,000
+    // characters in, so head-truncation handed the model a lead section and
+    // navigation while the numbers never arrived.
+    const out = truncatePreservingTables(proseThenTable(50_000, 40), 4_000);
+    expect(out).toContain('| Year | Value |');
+    expect(out).toContain('| 2039 |');
+    expect(out.length).toBeLessThanOrEqual(4_000);
+  });
+
+  it('marks the join so the extract is not mistaken for contiguous page text', () => {
+    const out = truncatePreservingTables(proseThenTable(50_000, 20), 4_000);
+    expect(out).toContain('[non-table content omitted]');
+  });
+
+  it('keeps some leading prose, where units and baseline are usually stated', () => {
+    const out = truncatePreservingTables(proseThenTable(50_000, 20), 4_000);
+    expect(out).toContain('Background on the published series');
+  });
+
+  it('falls back to plain truncation when the page has no table', () => {
+    const out = truncatePreservingTables('word '.repeat(5_000), 1_000);
+    expect(out).not.toContain('[non-table content omitted]');
+    expect(out.endsWith('…[truncated]')).toBe(true);
+  });
+
+  it('ignores a two-row notice box rather than distorting the extract for it', () => {
+    const text = `| Notice | x |\n| --- | --- |\n\n${'filler text. '.repeat(2_000)}`;
+    const out = truncatePreservingTables(text, 1_000);
+    expect(out).not.toContain('[non-table content omitted]');
+  });
+
+  it('leaves text within budget untouched', () => {
+    expect(truncatePreservingTables('| a |\n| - |\n| 1 |', 5_000)).toBe('| a |\n| - |\n| 1 |');
+  });
+
+  it('never exceeds the budget — callers size their token spend against it', () => {
+    for (const max of [500, 1_000, 4_000, 9_999]) {
+      expect(truncatePreservingTables(proseThenTable(50_000, 200), max).length)
+        .toBeLessThanOrEqual(max);
+    }
+  });
+});
+
+describe('resolveSourceDoc', () => {
+  const doc = (url: string, markdown: string) => ({
+    url,
+    title: '',
+    publisher: new URL(url).hostname,
+    description: '',
+    markdown,
+  });
+  const docs = [
+    doc('https://a.org/1', 'Nothing relevant on this page at all.'),
+    doc('https://b.org/2', 'The Global Fund for Coral Reefs invests in reef resilience.'),
+    doc('https://c.org/3', 'Some other unrelated content entirely here.'),
+  ];
+  const QUOTE = 'The Global Fund for Coral Reefs invests in reef resilience.';
+
+  it('accepts the cited index when that page really contains the quote', () => {
+    expect(resolveSourceDoc(docs, 2, QUOTE)).toEqual({ doc: docs[1], how: 'index' });
+  });
+
+  it('recovers a 0-based sourceIndex by locating the quote instead of guessing', () => {
+    // A live run returned sourceIndex 0 against 1-based blocks. The old code
+    // dropped those silently — indistinguishable from "the sources named
+    // nobody" — and assuming 0 means 1 would attribute the quote to the wrong
+    // publisher, which is the provenance failure the citation rules exist for.
+    expect(resolveSourceDoc(docs, 0, QUOTE)).toEqual({ doc: docs[1], how: 'quote' });
+  });
+
+  it('resolves an out-of-range index by quote', () => {
+    expect(resolveSourceDoc(docs, 99, QUOTE)?.doc.url).toBe('https://b.org/2');
+  });
+
+  it('matches through markdown emphasis the converter inserted', () => {
+    const withMarkup = [doc('https://d.org/1', 'The **Global Fund** for _Coral Reefs_ invests here.')];
+    expect(resolveSourceDoc(withMarkup, 0, 'The Global Fund for Coral Reefs invests here.')?.how).toBe(
+      'quote',
+    );
+  });
+
+  it('refuses to resolve when the quote appears in more than one page', () => {
+    // An ambiguous match is no evidence of provenance at all.
+    const dupes = [doc('https://a.org/1', QUOTE), doc('https://b.org/2', QUOTE)];
+    expect(resolveSourceDoc(dupes, 0, QUOTE)).toBeNull();
+  });
+
+  it('returns null when the index is invalid and the quote is nowhere', () => {
+    expect(resolveSourceDoc(docs, 0, 'A sentence that appears on none of these pages.')).toBeNull();
+  });
+
+  it('keeps the named block when the quote does not match — conversion rewrites text', () => {
+    // Markdown conversion can break an otherwise-genuine quote, and refusing
+    // every unmatched quote would throw away most of a run.
+    expect(resolveSourceDoc(docs, 1, 'wording that does not appear anywhere here')?.doc.url).toBe(
+      'https://a.org/1',
+    );
+  });
+});
+
+describe('markdownTableRows', () => {
+  it('counts pipe-leading lines and ignores prose', () => {
+    expect(markdownTableRows('intro\n| a | b |\n| - | - |\n| 1 | 2 |\noutro')).toBe(3);
+    expect(markdownTableRows('no tables here')).toBe(0);
   });
 });
 

@@ -70,6 +70,7 @@ import {
   retrieveDocuments,
   hasRetrievalCredentials,
   publisherFromUrl,
+  type RetrievedDocument,
 } from './retrieval.js';
 import {
   getLlmClient,
@@ -176,6 +177,49 @@ function effortClaim(name: string, subject: string, stance: Stance): string {
   if (stance === 'amplify') return `${name} works to expand or support: ${subject}`;
   if (stance === 'counter') return `${name} works to address or reduce: ${subject}`;
   return `${name} works to provide: ${subject}`;
+}
+
+/** Normalise for substring matching: markdown markers and spacing differ. */
+function forMatching(text: string): string {
+  return text.toLowerCase().replace(/[*_`[\]()]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Which retrieved document does this quote actually come from?
+ *
+ * The model reports a `sourceIndex`, and it is not reliable: a live run returned
+ * index 0 against 1-based blocks, and the previous code dropped those efforts
+ * silently — indistinguishable from "the sources named nobody". Guessing that 0
+ * means 1 would be worse than dropping, because attributing a quote to the wrong
+ * publisher is the exact provenance failure the citation rules exist to prevent.
+ *
+ * So the quote is LOCATED instead. Verifying beats trusting: the index is
+ * accepted only when the document it names actually contains the quote, and
+ * otherwise the quote decides — but only when exactly one document contains it,
+ * since an ambiguous match is no evidence at all.
+ *
+ * Returns null when provenance cannot be established, which is a real outcome
+ * and gets logged rather than passed over.
+ */
+export function resolveSourceDoc(
+  docs: readonly RetrievedDocument[],
+  sourceIndex: number,
+  quote: string,
+): { doc: RetrievedDocument; how: 'index' | 'quote' } | null {
+  const needle = forMatching(quote);
+  const named = docs[sourceIndex - 1];
+  if (named && needle.length >= 24 && forMatching(named.markdown).includes(needle)) {
+    return { doc: named, how: 'index' };
+  }
+  if (needle.length >= 24) {
+    const found = docs.filter((d) => forMatching(d.markdown).includes(needle));
+    if (found.length === 1 && found[0]) return { doc: found[0], how: 'quote' };
+  }
+  // Fall back to the named block when it exists. The quote check above is
+  // best-effort — markdown conversion rewrites some characters, so a genuine
+  // quote can fail to match — and refusing every unmatched quote would throw
+  // away most of a run.
+  return named ? { doc: named, how: 'index' } : null;
 }
 
 /** Aimed at who is doing the work, not at the subject itself. */
@@ -458,11 +502,36 @@ export async function researchCounterEfforts(
           continue;
         }
 
-        if (force) await clearEfforts(db, r);
+        // NOT cleared yet. An earlier version deleted here, before knowing
+        // whether anything would replace what it removed — and a --force re-run
+        // whose model output was worse than last time destroyed four sourced
+        // efforts and admitted none. Deletion now happens only once a
+        // replacement has actually cleared the gate.
+        let cleared = false;
 
         for (const e of out.efforts.slice(0, MAX_EFFORTS)) {
-          const doc = docs[e.sourceIndex - 1];
-          if (!doc || e.name.trim() === '' || e.quote.trim() === '') continue;
+          if (e.name.trim() === '' || e.quote.trim() === '') {
+            logger.warn(`[counter] dropped an effort with no name or no quote.`);
+            continue;
+          }
+          // Logged, never silent. A bare `continue` here made a bad sourceIndex
+          // look identical to "the sources named nobody" — the run reported
+          // success while dropping every effort it had actually found.
+          const resolved = resolveSourceDoc(docs, e.sourceIndex, e.quote);
+          if (!resolved) {
+            logger.warn(
+              `[counter] "${e.name.slice(0, 40)}" cited source ${e.sourceIndex} of ` +
+                `${docs.length}, and its quote matches no retrieved page — dropped.`,
+            );
+            continue;
+          }
+          const doc = resolved.doc;
+          if (resolved.how === 'quote') {
+            logger.info(
+              `[counter] "${e.name.slice(0, 34)}" cited source ${e.sourceIndex}; ` +
+                `resolved by quote to ${publisherFromUrl(doc.url, doc.title)}.`,
+            );
+          }
 
           const publisher = publisherFromUrl(doc.url, doc.title);
           const score = await scoreSource({
@@ -497,6 +566,14 @@ export async function researchCounterEfforts(
                 `sup ${score.support.toFixed(2)}) for "${e.name.slice(0, 40)}"`,
             );
             continue;
+          }
+
+          // Replace only now that something has earned its place. On --force
+          // this is the first write of the run for this target, so a worse run
+          // can no longer leave it emptier than it found it.
+          if (force && !cleared) {
+            await clearEfforts(db, r);
+            cleared = true;
           }
 
           // Embedded for cross-subject dedupe later — the same organisation
