@@ -1,0 +1,8 @@
+# Commits that changed formatting only. `git blame` skips these, so a line's
+# history points at the change that wrote it rather than at a bulk reformat.
+#
+# Enable locally (GitHub honours this file automatically):
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# Adopt Prettier and format the tree
+096f332cc90c1ace761cd8e91bc1ac9b22ac6479

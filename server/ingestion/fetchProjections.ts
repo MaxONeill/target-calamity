@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Fill in the projections that quantity-stated thresholds need.
  *
  * Reads every `tipping_point.quantityThreshold` in the factor set, works out

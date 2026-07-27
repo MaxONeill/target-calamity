@@ -291,14 +291,12 @@ export class PinLayer {
     const mesh = this.mesh;
     if (this.disposed || mesh === null || mesh.count === 0) return null;
 
-    if (this.pickTarget === null) {
-      this.pickTarget = new THREE.WebGLRenderTarget(1, 1, {
-        format: THREE.RGBAFormat,
-        type: THREE.UnsignedByteType,
-        colorSpace: THREE.NoColorSpace,
-        depthBuffer: true,
-      });
-    }
+    this.pickTarget ??= new THREE.WebGLRenderTarget(1, 1, {
+      format: THREE.RGBAFormat,
+      type: THREE.UnsignedByteType,
+      colorSpace: THREE.NoColorSpace,
+      depthBuffer: true,
+    });
 
     renderer.getDrawingBufferSize(this.drawSize);
     const dpr = renderer.getPixelRatio();

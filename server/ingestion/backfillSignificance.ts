@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Re-score `significance` against the scale rubric.
  *
  * The original instruction to the extractor was, in full: "significance is in

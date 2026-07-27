@@ -77,7 +77,7 @@ export function createScene(container: HTMLDivElement, callbacks: SceneCallbacks
     renderer.render(scene, camera);
   };
   const requestRender = (): void => {
-    if (frameHandle === null) frameHandle = requestAnimationFrame(renderFrame);
+    frameHandle ??= requestAnimationFrame(renderFrame);
   };
 
   const rig = new OrbitRig(camera, {

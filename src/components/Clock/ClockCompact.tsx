@@ -1,3 +1,4 @@
+import type React from 'react';
 import { pad2 } from './format.js';
 import type { CountdownParts } from './format.js';
 
@@ -19,7 +20,7 @@ export function ClockCompact({
   overdue,
   expanded,
   onToggle,
-}: ClockCompactProps): JSX.Element {
+}: ClockCompactProps): React.JSX.Element {
   return (
     <button
       type="button"

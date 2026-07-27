@@ -157,7 +157,7 @@ const invokedDirectly =
   process.argv[1] !== undefined &&
   import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href;
 if (invokedDirectly) {
-  backfillDomains().catch((err) => {
+  backfillDomains().catch((err: unknown) => {
     console.error('[backfill] fatal:', err);
     process.exit(1);
   });

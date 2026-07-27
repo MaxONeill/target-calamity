@@ -22,7 +22,7 @@ export function createStubExtractor(): FactorExtractor {
       try {
         const parsed: unknown = JSON.parse(item.rawText);
         if (parsed && typeof parsed === 'object') {
-          payload = parsed as Partial<ExtractedFactorDraft>;
+          payload = parsed;
         }
       } catch {
         // rawText was not JSON — fall through to defaults.

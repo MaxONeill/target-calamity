@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Resolve each quantity-stated threshold to the projection that dates it.
  *
  * Quantity identity is a semantic problem, and the data proves it: four

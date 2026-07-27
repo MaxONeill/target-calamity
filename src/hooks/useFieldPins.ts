@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { FieldResponseSchema } from '../../shared/schema.js';
 import type { FieldPin, GlobalFactor, Projection, Requirement } from '../../shared/types.js';
 

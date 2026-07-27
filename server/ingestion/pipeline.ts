@@ -1,4 +1,4 @@
-﻿/**
+/**
  * The reconciliation loop — Phase A to D orchestration.
  *
  * This module owns the impure concerns: idempotency, batching, value

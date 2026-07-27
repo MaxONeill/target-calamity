@@ -1,4 +1,4 @@
-﻿/**
+/**
  * The interfaces the loop depends on instead of concrete infrastructure.
  *
  * Every one has both a Postgres implementation and an in-memory or

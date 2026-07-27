@@ -1,4 +1,4 @@
-﻿/**
+/**
  * One-time backfill: judge `tippingPoint.closesWindow` on thresholds that
  * predate the field.
  *

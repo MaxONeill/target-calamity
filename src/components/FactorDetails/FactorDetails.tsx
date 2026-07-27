@@ -1,3 +1,4 @@
+import type React from 'react';
 /**
  * FactorDetails — the selection detail panel.
  *
@@ -87,7 +88,7 @@ function DetailHeader({
   spatialPath: string;
   zoneLevel: string | null;
   verificationState: 'verified' | 'pending' | null;
-}): JSX.Element {
+}): React.JSX.Element {
   return (
     <div className="tc-details__head">
       <h2 className="tc-details__name" id="tc-details-title">
@@ -118,7 +119,7 @@ function DetailMetrics({
 }: {
   effect: number;
   significance: number;
-}): JSX.Element {
+}): React.JSX.Element {
   const polarity = polarityOf(effect);
   const effectMagnitudePct = Math.min(Math.abs(effect), 1) * 50;
   const significancePct = Math.min(Math.max(significance, 0), 1) * 100;
@@ -172,7 +173,7 @@ function DetailMetrics({
 }
 
 /** The dated tipping-point threshold block, framed explicitly as an ESTIMATE. */
-function TippingPointBlock({ tp }: { tp: TippingPoint }): JSX.Element {
+function TippingPointBlock({ tp }: { tp: TippingPoint }): React.JSX.Element {
   const range = rangeLabel(tp);
   return (
     <section className="tc-details__tipping" aria-label="Estimated tipping-point threshold">
@@ -224,7 +225,7 @@ function ReputabilityBlock({
   score: number;
   reasoning: string | undefined;
   state: 'verified' | 'pending' | null;
-}): JSX.Element {
+}): React.JSX.Element {
   const pct = Math.round(Math.min(Math.max(score, 0), 1) * 100);
   const tone = state === 'verified' ? 'verified' : 'pending';
   return (
@@ -274,7 +275,7 @@ function EffortsBlock({
 }: {
   efforts: Factor['efforts'];
   effect: number;
-}): JSX.Element {
+}): React.JSX.Element {
   const amplify = effect > 0;
   const heading = amplify ? 'Who is scaling this up' : 'Who is working against this';
   return (
@@ -320,7 +321,11 @@ function EffortsBlock({
   );
 }
 
-export function FactorDetails({ factor, pin, onClose }: FactorDetailsProps): JSX.Element | null {
+export function FactorDetails({
+  factor,
+  pin,
+  onClose,
+}: FactorDetailsProps): React.JSX.Element | null {
   const panelRef = useRef<HTMLDivElement>(null);
 
   const open = factor !== null || (pin !== null && pin !== undefined);

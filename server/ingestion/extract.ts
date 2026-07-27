@@ -119,7 +119,7 @@ function tableBlocks(lines: readonly string[]): TableBlock[] {
   let current: TableBlock | null = null;
   for (const [i, line] of lines.entries()) {
     if (line.trimStart().startsWith('|')) {
-      if (current === null) current = { start: i, lines: [], chars: 0 };
+      current ??= { start: i, lines: [], chars: 0 };
       current.lines.push(line);
       current.chars += line.length + 1;
     } else if (current !== null) {
@@ -273,7 +273,7 @@ export function extractText(html: string, url: string): { title: string; text: s
     // from a separate parse rather than the remains of this one.
     const { document: forParse } = parseHTML(html);
     stripNoise(forParse);
-    const article = new Readability(forParse as unknown as Document, {
+    const article = new Readability(forParse, {
       charThreshold: MIN_USEFUL_CHARS,
     }).parse();
 

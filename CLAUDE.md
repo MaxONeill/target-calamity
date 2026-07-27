@@ -11,6 +11,8 @@ npm run server         # Fastify API on :3001 (tsx watch)
 npm run typecheck      # tsc --noEmit — the strict gate, run before claiming done
 npm run lint           # eslint . — hazards tsc cannot see; run with typecheck
 npm run lint:fix       # eslint . --fix
+npm run format         # prettier --write .
+npm run verify         # typecheck + lint + format:check + tests — the full gate
 npm run build          # typecheck + vite production build
 npm test               # vitest run (fully offline; never makes a live provider call)
 npx vitest run src/lib/geo.test.ts          # a single suite
@@ -23,14 +25,31 @@ npm run ingest:once    # one bounded ingestion cycle, then exit
 There is no vitest config file — vitest picks up `**/*.test.ts` and
 `tsconfig.json` supplies `vitest/globals`.
 
-ESLint is scoped to what `tsc` cannot see, and carries NO formatting rules
-(no Prettier): reformatting the tree would bury real history in whitespace.
-Its rules encode incidents this repo actually had — object-literal assertions
-that silently drop fields under `exactOptionalPropertyTypes`, and floating
-promises in ingestion scripts, where an unawaited write looks exactly like
-"the model found nothing" after the retrieval was already paid for. Where a
-rule is knowingly violated the line carries a disable comment WITH the reason;
-add the reason, never just the disable.
+Prettier owns formatting; ESLint owns correctness. `eslint-config-prettier` is
+applied last in `eslint.config.js` so the two can never disagree — without it
+`lint:fix` and `format` undo each other. The whole-tree reformat is listed in
+`.git-blame-ignore-revs`; run `git config blame.ignoreRevsFile
+.git-blame-ignore-revs` once so `git blame` skips it.
+
+The lint rules are `strictTypeChecked` with deliberate exceptions, and each
+exception carries its reason in the config. The pattern behind most of them:
+**in `server/`, a type is often an unchecked assertion about external data** —
+`sql<Row>` does not verify what Postgres returns, `await res.json() as T` does
+not verify a remote API, and a JSONB column holds whatever was written. So
+`no-unnecessary-condition` and `no-unnecessary-type-conversion` are off there;
+the "redundant" guards are the only thing checking what the type merely claims.
+In `src/` they are warnings, because control-flow analysis cannot see a
+`cancelled` flag mutated in an effect cleanup, and `lib.dom` types
+`navigator.share` as always present when it is not.
+
+Two rules exist because of bugs this repo actually shipped: object-literal
+assertions that silently drop fields under `exactOptionalPropertyTypes` (how
+`toClockFactor` lost `closesWindow`), and floating promises in ingestion
+scripts, where an unawaited write looks exactly like "the model found nothing"
+after the retrieval was already paid for.
+
+Where a rule is knowingly violated the line carries a disable comment WITH the
+reason. Add the reason, never just the disable.
 
 `npm run ingest:once` with no credentials runs a fully offline cycle against an
 in-memory repository and exits 0, which makes it a good end-to-end smoke test

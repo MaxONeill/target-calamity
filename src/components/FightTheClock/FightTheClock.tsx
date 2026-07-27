@@ -1,3 +1,4 @@
+import type React from 'react';
 import {
   useCallback,
   useEffect,
@@ -78,7 +79,7 @@ const FOCUSABLE_SELECTOR = [
  * It collects nothing, so there is no data-handling surface — the trigger is
  * positioned by its parent slot; the dialog is portalled to the body.
  */
-export function FightTheClock(): JSX.Element {
+export function FightTheClock(): React.JSX.Element {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [canNativeShare, setCanNativeShare] = useState(false);

@@ -1,3 +1,4 @@
+import type React from 'react';
 import { STREAM_LABEL, type StreamStatus } from '../../hooks/useFactorStream.js';
 
 export interface StatusBarProps {
@@ -5,7 +6,7 @@ export interface StatusBarProps {
 }
 
 /** The top header: brand and live-stream state. */
-export function StatusBar({ streamStatus }: StatusBarProps): JSX.Element {
+export function StatusBar({ streamStatus }: StatusBarProps): React.JSX.Element {
   return (
     <header className="tc-topbar">
       <div className="tc-brand">

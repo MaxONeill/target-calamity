@@ -1,3 +1,4 @@
+import type React from 'react';
 import type { ReactNode } from 'react';
 import type { PanelMode } from '../../hooks/useSlideoutPanel.js';
 
@@ -19,7 +20,13 @@ export interface SlideoutProps {
  * The right-anchored panel that slides over the globe, plus the tab that opens
  * it. Closed by default so the globe stays the full-bleed hero.
  */
-export function Slideout({ open, mode, onOpen, onCollapse, children }: SlideoutProps): JSX.Element {
+export function Slideout({
+  open,
+  mode,
+  onOpen,
+  onCollapse,
+  children,
+}: SlideoutProps): React.JSX.Element {
   return (
     <>
       <button

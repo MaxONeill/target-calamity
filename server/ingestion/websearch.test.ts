@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Tests for the OFFLINE STUB path of Phase A research (server/ingestion/websearch.ts).
  *
  * These never touch the network or the live API — they exercise the deterministic

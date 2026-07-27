@@ -1,4 +1,5 @@
-﻿import { useCallback, useMemo, useRef } from 'react';
+import type React from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { Clock } from './components/Clock/index.js';
 import { FactorDetails } from './components/FactorDetails/index.js';
 import { FightTheClock } from './components/FightTheClock/index.js';
@@ -27,7 +28,7 @@ import type { SceneHandle } from './scene/types.js';
  * invalidation, never on a camera move, scroll, sort or selection. That is what
  * makes the rendered planet a function of the data alone.
  */
-export function App(): JSX.Element {
+export function App(): React.JSX.Element {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<SceneHandle | null>(null);
   // Coastlines stay on; the toggle was removed from the top bar.

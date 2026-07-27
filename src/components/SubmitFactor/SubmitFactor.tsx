@@ -1,3 +1,4 @@
+import type React from 'react';
 /**
  * SubmitFactor — the anonymous Phase-1 submission form.
  *
@@ -59,7 +60,7 @@ export interface SubmitFactorProps {
   onClose: () => void;
 }
 
-export function SubmitFactor({ onClose }: SubmitFactorProps): JSX.Element {
+export function SubmitFactor({ onClose }: SubmitFactorProps): React.JSX.Element {
   const claimId = useId();
   const urlId = useId();
   const noteId = useId();

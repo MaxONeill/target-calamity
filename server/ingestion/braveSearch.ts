@@ -104,7 +104,12 @@ let throttleChain: Promise<void> = Promise.resolve();
 function throttle(): Promise<void> {
   const next = throttleChain.then(async () => {
     const wait = lastRequestAt + BRAVE_MIN_REQUEST_SPACING_MS - Date.now();
-    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+    // Braced: the arrow shorthand would return setTimeout's handle out of a
+    // promise executor, where the return value is unreadable and misleading.
+    if (wait > 0)
+      await new Promise((resolve) => {
+        setTimeout(resolve, wait);
+      });
     // require-atomic-updates flags the read-await-write on `lastRequestAt`, and
     // it is right about the shape — that race is exactly why this callback runs
     // inside the chain above. Only one of these bodies is in flight at a time,

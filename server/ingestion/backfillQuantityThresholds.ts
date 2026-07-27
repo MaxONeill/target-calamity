@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Backfill: give existing factors the quantity threshold the literature states
  * for them.
  *

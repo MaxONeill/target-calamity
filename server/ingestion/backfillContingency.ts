@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Expand the contingency chain for a crossed threshold: what it would actually
  * take to reverse it, and what THAT would take, down to where the answer runs
  * out.
@@ -146,7 +146,7 @@ async function crossedRoots(
   const factors: ClockFactorInput[] = rows.map((r) => {
     const tp = r.tipping_point as ClockFactorInput['tippingPoint'];
     const label =
-      (tp?.label as string | undefined) ??
+      tp?.label ??
       (tp?.quantityThreshold
         ? `${tp.quantityThreshold.value} ${tp.quantityThreshold.unit} — ${tp.quantityThreshold.quantity}`
         : null);

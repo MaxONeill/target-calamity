@@ -1,4 +1,5 @@
-﻿import { useCallback, useMemo, useRef, useState } from 'react';
+import type React from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useSwipe, type SwipeGesture } from '../../hooks/useSwipe.js';
 import type { Requirement } from '../../../shared/types.js';
 import { deriveClock, type ClockFactorInput, type Projection } from '../../lib/clock/clockModel.js';
@@ -35,7 +36,12 @@ export interface ClockProps {
  * fabricated instant. The compact widget carries the live time; clicking it
  * discloses how that time was derived.
  */
-export function Clock({ factors, projections, requirements, className }: ClockProps): JSX.Element {
+export function Clock({
+  factors,
+  projections,
+  requirements,
+  className,
+}: ClockProps): React.JSX.Element {
   const model = useMemo(
     () => deriveClock(factors, projections ?? [], new Date().getUTCFullYear()),
     [factors, projections],

@@ -1,4 +1,5 @@
-﻿import type { ClockModel } from '../../lib/clock/clockModel.js';
+import type React from 'react';
+import type { ClockModel } from '../../lib/clock/clockModel.js';
 import type { Requirement } from '../../../shared/types.js';
 import { formatYear } from './format.js';
 
@@ -27,7 +28,7 @@ function RequirementBranch({
 }: {
   node: Requirement;
   byParent: Map<string | null, Requirement[]>;
-}): JSX.Element {
+}): React.JSX.Element {
   const children = byParent.get(node.id) ?? [];
   return (
     <li className="tc-req" data-status={node.status}>
@@ -116,7 +117,7 @@ function signClass(value: number): string {
   return value < 0 ? 'tc-why-neg' : value > 0 ? 'tc-why-pos' : 'tc-why-zero';
 }
 
-function DomainForces({ model }: { model: ClockModel }): JSX.Element | null {
+function DomainForces({ model }: { model: ClockModel }): React.JSX.Element | null {
   if (model.domainForces.length === 0) return null;
   return (
     <div className="tc-why-section">
@@ -149,7 +150,7 @@ function Thresholds({
 }: {
   model: ClockModel;
   requirements: readonly Requirement[];
-}): JSX.Element | null {
+}): React.JSX.Element | null {
   if (model.thresholds.length === 0) return null;
 
   // The wire carries requirements flat, keyed by parentId, and the tree is
@@ -281,7 +282,7 @@ export function WhyPanel({
 }: {
   model: ClockModel;
   requirements?: readonly Requirement[];
-}): JSX.Element | null {
+}): React.JSX.Element | null {
   if (!model.hasBaseline) return null;
 
   return (

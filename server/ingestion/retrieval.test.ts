@@ -410,7 +410,8 @@ describe('retrieveDocuments', () => {
   /** A fetch stub: the search URL returns hits, page URLs return HTML. */
   function stubFetch(pages: Record<string, string | number>) {
     return vi.fn(async (input: string | URL | Request) => {
-      const url = String(input);
+      // A Request does not stringify to its URL — it gives "[object Request]".
+      const url = input instanceof Request ? input.url : String(input);
       if (url.includes('api.search.brave.com')) {
         return new Response(
           JSON.stringify(braveBody(Object.keys(pages).map((u) => ({ url: u, title: u })))),

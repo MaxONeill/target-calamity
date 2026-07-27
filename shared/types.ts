@@ -1,4 +1,4 @@
-﻿/**
+/**
  * TypeScript types for the shared contract, DERIVED from the zod schemas in
  * `shared/schema.ts` via `z.infer`. Do not hand-write or edit these to
  * diverge from the schemas — change the schema and the type follows. Importing

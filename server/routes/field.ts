@@ -1,4 +1,4 @@
-﻿/**
+/**
  * GET /api/field — the shader's input set.
  *
  * Deliberately has NO camera and NO cursor parameters. The field is a function

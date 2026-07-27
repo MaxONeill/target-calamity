@@ -1,3 +1,4 @@
+import type React from 'react';
 /**
  * Renders both the `[i]` trigger glyph and the modal it opens.
  *
@@ -31,7 +32,7 @@ const FOCUSABLE_SELECTOR = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(',');
 
-export function ExplainerModal({ onOpenChange }: ExplainerModalProps): JSX.Element {
+export function ExplainerModal({ onOpenChange }: ExplainerModalProps): React.JSX.Element {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);

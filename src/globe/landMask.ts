@@ -25,7 +25,7 @@
 import * as THREE from 'three';
 import { feature } from 'topojson-client';
 import type { GeometryCollection, Topology } from 'topojson-specification';
-import type { Feature, FeatureCollection, Geometry, Polygon, MultiPolygon } from 'geojson';
+import type { Feature, FeatureCollection, Geometry, Polygon } from 'geojson';
 import landTopo110m from 'world-atlas/land-110m.json';
 
 export interface LandMask {
@@ -143,17 +143,16 @@ export function createLandMask(options: LandMaskOptions = {}): LandMask {
   ctx.fillStyle = '#ffffff';
 
   const topology = landTopo110m as unknown as Topology<{ land: GeometryCollection }>;
-  const geo = feature(topology, topology.objects.land) as
-    Feature<Geometry> | FeatureCollection<Geometry>;
+  const geo = feature(topology, topology.objects.land) as Feature | FeatureCollection;
 
   const geometries: Geometry[] =
     geo.type === 'FeatureCollection' ? geo.features.map((f) => f.geometry) : [geo.geometry];
 
   for (const g of geometries) {
     if (g.type === 'Polygon') {
-      fillPolygon(ctx, (g as Polygon).coordinates, width, height);
+      fillPolygon(ctx, g.coordinates, width, height);
     } else if (g.type === 'MultiPolygon') {
-      for (const poly of (g as MultiPolygon).coordinates) {
+      for (const poly of g.coordinates) {
         fillPolygon(ctx, poly, width, height);
       }
     }

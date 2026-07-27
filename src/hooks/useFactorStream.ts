@@ -49,7 +49,7 @@ export function useFactorStream({
 
     source.addEventListener('ready', (event) => {
       try {
-        const data = JSON.parse((event as MessageEvent).data) as { mode?: string };
+        const data = JSON.parse(event.data) as { mode?: string };
         setStatus(data.mode === 'db' ? 'live' : 'seed');
       } catch {
         setStatus('live');
@@ -58,7 +58,7 @@ export function useFactorStream({
 
     source.addEventListener('factor', (event) => {
       try {
-        const parsed = FactorSchema.safeParse(JSON.parse((event as MessageEvent).data));
+        const parsed = FactorSchema.safeParse(JSON.parse(event.data));
         if (parsed.success) onFactorChanged(parsed.data);
       } catch {
         // Fall through: the field refetch reconciles regardless.

@@ -418,7 +418,7 @@ function normalizeTippingPoint(
   // Persist only the affirmative judgement. Writing `false` explicitly would be
   // indistinguishable downstream from `absent`, and absent already means "does
   // not anchor" — so storing it buys nothing and grows every row.
-  if (raw.closesWindow === true) tp.closesWindow = true;
+  if (raw.closesWindow) tp.closesWindow = true;
   return tp;
 }
 
@@ -459,7 +459,7 @@ export function normalizeCandidate(
           url: doc.url,
           publisher: doc.publisher || 'Unknown publisher',
           quoteSnippet: quote.slice(0, 5_000),
-          verbatim: s.verbatim === true,
+          verbatim: s.verbatim,
         },
       ];
     }),

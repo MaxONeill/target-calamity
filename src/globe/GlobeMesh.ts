@@ -101,7 +101,7 @@ export class GlobeMesh {
     this.geometry = new THREE.IcosahedronGeometry(this.radius, detail);
     // Snapshot the pristine sphere positions so displacement always starts fresh.
     const posAttr = this.geometry.getAttribute('position') as THREE.BufferAttribute;
-    this.basePositions = new Float32Array(posAttr.array as ArrayLike<number>);
+    this.basePositions = new Float32Array(posAttr.array);
 
     this.material = new THREE.ShaderMaterial({
       // GLSL3/WebGL2: dynamic-bound-free, and gives us `texture()` +

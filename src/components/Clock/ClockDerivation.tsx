@@ -1,4 +1,5 @@
-﻿import type { ClockConfidence, ClockModel } from '../../lib/clock/clockModel.js';
+import type React from 'react';
+import type { ClockConfidence, ClockModel } from '../../lib/clock/clockModel.js';
 import type { Requirement } from '../../../shared/types.js';
 import { formatYear } from './format.js';
 import { WhyPanel } from './WhyPanel.js';
@@ -18,7 +19,7 @@ function Metric({
   label: string;
   value: string | number;
   valueClassName?: string;
-}): JSX.Element {
+}): React.JSX.Element {
   const className = valueClassName
     ? `tc-clock-metric-value ${valueClassName}`
     : 'tc-clock-metric-value';
@@ -36,7 +37,7 @@ function polaritySign(netPolarity: number): 'calamity' | 'humanity' | 'balanced'
   return 'balanced';
 }
 
-function TargetHeadline({ model }: { model: ClockModel }): JSX.Element {
+function TargetHeadline({ model }: { model: ClockModel }): React.JSX.Element {
   const { hasBaseline, targetYear, baselineTargetYear, shiftYears, netPolarity } = model;
 
   return (
@@ -89,7 +90,7 @@ function PolarityBar({
 }: {
   netPolarity: number;
   hasEvidence: boolean;
-}): JSX.Element {
+}): React.JSX.Element {
   return (
     <div className="tc-clock-metric tc-clock-metric-wide">
       <dt>NET POLARITY</dt>
@@ -131,7 +132,7 @@ export function ClockDerivation({
   soundEnabled,
   onToggleSound,
   children,
-}: ClockDerivationProps): JSX.Element {
+}: ClockDerivationProps): React.JSX.Element {
   return (
     <>
       {children}

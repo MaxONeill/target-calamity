@@ -65,7 +65,7 @@ export async function coverageReport(
       logger.info(
         `${r.domain.padEnd(17)} ${String(r.factors).padStart(6)} ` +
           `${String(r.with_threshold).padStart(6)} ${String(r.anchors).padStart(8)} ` +
-          `${String(r.assessment_cited).padStart(17)}`,
+          String(r.assessment_cited).padStart(17),
       );
     }
 

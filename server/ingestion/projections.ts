@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Phase A' — retrieval and extraction of PROJECTIONS.
  *
  * A threshold may be published against a quantity rather than a year ("the
@@ -186,7 +186,7 @@ export function normalizeProjection(
     sourceUrl: doc.url,
     // Absent scenario → assumes action, matching the model's own default. An
     // unlabelled pathway cannot be shown to be assumption-free.
-    assumesFutureAction: raw.assumesFutureAction !== false,
+    assumesFutureAction: raw.assumesFutureAction,
     ...(baseline ? { baseline: baseline.slice(0, 300) } : {}),
     ...(scenario ? { scenario: scenario.slice(0, 200) } : {}),
     ...(doc.title.trim() ? { sourceTitle: doc.title.trim().slice(0, 500) } : {}),

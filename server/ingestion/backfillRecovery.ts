@@ -154,7 +154,7 @@ async function crossedRows(
   const factors: ClockFactorInput[] = rows.map((r) => {
     const tp = r.tipping_point as ClockFactorInput['tippingPoint'];
     const label =
-      (tp?.label as string | undefined) ??
+      tp?.label ??
       (tp?.quantityThreshold
         ? `${tp.quantityThreshold.value} ${tp.quantityThreshold.unit} — ${tp.quantityThreshold.quantity}`
         : null);
@@ -307,7 +307,11 @@ export async function backfillRecovery(
         assessed += 1;
         logger.info(
           `[recovery] ${row.name.slice(0, 40)} · ` +
-            `${recovery.timescaleYears ?? '(no timescale stated)'} yr · ` +
+            // Read from `out`, not from `recovery`: the latter is a
+            // Record<string, unknown> being assembled, so its values stringify
+            // through Object's default and this line would log "[object Object]"
+            // where a number belongs.
+            `${out.timescaleYears === null ? '(no timescale stated)' : String(out.timescaleYears)} yr · ` +
             `${out.effort.slice(0, 60)} · ${publisher}`,
         );
       } catch (err) {

@@ -1,3 +1,4 @@
+import type React from 'react';
 /**
  * Sidebar — the linear factor feed.
  *
@@ -47,7 +48,7 @@ export function Sidebar({
   hasMore,
   loading,
   onOpenSubmit,
-}: SidebarProps): JSX.Element {
+}: SidebarProps): React.JSX.Element {
   const scrollRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<Array<HTMLDivElement | null>>([]);

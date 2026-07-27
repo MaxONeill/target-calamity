@@ -1,4 +1,4 @@
-﻿import * as THREE from 'three';
+import * as THREE from 'three';
 import type { GlobalFactor } from '../../shared/types.js';
 import { rampColor } from './shaders.js';
 

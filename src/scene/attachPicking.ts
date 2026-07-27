@@ -123,7 +123,7 @@ export function attachPicking(options: PickingOptions): () => void {
 
   const onPointerMove = (event: PointerEvent): void => {
     pendingHover = { x: event.clientX, y: event.clientY };
-    if (hoverFrame === null) hoverFrame = requestAnimationFrame(resolveHover);
+    hoverFrame ??= requestAnimationFrame(resolveHover);
   };
 
   const onPointerLeave = (): void => {

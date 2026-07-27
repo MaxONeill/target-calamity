@@ -24,7 +24,6 @@
 import * as THREE from 'three';
 import { mesh } from 'topojson-client';
 import type { GeometryCollection, Topology } from 'topojson-specification';
-import type { MultiLineString } from 'geojson';
 import landTopo110m from 'world-atlas/land-110m.json';
 import { latLonToVector3 } from '../lib/geo.js';
 
@@ -132,7 +131,7 @@ export class Coastlines {
 
     // TopoJSON → GeoJSON MultiLineString of all coastline arcs.
     const topology = landTopo110m as unknown as Topology<{ land: GeometryCollection }>;
-    const geo = mesh(topology, topology.objects.land) as MultiLineString;
+    const geo = mesh(topology, topology.objects.land);
 
     const positions = buildCoastlineSegments(
       geo.coordinates as unknown as readonly (readonly LonLat[])[],

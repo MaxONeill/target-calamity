@@ -1,4 +1,4 @@
-﻿/**
+/**
  * The Clock — derivation model.
  *
  * Neither the product brief nor any source defines what the Clock counts down TO
