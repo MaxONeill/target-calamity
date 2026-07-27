@@ -117,11 +117,7 @@ async function unjudgedRows(db: Database): Promise<Row[]> {
  * row for no signal — but it IS written here, because this backfill needs to
  * distinguish "judged, no" from "not yet judged" for its own resumability.
  */
-async function writeJudgement(
-  db: Database,
-  id: string,
-  closesWindow: boolean,
-): Promise<void> {
+async function writeJudgement(db: Database, id: string, closesWindow: boolean): Promise<void> {
   await sql`
     UPDATE factors
        SET tipping_point = tipping_point || ${sql.val(JSON.stringify({ closesWindow }))}::jsonb
@@ -217,4 +213,3 @@ if (invokedDirectly) {
     process.exitCode = 1;
   });
 }
-

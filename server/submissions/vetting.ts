@@ -64,14 +64,11 @@ export async function vetSubmission(
 
   // Phase A: the claim IS the research topic, with the cited URL appended so the
   // retrieval step is pointed at the source the submitter actually offered.
-  const research: ResearchFn = (topic) =>
-    researchFactors(topic, { maxCandidates: 1, logger });
+  const research: ResearchFn = (topic) => researchFactors(topic, { maxCandidates: 1, logger });
   const gate = buildReputabilityGate(logger, { logger });
 
   const repository =
-    ctx.mode === 'db'
-      ? createPgIngestionRepository(ctx.db)
-      : createMemoryIngestionRepository();
+    ctx.mode === 'db' ? createPgIngestionRepository(ctx.db) : createMemoryIngestionRepository();
 
   const pipeline = createPipelineFromEnv(
     // Force the stub embedding client when we are not live, so an offline

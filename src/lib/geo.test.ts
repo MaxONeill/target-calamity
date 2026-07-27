@@ -11,28 +11,14 @@
  */
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import {
-  D2R,
-  R2D,
-  degToRad,
-  radToDeg,
-  latLonToVector3,
-  vector3ToLatLon,
-} from './geo.js';
+import { D2R, R2D, degToRad, radToDeg, latLonToVector3, vector3ToLatLon } from './geo.js';
 
 /** Independent great-circle central angle (spherical law of cosines), degrees. */
-function greatCircleDeg(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number,
-): number {
+function greatCircleDeg(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const p1 = lat1 * D2R;
   const p2 = lat2 * D2R;
   const dl = (lon2 - lon1) * D2R;
-  const c =
-    Math.sin(p1) * Math.sin(p2) +
-    Math.cos(p1) * Math.cos(p2) * Math.cos(dl);
+  const c = Math.sin(p1) * Math.sin(p2) + Math.cos(p1) * Math.cos(p2) * Math.cos(dl);
   return Math.acos(Math.max(-1, Math.min(1, c))) * R2D;
 }
 
@@ -130,9 +116,7 @@ describe('latLonToVector3 — degrees are actually converted (the  bug guard)', 
   it('London↔Tokyo separation is the true great-circle angle (~86°), not ~148°', () => {
     const london = latLonToVector3(51.5, -0.13, 1);
     const tokyo = latLonToVector3(35.68, 139.69, 1);
-    const angleDeg = Math.acos(
-      Math.max(-1, Math.min(1, london.dot(tokyo))),
-    ) * R2D;
+    const angleDeg = Math.acos(Math.max(-1, Math.min(1, london.dot(tokyo)))) * R2D;
 
     const expected = greatCircleDeg(51.5, -0.13, 35.68, 139.69);
     expect(expected).toBeGreaterThan(85);

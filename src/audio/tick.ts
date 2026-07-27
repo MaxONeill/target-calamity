@@ -112,10 +112,7 @@ export function createTickEngine(options: TickEngineOptions = {}): TickEngine {
     const floor = 0.0001;
     env.gain.setValueAtTime(floor, when);
     env.gain.exponentialRampToValueAtTime(peak, when + 0.001);
-    env.gain.exponentialRampToValueAtTime(
-      floor,
-      when + TICK_DURATION_SECONDS,
-    );
+    env.gain.exponentialRampToValueAtTime(floor, when + TICK_DURATION_SECONDS);
 
     osc.connect(band);
     band.connect(env);

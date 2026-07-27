@@ -232,61 +232,60 @@ export const RequirementSchema = z.object({
   counterEfforts: z.array(CounterEffortSchema).default([]),
 });
 
-export const TippingPointSchema = z.object({
-  /**
-   * Best-estimate calendar year the threshold is crossed (e.g. 2050). Optional
-   * since migration 010: a threshold may instead be pinned to a quantity and
-   * dated from a projection. Exactly one of the two must be present — see the
-   * refinement below.
-   */
-  centralYear: z.number().optional(),
-  /** Optional earliest credible year (lower bound of the published range). */
-  earliestYear: z.number().optional(),
-  /** Optional latest credible year (upper bound of the published range). */
-  latestYear: z.number().optional(),
-  /** Threshold stated against a measurable quantity instead of a date. */
-  quantityThreshold: QuantityThresholdSchema.optional(),
-  /** Short provenance label, e.g. "AMOC collapse (Ditlevsen & Ditlevsen 2023)". */
-  label: z.string().optional(),
-  /**
-   * Does crossing this threshold close the course-correction window — i.e. does
-   * human action stop being able to restore the prior state once it is passed?
-   *
-   * Only thresholds where this is TRUE anchor the Clock. A dated threshold that
-   * is merely severe (a coral-reef loss projection, a demographic milestone) is
-   * still real evidence and still displayed, but the timeline the product claims
-   * to give is about when correction stops being sufficient, so it must rest on
-   * thresholds that answer that question.
-   *
-   * `.optional()` because rows predating the field carry no judgement. Absent is
-   * treated as FALSE — a threshold no one has assessed must not silently drive
-   * the headline. `server/ingestion/backfillWindowClosers.ts` fills them in.
-   */
-  closesWindow: z.boolean().optional(),
-  /**
-   * What reversing this would take, once it has already been crossed.
-   *
-   * A crossed threshold is a DEBT, not a terminal state. Reversing warm-water
-   * reef loss is not impossible — it is centuries of recovery conditional on
-   * sustained cooling. Ice-sheet collapse is harder again. Collapsing that
-   * gradient into "the window is shut" throws away the only information a
-   * reader can act on.
-   *
-   * Populated only for thresholds dated in the PAST, by
-   * `server/ingestion/backfillRecovery.ts`. It does not move the countdown —
-   * the countdown is a function of the threshold dates alone and must not lurch
-   * when a date it already predicted arrives. This explains the state; it does
-   * not adjust it.
-   */
-  recovery: RecoverySchema.optional(),
-}).refine(
-  (tp) => tp.centralYear !== undefined || tp.quantityThreshold !== undefined,
-  {
+export const TippingPointSchema = z
+  .object({
+    /**
+     * Best-estimate calendar year the threshold is crossed (e.g. 2050). Optional
+     * since migration 010: a threshold may instead be pinned to a quantity and
+     * dated from a projection. Exactly one of the two must be present — see the
+     * refinement below.
+     */
+    centralYear: z.number().optional(),
+    /** Optional earliest credible year (lower bound of the published range). */
+    earliestYear: z.number().optional(),
+    /** Optional latest credible year (upper bound of the published range). */
+    latestYear: z.number().optional(),
+    /** Threshold stated against a measurable quantity instead of a date. */
+    quantityThreshold: QuantityThresholdSchema.optional(),
+    /** Short provenance label, e.g. "AMOC collapse (Ditlevsen & Ditlevsen 2023)". */
+    label: z.string().optional(),
+    /**
+     * Does crossing this threshold close the course-correction window — i.e. does
+     * human action stop being able to restore the prior state once it is passed?
+     *
+     * Only thresholds where this is TRUE anchor the Clock. A dated threshold that
+     * is merely severe (a coral-reef loss projection, a demographic milestone) is
+     * still real evidence and still displayed, but the timeline the product claims
+     * to give is about when correction stops being sufficient, so it must rest on
+     * thresholds that answer that question.
+     *
+     * `.optional()` because rows predating the field carry no judgement. Absent is
+     * treated as FALSE — a threshold no one has assessed must not silently drive
+     * the headline. `server/ingestion/backfillWindowClosers.ts` fills them in.
+     */
+    closesWindow: z.boolean().optional(),
+    /**
+     * What reversing this would take, once it has already been crossed.
+     *
+     * A crossed threshold is a DEBT, not a terminal state. Reversing warm-water
+     * reef loss is not impossible — it is centuries of recovery conditional on
+     * sustained cooling. Ice-sheet collapse is harder again. Collapsing that
+     * gradient into "the window is shut" throws away the only information a
+     * reader can act on.
+     *
+     * Populated only for thresholds dated in the PAST, by
+     * `server/ingestion/backfillRecovery.ts`. It does not move the countdown —
+     * the countdown is a function of the threshold dates alone and must not lurch
+     * when a date it already predicted arrives. This explains the state; it does
+     * not adjust it.
+     */
+    recovery: RecoverySchema.optional(),
+  })
+  .refine((tp) => tp.centralYear !== undefined || tp.quantityThreshold !== undefined, {
     message:
       'a tipping point must be dated either directly (centralYear) or by a ' +
       'quantity threshold resolved against a projection',
-  },
-);
+  });
 
 /**
  * A published trajectory for a measurable quantity over time. Dating a
@@ -324,9 +323,7 @@ export const ProjectionSchema = z.object({
    */
   assumesFutureAction: z.boolean().optional(),
   /** The curve, ascending by year. At least two points to interpolate between. */
-  points: z
-    .array(z.object({ year: z.number(), value: z.number() }))
-    .min(2),
+  points: z.array(z.object({ year: z.number(), value: z.number() })).min(2),
   sourceUrl: z.string().url(),
   sourceTitle: z.string().optional(),
 });

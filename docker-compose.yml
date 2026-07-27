@@ -27,13 +27,13 @@ services:
       TZ: UTC
       PGTZ: UTC
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
       # First-boot schema bootstrap. Files run once, on an empty data dir only.
       - ./db/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-calamity} -d ${POSTGRES_DB:-calamity}"]
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-calamity} -d ${POSTGRES_DB:-calamity}']
       interval: 5s
       timeout: 5s
       retries: 10

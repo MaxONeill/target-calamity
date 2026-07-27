@@ -140,9 +140,7 @@ async function projectionsDb(db: Database): Promise<FieldResponse['projections']
     sourceUrl: r.source_url,
     ...(r.baseline !== null ? { baseline: r.baseline } : {}),
     ...(r.scenario !== null ? { scenario: r.scenario } : {}),
-    ...(r.assumes_future_action !== null
-      ? { assumesFutureAction: r.assumes_future_action }
-      : {}),
+    ...(r.assumes_future_action !== null ? { assumesFutureAction: r.assumes_future_action } : {}),
     ...(r.source_title !== null ? { sourceTitle: r.source_title } : {}),
   }));
 }
@@ -275,7 +273,8 @@ async function fieldDb(db: Database): Promise<FieldResponse> {
 
 function fieldSeed(): FieldResponse {
   const rows: FieldRow[] = SEED_FACTORS.filter(
-    (f) => f.verificationState === 'verified' && Math.abs(f.effect * f.significance) >= WEIGHT_FLOOR,
+    (f) =>
+      f.verificationState === 'verified' && Math.abs(f.effect * f.significance) >= WEIGHT_FLOOR,
   )
     .sort((a, b) => {
       const wa = Math.abs(a.effect * a.significance);
@@ -313,12 +312,13 @@ function fieldSeed(): FieldResponse {
 }
 
 export default async function fieldRoutes(fastify: FastifyInstance): Promise<void> {
-  fastify.get('/api/field', async (_req: FastifyRequest, _reply: FastifyReply): Promise<FieldResponse> => {
-    const ctx = fastify.appCtx;
-    const response = ctx.mode === 'db' ? await fieldDb(ctx.db) : fieldSeed();
-    // Re-validate our own response against the shared contract.
-    return FieldResponseSchema.parse(response);
-  });
+  fastify.get(
+    '/api/field',
+    async (_req: FastifyRequest, _reply: FastifyReply): Promise<FieldResponse> => {
+      const ctx = fastify.appCtx;
+      const response = ctx.mode === 'db' ? await fieldDb(ctx.db) : fieldSeed();
+      // Re-validate our own response against the shared contract.
+      return FieldResponseSchema.parse(response);
+    },
+  );
 }
-
-

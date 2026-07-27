@@ -37,9 +37,7 @@ export function activeProvider(env: NodeJS.ProcessEnv = process.env): SearchProv
   if (explicit !== undefined && explicit !== '') {
     // A typo here would otherwise fall through to whichever key happens to be
     // set, and silently run the provider the operator did not ask for.
-    throw new Error(
-      `${PROVIDER_ENV_VAR}="${explicit}" is not a known provider (serper | brave).`,
-    );
+    throw new Error(`${PROVIDER_ENV_VAR}="${explicit}" is not a known provider (serper | brave).`);
   }
   if (hasSerperCredentials(env)) return 'serper';
   if (hasBraveCredentials(env)) return 'brave';

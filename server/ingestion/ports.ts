@@ -7,11 +7,7 @@
  */
 import type { TippingPoint, VerificationState } from '../../shared/types.js';
 import type { Domain } from '../../shared/domains.js';
-import type {
-  EscalationDirectionality,
-  FactorCandidate,
-  ResolverVerdict,
-} from './dedupe.js';
+import type { EscalationDirectionality, FactorCandidate, ResolverVerdict } from './dedupe.js';
 import type { EmbeddingClient } from './embeddings.js';
 import type { ExtractedFactorDraft, InboundIntelItem } from './types.js';
 
@@ -210,10 +206,7 @@ export interface IngestionRepository {
    * section. The advisory lock — not the isolation level — provides
    * mutual exclusion.
    */
-  withBucketLock<T>(
-    bucketKey: string,
-    fn: (tx: IngestionTx) => Promise<T>,
-  ): Promise<T>;
+  withBucketLock<T>(bucketKey: string, fn: (tx: IngestionTx) => Promise<T>): Promise<T>;
   /** Route a rejected item to the quarantine table (never to `factors`). */
   quarantine(entry: QuarantineEntry): Promise<void>;
 }
@@ -266,4 +259,3 @@ export interface BatchResult {
   /** Factor drafts extracted and embedded this batch. */
   processedFactors: number;
 }
-

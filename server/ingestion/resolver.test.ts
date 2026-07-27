@@ -25,8 +25,22 @@ function req(overrides: Partial<ResolutionRequest> = {}): ResolutionRequest {
       spatialPath: 'global',
     },
     candidates: [
-      { id: 'c1', name: 'Nearest', description: 'x', effect: -0.4, significance: 0.5, distance: 0.05 },
-      { id: 'c2', name: 'Farther', description: 'y', effect: -0.2, significance: 0.3, distance: 0.2 },
+      {
+        id: 'c1',
+        name: 'Nearest',
+        description: 'x',
+        effect: -0.4,
+        significance: 0.5,
+        distance: 0.05,
+      },
+      {
+        id: 'c2',
+        name: 'Farther',
+        description: 'y',
+        effect: -0.2,
+        significance: 0.3,
+        distance: 0.2,
+      },
     ],
     ...overrides,
   };
@@ -100,7 +114,14 @@ describe('createStubResolver — deterministic offline fallback', () => {
     const v = await r.resolve(
       req({
         candidates: [
-          { id: 'c1', name: 'n', description: 'x', effect: -0.4, significance: 0.5, distance: 0.25 },
+          {
+            id: 'c1',
+            name: 'n',
+            description: 'x',
+            effect: -0.4,
+            significance: 0.5,
+            distance: 0.25,
+          },
         ],
       }),
     );

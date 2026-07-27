@@ -144,13 +144,10 @@ export function createLandMask(options: LandMaskOptions = {}): LandMask {
 
   const topology = landTopo110m as unknown as Topology<{ land: GeometryCollection }>;
   const geo = feature(topology, topology.objects.land) as
-    | Feature<Geometry>
-    | FeatureCollection<Geometry>;
+    Feature<Geometry> | FeatureCollection<Geometry>;
 
   const geometries: Geometry[] =
-    geo.type === 'FeatureCollection'
-      ? geo.features.map((f) => f.geometry)
-      : [geo.geometry];
+    geo.type === 'FeatureCollection' ? geo.features.map((f) => f.geometry) : [geo.geometry];
 
   for (const g of geometries) {
     if (g.type === 'Polygon') {

@@ -158,8 +158,7 @@ export async function structuredCompletion<T>(
       {
         role: 'system',
         content:
-          `${args.system}\n\nRespond with JSON matching this schema:\n` +
-          JSON.stringify(schema),
+          `${args.system}\n\nRespond with JSON matching this schema:\n` + JSON.stringify(schema),
       },
       { role: 'user', content: args.user },
     ],

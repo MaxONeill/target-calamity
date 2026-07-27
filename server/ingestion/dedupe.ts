@@ -115,9 +115,7 @@ export function filterCandidates(
   candidates: readonly FactorCandidate[],
   ceiling = CANDIDATE_DISTANCE_CEILING,
 ): FactorCandidate[] {
-  return candidates
-    .filter((c) => c.distance <= ceiling)
-    .sort(compareCandidates);
+  return candidates.filter((c) => c.distance <= ceiling).sort(compareCandidates);
 }
 
 /**
@@ -141,9 +139,7 @@ export function compareCandidates(a: FactorCandidate, b: FactorCandidate): numbe
  * resolver may name a specific parent, but it must be one of the candidates;
  * otherwise the pipeline falls back to this (see `resolveOutcome`).
  */
-export function selectParent(
-  candidates: readonly FactorCandidate[],
-): FactorCandidate | null {
+export function selectParent(candidates: readonly FactorCandidate[]): FactorCandidate | null {
   if (candidates.length === 0) return null;
   return [...candidates].sort(compareCandidates)[0]!;
 }

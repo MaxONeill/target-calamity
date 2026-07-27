@@ -359,7 +359,7 @@ export class PinLayer {
         bestIdx = i;
       }
     }
-    return bestIdx >= 0 ? this.factorIds[bestIdx] ?? null : null;
+    return bestIdx >= 0 ? (this.factorIds[bestIdx] ?? null) : null;
   }
 
   /** Subscribe to redraw requests. Returns an unsubscribe function. */

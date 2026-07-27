@@ -26,9 +26,7 @@ describe('hashIdentity', () => {
   });
 
   it('produces a different digest under a different salt (rotation invalidates)', () => {
-    expect(hashIdentity('pepper', '203.0.113.5')).not.toBe(
-      hashIdentity('other', '203.0.113.5'),
-    );
+    expect(hashIdentity('pepper', '203.0.113.5')).not.toBe(hashIdentity('other', '203.0.113.5'));
   });
 
   it('produces a different digest for a different value', () => {
@@ -94,15 +92,13 @@ describe('resolveClientIp', () => {
   });
 
   it('falls back to the socket address when the trusted header is absent', () => {
-    expect(resolveClientIp({ socketAddress: '203.0.113.9', trustProxy: true })).toBe(
-      '203.0.113.9',
-    );
+    expect(resolveClientIp({ socketAddress: '203.0.113.9', trustProxy: true })).toBe('203.0.113.9');
   });
 
   it('collapses the IPv4-mapped IPv6 form onto the plain literal', () => {
-    expect(
-      resolveClientIp({ socketAddress: '::ffff:203.0.113.5', trustProxy: false }),
-    ).toBe('203.0.113.5');
+    expect(resolveClientIp({ socketAddress: '::ffff:203.0.113.5', trustProxy: false })).toBe(
+      '203.0.113.5',
+    );
   });
 
   it('uses a single shared bucket when there is no resolvable address', () => {

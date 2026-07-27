@@ -181,7 +181,11 @@ function effortClaim(name: string, subject: string, stance: Stance): string {
 
 /** Normalise for substring matching: markdown markers and spacing differ. */
 function forMatching(text: string): string {
-  return text.toLowerCase().replace(/[*_`[\]()]/g, '').replace(/\s+/g, ' ').trim();
+  return text
+    .toLowerCase()
+    .replace(/[*_`[\]()]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /**
@@ -471,9 +475,7 @@ export async function researchCounterEfforts(
 
     for (const r of rows) {
       try {
-        const docs = await retrieveDocuments(
-          effortQuery(r.subject, r.stance),
-        );
+        const docs = await retrieveDocuments(effortQuery(r.subject, r.stance));
         if (docs.length === 0) {
           empty += 1;
           logger.warn(`[counter] no sources for "${r.subject.slice(0, 60)}"`);
@@ -484,10 +486,7 @@ export async function researchCounterEfforts(
           client,
           model,
           system: `${EFFORTS_SYSTEM} ${STANCE_BRIEF[r.stance]}`,
-          user:
-            `SUBJECT: ${r.subject}\n` +
-            `CONTEXT: ${r.context}\n\n` +
-            renderSourceBlocks(docs),
+          user: `SUBJECT: ${r.subject}\n` + `CONTEXT: ${r.context}\n\n` + renderSourceBlocks(docs),
           schema: EffortsSchema,
           schemaName: 'CounterEfforts',
         });

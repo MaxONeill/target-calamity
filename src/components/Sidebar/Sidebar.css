@@ -35,8 +35,7 @@
   /* ---- metrics -------------------------------------------------------- */
   --tc-gap: 10px;
   --tc-radius: 3px;
-  --tc-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo,
-    Consolas, monospace;
+  --tc-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'Cascadia Code', Menlo, Consolas, monospace;
 
   display: flex;
   flex-direction: column;
@@ -113,7 +112,9 @@
   text-transform: uppercase;
   padding: 7px 8px;
   cursor: pointer;
-  transition: background 120ms ease, color 120ms ease;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
 }
 
 .tc-sorttoggle__btn + .tc-sorttoggle__btn {
@@ -125,7 +126,7 @@
   background: var(--tc-panel-2);
 }
 
-.tc-sorttoggle__btn[aria-pressed="true"] {
+.tc-sorttoggle__btn[aria-pressed='true'] {
   background: var(--tc-panel-3);
   color: var(--tc-text);
   box-shadow: inset 0 -2px 0 0 var(--tc-humanity);
@@ -180,7 +181,9 @@
   background: transparent;
   border: none;
   cursor: pointer;
-  transition: background 120ms ease, color 120ms ease;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
 }
 .tc-sidebar__submit:hover {
   background: var(--tc-panel-2);

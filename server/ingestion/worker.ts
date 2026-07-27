@@ -288,8 +288,7 @@ export function buildReputabilityGate(
       }
     }
 
-    const verificationState =
-      bestScore >= REPUTABILITY_VERIFY_THRESHOLD ? 'verified' : 'pending';
+    const verificationState = bestScore >= REPUTABILITY_VERIFY_THRESHOLD ? 'verified' : 'pending';
 
     if (best) {
       const winner = best;
@@ -443,8 +442,7 @@ export async function runIngestOnceOffline(
   const topics = boundedBatch(topicsFromEnv(env), batchSize);
   cycleCounter++;
 
-  const research: ResearchFn = (topic) =>
-    researchFactors(topic, { maxCandidates, logger });
+  const research: ResearchFn = (topic) => researchFactors(topic, { maxCandidates, logger });
   const gate = buildReputabilityGate(logger, { logger });
   const repository = createMemoryIngestionRepository();
 
@@ -515,9 +513,7 @@ function startScheduler(): void {
   }
 
   const hours = intervalHours(env);
-  console.log(
-    `[ingest] scheduler armed — immediate cycle now, then every ${hours}h.`,
-  );
+  console.log(`[ingest] scheduler armed — immediate cycle now, then every ${hours}h.`);
   void runIngestOnce();
   const timer = setInterval(
     () => {

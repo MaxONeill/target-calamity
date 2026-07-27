@@ -15,7 +15,7 @@ Postgres image does **not** include PostGIS, so deploy our own image instead:
    (`pgvector/pgvector:pg17` + PostGIS + ltree) and sets **no** start command.
    This step is load-bearing: with the repo-root `railway.toml` in effect the
    database inherits the web service's `npm start` and fails to boot with
-   *"The executable 'npm' could not be found"* — the Postgres image has no Node.
+   _"The executable 'npm' could not be found"_ — the Postgres image has no Node.
 2. Add a **Volume** mounted at `/var/lib/postgresql/data` so data survives
    redeploys, and set `PGDATA=/var/lib/postgresql/data/pgdata`. Railway volumes
    are ext4 and arrive containing `lost+found`; the Postgres entrypoint refuses
@@ -41,23 +41,23 @@ which the web service runs on start — nothing to do by hand.
 
 ### Required environment variables
 
-| Var | Value | Notes |
-| --- | --- | --- |
-| `DATABASE_URL` | `postgresql://${{db.POSTGRES_USER}}:${{db.POSTGRES_PASSWORD}}@${{db.RAILWAY_PRIVATE_DOMAIN}}:5432/${{db.POSTGRES_DB}}` | Reference the Postgres service by its exact name. Use the **private** domain: `server/db/migrate.ts` builds a `Pool` with no `ssl` option, and the public TCP proxy expects TLS. Its presence switches the app from seed mode to DB mode. |
-| `SUBMISSION_SALT` | a long random secret | **Fatal if missing in DB mode.** Generate once with `openssl rand -base64 32`. Use a different value per environment — sharing one makes a leaked dev secret enough to reverse production's IP digests. Rotating it resets all bans / rate-limit windows. |
-| `TRUST_PROXY` | `1` | Railway sits behind a proxy; this makes the first `X-Forwarded-For` hop the real client IP for submission rate-limiting. Wrong (`0`) collapses every client onto the proxy address. |
-| `NODE_ENV` | `production` | Load-bearing at runtime: it's what makes `embeddings.ts` throw instead of silently falling back to the offline stub when `FIREWORKS_API_KEY` is absent. |
-| `NPM_CONFIG_INCLUDE` | `dev` | Required **because** of `NODE_ENV=production`, which otherwise makes npm skip `devDependencies` — where `typescript` and `vite` live. Without it the build fails with `sh: 1: tsc: not found`. |
+| Var                  | Value                                                                                                                  | Notes                                                                                                                                                                                                                                                     |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`       | `postgresql://${{db.POSTGRES_USER}}:${{db.POSTGRES_PASSWORD}}@${{db.RAILWAY_PRIVATE_DOMAIN}}:5432/${{db.POSTGRES_DB}}` | Reference the Postgres service by its exact name. Use the **private** domain: `server/db/migrate.ts` builds a `Pool` with no `ssl` option, and the public TCP proxy expects TLS. Its presence switches the app from seed mode to DB mode.                 |
+| `SUBMISSION_SALT`    | a long random secret                                                                                                   | **Fatal if missing in DB mode.** Generate once with `openssl rand -base64 32`. Use a different value per environment — sharing one makes a leaked dev secret enough to reverse production's IP digests. Rotating it resets all bans / rate-limit windows. |
+| `TRUST_PROXY`        | `1`                                                                                                                    | Railway sits behind a proxy; this makes the first `X-Forwarded-For` hop the real client IP for submission rate-limiting. Wrong (`0`) collapses every client onto the proxy address.                                                                       |
+| `NODE_ENV`           | `production`                                                                                                           | Load-bearing at runtime: it's what makes `embeddings.ts` throw instead of silently falling back to the offline stub when `FIREWORKS_API_KEY` is absent.                                                                                                   |
+| `NPM_CONFIG_INCLUDE` | `dev`                                                                                                                  | Required **because** of `NODE_ENV=production`, which otherwise makes npm skip `devDependencies` — where `typescript` and `vite` live. Without it the build fails with `sh: 1: tsc: not found`.                                                            |
 
 `PORT` is injected by Railway automatically — the server binds to it.
 
 ### Optional
 
-| Var | Default | Notes |
-| --- | --- | --- |
-| `FIREWORKS_API_KEY` | — | Only if the web service should ever run ingestion. Not needed just to serve. |
-| `SERPER_API_KEY` or `BRAVE_API_KEY` | — | Same. One search provider is required. |
-| `LOG_LEVEL` | `info` | |
+| Var                                 | Default | Notes                                                                        |
+| ----------------------------------- | ------- | ---------------------------------------------------------------------------- |
+| `FIREWORKS_API_KEY`                 | —       | Only if the web service should ever run ingestion. Not needed just to serve. |
+| `SERPER_API_KEY` or `BRAVE_API_KEY` | —       | Same. One search provider is required.                                       |
+| `LOG_LEVEL`                         | `info`  |                                                                              |
 
 The elevation grid (`public/elevation-grid.json`) is bundled into `dist/` by the
 build, so terrain works with no extra step.

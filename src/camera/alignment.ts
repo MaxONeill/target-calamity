@@ -95,17 +95,16 @@ export function slerpDirection(
     // axis perpendicular to it, so the path is deterministic. Orientation is
     // re-levelled by lookAt each frame regardless of which plane we pick.
     const axis = _antipodalAxis(a);
-    return out.copy(a).applyAxisAngle(axis, t * Math.PI).normalize();
+    return out
+      .copy(a)
+      .applyAxisAngle(axis, t * Math.PI)
+      .normalize();
   }
 
   const sinOmega = Math.sin(omega);
   const w1 = Math.sin((1 - t) * omega) / sinOmega;
   const w2 = Math.sin(t * omega) / sinOmega;
-  return out
-    .copy(a)
-    .multiplyScalar(w1)
-    .addScaledVector(b, w2)
-    .normalize();
+  return out.copy(a).multiplyScalar(w1).addScaledVector(b, w2).normalize();
 }
 
 const _axisScratch = new THREE.Vector3();
@@ -168,7 +167,11 @@ export class OrbitAlignment {
    * Align the camera to a factor's geographic coordinates. lat/lon → surface
    * vector routes through src/lib/geo.ts at the rig's globe radius.
    */
-  alignToLatLon(latDeg: number, lonDeg: number, options: AlignmentOptions = {}): Promise<AlignmentOutcome> {
+  alignToLatLon(
+    latDeg: number,
+    lonDeg: number,
+    options: AlignmentOptions = {},
+  ): Promise<AlignmentOutcome> {
     const pinPos = latLonToVector3(latDeg, lonDeg, this.#rig.radius);
     return this.alignTo(pinPos, options);
   }
@@ -249,18 +252,13 @@ export class OrbitAlignment {
 
   #resolveDegenerateDestination(): void {
     const destSph = new THREE.Spherical().setFromVector3(this.#dir1);
-    const nearPole =
-      destSph.phi < POLAR_LIMIT || destSph.phi > Math.PI - POLAR_LIMIT;
+    const nearPole = destSph.phi < POLAR_LIMIT || destSph.phi > Math.PI - POLAR_LIMIT;
     if (!nearPole) return;
 
     // Hold the camera's current azimuth; clamp polar angle just off the pole.
     const startSph = new THREE.Spherical().setFromVector3(this.#camera.position);
     destSph.theta = startSph.theta;
-    destSph.phi = THREE.MathUtils.clamp(
-      destSph.phi,
-      POLAR_LIMIT,
-      Math.PI - POLAR_LIMIT,
-    );
+    destSph.phi = THREE.MathUtils.clamp(destSph.phi, POLAR_LIMIT, Math.PI - POLAR_LIMIT);
     destSph.radius = 1;
     this.#dir1.setFromSpherical(destSph).normalize();
   }

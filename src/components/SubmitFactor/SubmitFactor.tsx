@@ -90,7 +90,9 @@ export function SubmitFactor({ onClose }: SubmitFactorProps): JSX.Element {
         const first = parsed.error.issues[0];
         setState({
           kind: 'error',
-          message: first ? `${String(first.path[0] ?? 'input')}: ${first.message}` : 'Invalid input.',
+          message: first
+            ? `${String(first.path[0] ?? 'input')}: ${first.message}`
+            : 'Invalid input.',
         });
         return;
       }
@@ -154,9 +156,9 @@ export function SubmitFactor({ onClose }: SubmitFactorProps): JSX.Element {
       </header>
 
       <p className="tc-submit__intro">
-        One claim per day, no account needed. You supply the claim and the source;
-        the system assigns everything else — direction, weight, location, and
-        whether it is verified — after checking the claim against that source.
+        One claim per day, no account needed. You supply the claim and the source; the system
+        assigns everything else — direction, weight, location, and whether it is verified — after
+        checking the claim against that source.
       </p>
 
       <form className="tc-submit__form" onSubmit={(e) => void handleSubmit(e)}>
@@ -220,9 +222,8 @@ export function SubmitFactor({ onClose }: SubmitFactorProps): JSX.Element {
       </form>
 
       <p className="tc-submit__note">
-        Submitting stores a one-way hash of your address and a random id kept in
-        this browser — never the address itself. It is used only to enforce the
-        daily limit.
+        Submitting stores a one-way hash of your address and a random id kept in this browser —
+        never the address itself. It is used only to enforce the daily limit.
       </p>
     </div>
   );

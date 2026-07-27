@@ -175,10 +175,11 @@ async function writeThreshold(
   const publisher = publisherFromUrl(doc.url, doc.title);
   const tippingPoint: Record<string, unknown> = {
     quantityThreshold,
-    label: `${verdict.value} ${verdict.unit.trim()} ${verdict.quantity.trim()} (${publisher})`.slice(
-      0,
-      500,
-    ),
+    label:
+      `${verdict.value} ${verdict.unit.trim()} ${verdict.quantity.trim()} (${publisher})`.slice(
+        0,
+        500,
+      ),
   };
   // Only the affirmative judgement is stored; absent already means "does not
   // anchor", so writing false would grow the row for no signal.
@@ -248,7 +249,9 @@ export async function backfillQuantityThresholds(
         `Each costs one web search.`,
     );
     if (dryRun || rows.length === 0) {
-      logger.info(dryRun ? '[quantities] plan only — no calls made.' : '[quantities] nothing to do.');
+      logger.info(
+        dryRun ? '[quantities] plan only — no calls made.' : '[quantities] nothing to do.',
+      );
       return;
     }
 
@@ -370,4 +373,3 @@ if (invokedDirectly) {
     process.exitCode = 1;
   });
 }
-

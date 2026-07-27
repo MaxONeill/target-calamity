@@ -59,9 +59,7 @@ describe('normalizeProjection', () => {
 
   it('drops a curve with fewer than two points', () => {
     // One point cannot be interpolated; inventing a second is the failure mode.
-    expect(
-      normalizeProjection({ ...base, points: [{ year: 2050, value: 2 }] }, docs),
-    ).toBeNull();
+    expect(normalizeProjection({ ...base, points: [{ year: 2050, value: 2 }] }, docs)).toBeNull();
   });
 
   it('drops a hallucinated source index rather than inventing a URL', () => {
@@ -92,7 +90,13 @@ describe('normalizeProjection', () => {
   it('drops non-finite points and rejects if too few survive', () => {
     expect(
       normalizeProjection(
-        { ...base, points: [{ year: 2020, value: Number.NaN }, { year: 2100, value: 2.7 }] },
+        {
+          ...base,
+          points: [
+            { year: 2020, value: Number.NaN },
+            { year: 2100, value: 2.7 },
+          ],
+        },
         docs,
       ),
     ).toBeNull();
@@ -109,10 +113,7 @@ describe('normalizeProjection', () => {
   it('treats an unstated scenario as assuming future action', () => {
     // An unlabelled pathway cannot be shown to be assumption-free, and guessing
     // permissively is what lets forces double-count against a curve.
-    const p = normalizeProjection(
-      { ...base, scenario: null, assumesFutureAction: true },
-      docs,
-    );
+    const p = normalizeProjection({ ...base, scenario: null, assumesFutureAction: true }, docs);
     expect(p!.assumesFutureAction).toBe(true);
     expect(p).not.toHaveProperty('scenario');
   });

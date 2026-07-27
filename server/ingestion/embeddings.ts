@@ -101,9 +101,7 @@ export interface RemoteEmbeddingConfig {
  * produces it. Preserves input order by sorting the response on `index`, which
  * the API does not guarantee to return sorted.
  */
-export function createRemoteEmbeddingClient(
-  config: RemoteEmbeddingConfig,
-): EmbeddingClient {
+export function createRemoteEmbeddingClient(config: RemoteEmbeddingConfig): EmbeddingClient {
   const model = config.model ?? DEFAULT_EMBEDDING_MODEL;
   const dimensions = config.dimensions ?? EMBEDDING_DIMENSIONS;
   const endpoint = config.endpoint ?? EMBEDDINGS_URL;
@@ -196,10 +194,7 @@ function mulberry32(seed: number): () => number {
  * inputs sit far apart — enough to exercise Phase C/D branching offline. This is
  * NOT a semantic embedding and must never be persisted as if it were.
  */
-export function stubEmbedding(
-  text: string,
-  dimensions = EMBEDDING_DIMENSIONS,
-): number[] {
+export function stubEmbedding(text: string, dimensions = EMBEDDING_DIMENSIONS): number[] {
   const rand = mulberry32(fnv1a(text));
   // Build via push + map so no index-read trips `noUncheckedIndexedAccess`.
   const raw: number[] = [];
@@ -220,9 +215,7 @@ export function stubEmbedding(
  * The offline client. Loudly labelled (`isStub: true`, `model: 'stub'`) so no
  * caller can mistake its output for real vectors.
  */
-export function createStubEmbeddingClient(
-  dimensions = EMBEDDING_DIMENSIONS,
-): EmbeddingClient {
+export function createStubEmbeddingClient(dimensions = EMBEDDING_DIMENSIONS): EmbeddingClient {
   return {
     isStub: true,
     model: 'stub',
@@ -275,7 +268,5 @@ export function createEmbeddingClient(
     '[ingestion] FIREWORKS_API_KEY not set — using the DETERMINISTIC STUB embedding ' +
       'client. Vectors are non-semantic and for offline development only.',
   );
-  return createStubEmbeddingClient(
-    Number.isFinite(dimensions) ? dimensions : EMBEDDING_DIMENSIONS,
-  );
+  return createStubEmbeddingClient(Number.isFinite(dimensions) ? dimensions : EMBEDDING_DIMENSIONS);
 }

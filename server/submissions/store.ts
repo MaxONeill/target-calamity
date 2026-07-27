@@ -24,11 +24,7 @@ import { submissionContentHash } from './identity.js';
  * makes the ban a shadow ban.
  */
 export type SubmissionStatus =
-  | 'accepted'
-  | 'rejected_noise'
-  | 'quarantined'
-  | 'rate_limited'
-  | 'duplicate';
+  'accepted' | 'rejected_noise' | 'quarantined' | 'rate_limited' | 'duplicate';
 
 /** The salted identity pair. Never carries a raw IP or device id. */
 export interface SubmitterIdentity {

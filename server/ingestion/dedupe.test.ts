@@ -121,11 +121,7 @@ describe('recalculateOnEscalation — the  convex blend', () => {
   it('repeated corroboration saturates rather than growing without bound', () => {
     let parent = { effect: 0.2, significance: 0.2, citationCount: 1 };
     for (let i = 0; i < 100; i++) {
-      const out = recalculateOnEscalation(
-        parent,
-        { effect: 1, significance: 1 },
-        'corroborating',
-      );
+      const out = recalculateOnEscalation(parent, { effect: 1, significance: 1 }, 'corroborating');
       parent = { ...out, citationCount: parent.citationCount + 1 };
       expect(out.effect).toBeLessThanOrEqual(1);
       expect(out.significance).toBeLessThanOrEqual(1);
@@ -187,7 +183,9 @@ describe('filterCandidates — ceiling filter + explicit ordering', () => {
   });
 
   it('keeps a candidate sitting exactly on the ceiling', () => {
-    const kept = filterCandidates([candidate({ id: 'edge', distance: CANDIDATE_DISTANCE_CEILING })]);
+    const kept = filterCandidates([
+      candidate({ id: 'edge', distance: CANDIDATE_DISTANCE_CEILING }),
+    ]);
     expect(kept.map((c) => c.id)).toEqual(['edge']);
   });
 });

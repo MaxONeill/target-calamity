@@ -85,10 +85,12 @@ describe('classifySubmissionOffline', () => {
 });
 
 describe('shouldAutoBan', () => {
-  const make = (
-    verdict: NoiseAssessment['verdict'],
-    confidence: number,
-  ): NoiseAssessment => ({ verdict, confidence, reason: 'test', provenance: 'offline-stub' });
+  const make = (verdict: NoiseAssessment['verdict'], confidence: number): NoiseAssessment => ({
+    verdict,
+    confidence,
+    reason: 'test',
+    provenance: 'offline-stub',
+  });
 
   it('bans only on a confident spam/abuse call', () => {
     expect(shouldAutoBan(make('spam', NOISE_BAN_CONFIDENCE))).toBe(true);

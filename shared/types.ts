@@ -67,4 +67,3 @@ export type FactorByIdResponse = z.infer<typeof FactorByIdResponseSchema>;
 export type FactorSubmission = z.infer<typeof FactorSubmissionSchema>;
 export type SubmissionOutcome = z.infer<typeof SubmissionOutcomeSchema>;
 export type SubmissionResponse = z.infer<typeof SubmissionResponseSchema>;
-

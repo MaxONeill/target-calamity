@@ -66,8 +66,7 @@ export interface ExtractedFactorDraft {
    * which appends its own citation.
    */
   corroborating?:
-    | readonly { publisher: string; sourceUrl: string | null; quoteSnippet: string }[]
-    | undefined;
+    readonly { publisher: string; sourceUrl: string | null; quoteSnippet: string }[] | undefined;
   /**
    * The reputability gate's audit trail: the DECIDING (max-scoring)
    * source's credibility score `∈ [0, 1]` and its reasoning, carried onto the

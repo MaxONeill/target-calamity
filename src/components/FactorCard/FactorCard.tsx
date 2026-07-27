@@ -48,11 +48,7 @@ export const FactorCard = forwardRef<HTMLDivElement, FactorCardProps>(
         id={`tc-factor-${factor.id}`}
         aria-selected={selected}
         tabIndex={tabIndex}
-        className={[
-          'tc-card',
-          `tc-card--${polarity}`,
-          selected ? 'tc-card--selected' : '',
-        ]
+        className={['tc-card', `tc-card--${polarity}`, selected ? 'tc-card--selected' : '']
           .filter(Boolean)
           .join(' ')}
         onClick={() => onSelect(factor.id)}
@@ -61,9 +57,7 @@ export const FactorCard = forwardRef<HTMLDivElement, FactorCardProps>(
           <h3 className="tc-card__name">{factor.name}</h3>
         </div>
 
-        {factor.description ? (
-          <p className="tc-card__desc">{factor.description}</p>
-        ) : null}
+        {factor.description ? <p className="tc-card__desc">{factor.description}</p> : null}
 
         {/* Metrics */}
         <div className="tc-metrics">
@@ -106,14 +100,9 @@ export const FactorCard = forwardRef<HTMLDivElement, FactorCardProps>(
           <div className="tc-metric">
             <span className="tc-metric__label">SIG</span>
             <div className="tc-sigbar" aria-hidden="true">
-              <span
-                className="tc-sigbar__fill"
-                style={{ width: `${significancePct}%` }}
-              />
+              <span className="tc-sigbar__fill" style={{ width: `${significancePct}%` }} />
             </div>
-            <span className="tc-metric__value">
-              {factor.significance.toFixed(2)}
-            </span>
+            <span className="tc-metric__value">{factor.significance.toFixed(2)}</span>
           </div>
         </div>
       </div>

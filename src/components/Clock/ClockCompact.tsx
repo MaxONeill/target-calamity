@@ -27,9 +27,7 @@ export function ClockCompact({
       onClick={onToggle}
       aria-expanded={expanded}
       aria-label={
-        expanded
-          ? 'Collapse the modeled-projection detail'
-          : 'Expand the modeled-projection detail'
+        expanded ? 'Collapse the modeled-projection detail' : 'Expand the modeled-projection detail'
       }
     >
       {/* Past the target the clock keeps counting, negative and in red, rather
@@ -65,8 +63,7 @@ export function ClockCompact({
             <span className="tc-clock-compact-seg">{remaining.years}y</span>{' '}
             <span className="tc-clock-compact-seg">{remaining.days}d</span>{' '}
             <span className="tc-clock-compact-seg">
-              {pad2(remaining.hours)}:{pad2(remaining.minutes)}:
-              {pad2(remaining.seconds)}
+              {pad2(remaining.hours)}:{pad2(remaining.minutes)}:{pad2(remaining.seconds)}
             </span>
           </>
         )}

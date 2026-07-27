@@ -13,7 +13,9 @@
   border-radius: var(--tc-radius);
   padding: 11px 12px 12px;
   cursor: pointer;
-  transition: border-color 120ms ease, background 120ms ease;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
 }
 
 .tc-card:hover {

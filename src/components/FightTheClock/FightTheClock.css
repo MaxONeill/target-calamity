@@ -16,8 +16,12 @@
   border-radius: 4px;
   padding: 10px 22px;
   cursor: pointer;
-  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(217, 164, 65, 0.3);
-  transition: background 120ms ease, transform 120ms ease;
+  box-shadow:
+    0 8px 26px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(217, 164, 65, 0.3);
+  transition:
+    background 120ms ease,
+    transform 120ms ease;
 }
 .tc-fight__trigger:hover {
   background: #e8b855;

@@ -30,12 +30,7 @@
  * `resolveOutcome`'s own fallback — rather than crashing a cycle.
  */
 import * as z from 'zod/v4';
-import {
-  type LlmClient,
-  getLlmClient,
-  ingestModel,
-  structuredCompletion,
-} from './llmClient.js';
+import { type LlmClient, getLlmClient, ingestModel, structuredCompletion } from './llmClient.js';
 import type { EntityResolver, ResolutionRequest } from './pipeline.js';
 import type { EscalationDirectionality, ResolverVerdict } from './dedupe.js';
 
@@ -114,10 +109,7 @@ export function verdictFromProposal(
   return {
     kind: 'escalation',
     parentId: nearest.id,
-    directionality: deriveDirectionality(
-      proposal.updatedSignificance,
-      nearest.significance,
-    ),
+    directionality: deriveDirectionality(proposal.updatedSignificance, nearest.significance),
   };
 }
 

@@ -55,10 +55,7 @@ interface ArcRecord {
  * its numerator. Kept identical on purpose — a ring ordered by one measure and
  * a globe baked from another would disagree about which factors matter.
  */
-export function fieldInfluence(factor: {
-  effect: number;
-  significance: number;
-}): number {
+export function fieldInfluence(factor: { effect: number; significance: number }): number {
   return Math.abs(factor.effect) * Math.max(factor.significance, 0);
 }
 
@@ -311,4 +308,3 @@ function clamp01(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.min(1, Math.max(0, value));
 }
-

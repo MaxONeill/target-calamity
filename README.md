@@ -14,11 +14,11 @@ tipping-point factors there is no baseline and the countdown is **suppressed**,
 not invented.
 
 Every point on the globe is shaded by a two-field accumulation of nearby
-**factors**: signed *effect* (Calamity ↔ Humanity) weighted by *significance*.
+**factors**: signed _effect_ (Calamity ↔ Humanity) weighted by _significance_.
 Every factor is backed by hard citations. The product's credibility rests on it
 being **empirical, verifiable, and reproducible** — not on theatre — so the field
 is a function of the data alone (never of where your camera is pointing), and the
-Clock is labelled a *modeled projection, not a measurement*.
+Clock is labelled a _modeled projection, not a measurement_.
 
 ---
 
@@ -32,9 +32,9 @@ Clock is labelled a *modeled projection, not a measurement*.
   model:
   - **Crimson** — Calamity dominates locally (net polarity → −1).
   - **Electric blue** — Humanity/resilience dominates (net polarity → +1).
-  - **Deep purple** — *contested equilibrium*: strong opposing forces, both
+  - **Deep purple** — _contested equilibrium_: strong opposing forces, both
     documented, roughly cancel (high evidence density, polarity ≈ 0).
-  - **Untinted geography** — *insufficient coverage*: no verified factors within
+  - **Untinted geography** — _insufficient coverage_: no verified factors within
     the support radius, so the surface shows the plain geographic base. This is an
     **absence of data, deliberately distinct from purple**; collapsing the two
     would let the globe imply a reading where none exists.
@@ -152,19 +152,19 @@ npm test            # vitest: geo, clock model, and field kernel suites
 
 ## Stack
 
-| Layer          | Choice                                                              |
-| -------------- | ------------------------------------------------------------------ |
-| Client         | Vite + React 18 + TypeScript (strict) + three.js (direct, WebGL2)  |
-| Server         | Node + TypeScript, Fastify, Kysely over `pg`, run via `tsx`        |
-| Contract       | `zod` schemas in `shared/`, TS types via `z.infer` (one source)    |
-| Database       | PostgreSQL 17 — `vector`, `ltree`, `postgis` — via docker-compose  |
-| Geo data       | `world-atlas` 110m TopoJSON (coastlines + land mask), Open-Meteo elevation |
-| Ingestion LLM  | Fireworks AI (DeepSeek V4 Flash) + embeddings; Serper/Brave search + local fetch/extract for retrieval |
-| Packaging      | Single root `package.json`                                         |
+| Layer         | Choice                                                                                                 |
+| ------------- | ------------------------------------------------------------------------------------------------------ |
+| Client        | Vite + React 18 + TypeScript (strict) + three.js (direct, WebGL2)                                      |
+| Server        | Node + TypeScript, Fastify, Kysely over `pg`, run via `tsx`                                            |
+| Contract      | `zod` schemas in `shared/`, TS types via `z.infer` (one source)                                        |
+| Database      | PostgreSQL 17 — `vector`, `ltree`, `postgis` — via docker-compose                                      |
+| Geo data      | `world-atlas` 110m TopoJSON (coastlines + land mask), Open-Meteo elevation                             |
+| Ingestion LLM | Fireworks AI (DeepSeek V4 Flash) + embeddings; Serper/Brave search + local fetch/extract for retrieval |
+| Packaging     | Single root `package.json`                                                                             |
 
 > The `openai` npm package is a dependency, but **no request is ever made to
-> `api.openai.com`**. It is used purely as an HTTP client for the OpenAI *wire
-> protocol*, pinned to `https://api.fireworks.ai/inference/v1` — `llmClient.test.ts`
+> `api.openai.com`**. It is used purely as an HTTP client for the OpenAI _wire
+> protocol_, pinned to `https://api.fireworks.ai/inference/v1` — `llmClient.test.ts`
 > asserts the base URL. See .
 
 ### The two data paths
@@ -193,9 +193,9 @@ immutable-keyset backfill feed.
 // request — and this is the WHOLE contract; the schema is .strict()
 {
   "claim": "…one factual statement…",
-  "sourceUrl": "https://…",          // must parse and be http(s)
+  "sourceUrl": "https://…", // must parse and be http(s)
   "note": "optional, for a reviewer",
-  "deviceId": "…uuid from localStorage…"
+  "deviceId": "…uuid from localStorage…",
 }
 ```
 
@@ -211,10 +211,10 @@ success payload a genuine one does and is never told otherwise.
 
 Environment:
 
-| Variable | Required | What it does |
-| --- | --- | --- |
+| Variable          | Required            | What it does                                                                                                                                                                                                                                            |
+| ----------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `SUBMISSION_SALT` | **yes, in DB mode** | Salt for `sha256(salt‖ip)` / `sha256(salt‖deviceId)`. **No raw IP is ever stored.** The server refuses to boot in DB mode without it — unsalted digests are reversible across the whole IPv4 space. Rotating it resets every ban and rate-limit window. |
-| `TRUST_PROXY` | no (default off) | Set to `1` only when behind a reverse proxy you control; then the first hop of `X-Forwarded-For` is the client. Trusting it unproxied lets anyone mint a fresh identity per request. |
+| `TRUST_PROXY`     | no (default off)    | Set to `1` only when behind a reverse proxy you control; then the first hop of `X-Forwarded-For` is the client. Trusting it unproxied lets anyone mint a fresh identity per request.                                                                    |
 
 **Honest limitation:** without auth this raises the cost of abuse rather than
 eliminating it. Someone who clears localStorage and changes IP gets another

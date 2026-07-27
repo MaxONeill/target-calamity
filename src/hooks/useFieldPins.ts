@@ -54,4 +54,3 @@ export function useFieldPins(): FieldPinsState {
 
   return { fieldPins, globalFactors, projections, requirements, reloadField };
 }
-

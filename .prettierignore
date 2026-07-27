@@ -1,0 +1,16 @@
+# Build output and dependencies.
+dist
+node_modules
+coverage
+
+# Generated / captured data. Reformatting these is pure churn and, for the
+# seed snapshot, would rewrite 1.7 MB of pg_dump output that has to stay
+# byte-comparable with what the database produced.
+db/seed-data.sql
+db/seed.sql
+public/elevation-grid.json
+*.dump
+
+# Migrations are applied by hash-order and read as a historical record; leave
+# them exactly as they were written and reviewed.
+db/migrations

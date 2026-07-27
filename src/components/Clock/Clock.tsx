@@ -1,11 +1,7 @@
 ﻿import { useCallback, useMemo, useRef, useState } from 'react';
 import { useSwipe, type SwipeGesture } from '../../hooks/useSwipe.js';
 import type { Requirement } from '../../../shared/types.js';
-import {
-  deriveClock,
-  type ClockFactorInput,
-  type Projection,
-} from '../../lib/clock/clockModel.js';
+import { deriveClock, type ClockFactorInput, type Projection } from '../../lib/clock/clockModel.js';
 import { ExplainerModal } from '../ExplainerModal/index.js';
 import { ClockCompact } from './ClockCompact.js';
 import { ClockDerivation } from './ClockDerivation.js';
@@ -92,6 +88,3 @@ export function Clock({ factors, projections, requirements, className }: ClockPr
     </section>
   );
 }
-
-
-

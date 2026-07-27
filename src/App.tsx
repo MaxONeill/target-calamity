@@ -133,7 +133,7 @@ export function App(): JSX.Element {
   const selectedPin = useMemo(
     () =>
       panel.selectedId && !selectedFactor
-        ? fieldPins.find((p) => p.id === panel.selectedId) ?? null
+        ? (fieldPins.find((p) => p.id === panel.selectedId) ?? null)
         : null,
     [panel.selectedId, selectedFactor, fieldPins],
   );
@@ -209,5 +209,3 @@ export function App(): JSX.Element {
 }
 
 export default App;
-
-

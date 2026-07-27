@@ -67,8 +67,9 @@
 }
 
 .tc-explainer-panel {
-  --tc-mono: 'JetBrains Mono', 'SFMono-Regular', 'Consolas', 'Menlo',
-    'Liberation Mono', ui-monospace, monospace;
+  --tc-mono:
+    'JetBrains Mono', 'SFMono-Regular', 'Consolas', 'Menlo', 'Liberation Mono', ui-monospace,
+    monospace;
   display: flex;
   flex-direction: column;
   width: min(560px, 100%);
@@ -109,7 +110,9 @@
   border: 1px solid #303a4a;
   border-radius: 3px;
   cursor: pointer;
-  transition: color 120ms ease, border-color 120ms ease;
+  transition:
+    color 120ms ease,
+    border-color 120ms ease;
 }
 
 .tc-explainer-close:hover,

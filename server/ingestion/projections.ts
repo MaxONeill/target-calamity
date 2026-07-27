@@ -25,11 +25,7 @@
  */
 import * as z from 'zod/v4';
 import type { Projection } from '../../shared/types.js';
-import {
-  retrieveDocuments,
-  hasRetrievalCredentials,
-  type RetrievedDocument,
-} from './retrieval.js';
+import { retrieveDocuments, hasRetrievalCredentials, type RetrievedDocument } from './retrieval.js';
 import { apiKeyFor } from './search.js';
 import {
   getLlmClient,
@@ -102,7 +98,7 @@ const EXTRACT_SYSTEM =
   'curve whose earliest point is years in the future cannot date any threshold ' +
   'already behind us: a warming curve starting at 2030 = 1.5 degC cannot say ' +
   'when 1.2 degC was passed, even though the same curve makes clear it WAS ' +
-  'passed. A source giving today\'s level and one projected level has given you ' +
+  "passed. A source giving today's level and one projected level has given you " +
   'two points, which is enough. Take every year the source states. ' +
   'Use ONE source block for the whole curve — the block whose numbers are most ' +
   'complete. Do NOT stitch points from different sources together: two ' +
@@ -254,7 +250,8 @@ export async function researchProjection(
   // multiplier on every search, and a module hardcoding past it makes the
   // setting a lie. Unset on both → retrieveDocuments's own default.
   const envMax = Number.parseInt(env.RETRIEVAL_MAX_RESULTS ?? '', 10);
-  const maxResults = opts.maxResults ?? (Number.isFinite(envMax) && envMax > 0 ? envMax : undefined);
+  const maxResults =
+    opts.maxResults ?? (Number.isFinite(envMax) && envMax > 0 ? envMax : undefined);
 
   const docs = await retrieveDocuments(projectionQuery(request), {
     // Passed explicitly rather than left to retrieval's process.env fallback:
@@ -289,4 +286,3 @@ export async function researchProjection(
   if (quote === '') return null;
   return { candidate, quote };
 }
-

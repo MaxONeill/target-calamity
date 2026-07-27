@@ -64,9 +64,7 @@ describe('normalizeBraveResults', () => {
   });
 
   it('honours maxResults', () => {
-    const body = braveBody(
-      Array.from({ length: 10 }, (_, i) => ({ url: `https://x.org/${i}` })),
-    );
+    const body = braveBody(Array.from({ length: 10 }, (_, i) => ({ url: `https://x.org/${i}` })));
     expect(normalizeBraveResults(body, 3)).toHaveLength(3);
   });
 
@@ -165,10 +163,7 @@ describe('extractText', () => {
   it('falls back to whole-document text when there is no article to find', () => {
     // Index and data pages are still perfectly good sources; Readability
     // returning null must not mean "no source".
-    const { text } = extractText(
-      `<html><body><div>${LONG}</div></body></html>`,
-      'https://x.org/a',
-    );
+    const { text } = extractText(`<html><body><div>${LONG}</div></body></html>`, 'https://x.org/a');
     expect(text).toContain('sustained decline');
   });
 
@@ -238,9 +233,7 @@ describe('truncateContent', () => {
 describe('truncatePreservingTables', () => {
   /** Prose, then a table far past any sane budget — the Wikipedia shape. */
   function proseThenTable(proseChars: number, rows: number): string {
-    const prose = 'Background on the published series. '.repeat(
-      Math.ceil(proseChars / 36),
-    );
+    const prose = 'Background on the published series. '.repeat(Math.ceil(proseChars / 36));
     const table = [
       '| Year | Value |',
       '| --- | --- |',
@@ -287,8 +280,9 @@ describe('truncatePreservingTables', () => {
 
   it('never exceeds the budget — callers size their token spend against it', () => {
     for (const max of [500, 1_000, 4_000, 9_999]) {
-      expect(truncatePreservingTables(proseThenTable(50_000, 200), max).length)
-        .toBeLessThanOrEqual(max);
+      expect(truncatePreservingTables(proseThenTable(50_000, 200), max).length).toBeLessThanOrEqual(
+        max,
+      );
     }
   });
 });
@@ -325,10 +319,12 @@ describe('resolveSourceDoc', () => {
   });
 
   it('matches through markdown emphasis the converter inserted', () => {
-    const withMarkup = [doc('https://d.org/1', 'The **Global Fund** for _Coral Reefs_ invests here.')];
-    expect(resolveSourceDoc(withMarkup, 0, 'The Global Fund for Coral Reefs invests here.')?.how).toBe(
-      'quote',
-    );
+    const withMarkup = [
+      doc('https://d.org/1', 'The **Global Fund** for _Coral Reefs_ invests here.'),
+    ];
+    expect(
+      resolveSourceDoc(withMarkup, 0, 'The Global Fund for Coral Reefs invests here.')?.how,
+    ).toBe('quote');
   });
 
   it('refuses to resolve when the quote appears in more than one page', () => {
@@ -487,10 +483,12 @@ describe('retrieveDocuments', () => {
   });
 
   it('throws when the SEARCH leg fails — callers catch and treat it as no sources', async () => {
-    const failing = vi.fn(async () => new Response('quota', { status: 429 })) as unknown as typeof fetch;
-    await expect(retrieveDocuments('coral', { apiKey: 'k', provider: 'brave', fetchImpl: failing })).rejects.toThrow(
-      /429/,
-    );
+    const failing = vi.fn(
+      async () => new Response('quota', { status: 429 }),
+    ) as unknown as typeof fetch;
+    await expect(
+      retrieveDocuments('coral', { apiKey: 'k', provider: 'brave', fetchImpl: failing }),
+    ).rejects.toThrow(/429/);
   });
 
   it('refuses to search without a credential instead of returning nothing', async () => {

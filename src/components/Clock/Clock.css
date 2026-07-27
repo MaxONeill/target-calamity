@@ -19,8 +19,9 @@
   --tc-humanity: #4a9be6;
   --tc-equilibrium: #8a5cd0;
 
-  --tc-mono: 'JetBrains Mono', 'SFMono-Regular', 'Consolas', 'Menlo',
-    'Liberation Mono', ui-monospace, monospace;
+  --tc-mono:
+    'JetBrains Mono', 'SFMono-Regular', 'Consolas', 'Menlo', 'Liberation Mono', ui-monospace,
+    monospace;
 
   position: relative;
   box-sizing: border-box;
@@ -70,7 +71,9 @@
   background: linear-gradient(180deg, var(--tc-panel), var(--tc-panel-2));
   border: 1px solid var(--tc-line-strong);
   border-radius: 4px;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 10px 30px rgba(0, 0, 0, 0.4);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.4),
+    0 10px 30px rgba(0, 0, 0, 0.4);
   transition: border-color 120ms ease;
 }
 .tc-clock-compact:hover {
@@ -147,11 +150,17 @@
   background: linear-gradient(180deg, var(--tc-panel), var(--tc-panel-2));
   border: 1px solid var(--tc-line-strong);
   border-radius: 4px;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 18px 48px rgba(0, 0, 0, 0.45);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.4),
+    0 18px 48px rgba(0, 0, 0, 0.45);
   transform-origin: top left;
   overflow: hidden;
-  transition: max-height 200ms ease, opacity 200ms ease, transform 200ms ease,
-    padding 200ms ease, border-color 200ms ease;
+  transition:
+    max-height 200ms ease,
+    opacity 200ms ease,
+    transform 200ms ease,
+    padding 200ms ease,
+    border-color 200ms ease;
 }
 
 /* Collapsed: slid away, non-interactive. Expanded: full derivation visible. */
@@ -758,7 +767,9 @@
   border: 1px solid var(--tc-line-strong);
   border-radius: 3px;
   cursor: pointer;
-  transition: border-color 120ms ease, color 120ms ease;
+  transition:
+    border-color 120ms ease,
+    color 120ms ease;
 }
 
 .tc-clock-sound:hover {
@@ -791,4 +802,3 @@
     overflow-wrap: anywhere;
   }
 }
-

@@ -43,7 +43,15 @@ describe('buildCoastlineSegments', () => {
 
   it('projects [lon, lat] consistently with geo.latLonToVector3', () => {
     // First emitted vertex is the projected start point [lon=20, lat=40].
-    const out = buildCoastlineSegments([[[20, 40], [20.5, 40]]], 1);
+    const out = buildCoastlineSegments(
+      [
+        [
+          [20, 40],
+          [20.5, 40],
+        ],
+      ],
+      1,
+    );
     const start = new THREE.Vector3(out[0]!, out[1]!, out[2]!);
     // Reconstruct lat=40, lon=20 via the same convention geo.latLonToVector3 uses.
     const expected = new THREE.Vector3();

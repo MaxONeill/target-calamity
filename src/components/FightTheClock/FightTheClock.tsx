@@ -35,10 +35,26 @@ const SHARE_TARGETS: ReadonlyArray<{ name: string; color: string; href: string }
   const title = encodeURIComponent(SHARE_TITLE);
   const textUrl = encodeURIComponent(`${SHARE_TITLE} ${SHARE_URL}`);
   return [
-    { name: 'X', color: '#000000', href: `https://twitter.com/intent/tweet?url=${url}&text=${title}` },
-    { name: 'Facebook', color: '#1877F2', href: `https://www.facebook.com/sharer/sharer.php?u=${url}` },
-    { name: 'LinkedIn', color: '#0A66C2', href: `https://www.linkedin.com/sharing/share-offsite/?url=${url}` },
-    { name: 'Reddit', color: '#FF4500', href: `https://www.reddit.com/submit?url=${url}&title=${title}` },
+    {
+      name: 'X',
+      color: '#000000',
+      href: `https://twitter.com/intent/tweet?url=${url}&text=${title}`,
+    },
+    {
+      name: 'Facebook',
+      color: '#1877F2',
+      href: `https://www.facebook.com/sharer/sharer.php?u=${url}`,
+    },
+    {
+      name: 'LinkedIn',
+      color: '#0A66C2',
+      href: `https://www.linkedin.com/sharing/share-offsite/?url=${url}`,
+    },
+    {
+      name: 'Reddit',
+      color: '#FF4500',
+      href: `https://www.reddit.com/submit?url=${url}&title=${title}`,
+    },
     { name: 'WhatsApp', color: '#25D366', href: `https://api.whatsapp.com/send?text=${textUrl}` },
     { name: 'Telegram', color: '#26A5E4', href: `https://t.me/share/url?url=${url}&text=${title}` },
     { name: 'Bluesky', color: '#1185FE', href: `https://bsky.app/intent/compose?text=${textUrl}` },
@@ -128,9 +144,9 @@ export function FightTheClock(): JSX.Element {
 
       const dialog = dialogRef.current;
       if (!dialog) return;
-      const focusable = Array.from(
-        dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
-      ).filter((el) => el.offsetParent !== null || el === document.activeElement);
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+        (el) => el.offsetParent !== null || el === document.activeElement,
+      );
       if (focusable.length === 0) {
         event.preventDefault();
         dialog.focus();
@@ -198,9 +214,9 @@ export function FightTheClock(): JSX.Element {
 
               <div className="tc-fight__body">
                 <p className="tc-fight__intro">
-                  Something has to be done, and it&apos;ll take out-of-the-box thinking.
-                  We may not know exactly what to do, but we know it&apos;ll be easier
-                  together. <b>The first step is showing up</b>.
+                  Something has to be done, and it&apos;ll take out-of-the-box thinking. We may not
+                  know exactly what to do, but we know it&apos;ll be easier together.{' '}
+                  <b>The first step is showing up</b>.
                 </p>
 
                 <div className="tc-fight__share-field">

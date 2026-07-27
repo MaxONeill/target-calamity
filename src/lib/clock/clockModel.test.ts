@@ -44,10 +44,7 @@ describe('deriveClock — anchor', () => {
     // The window closes when the earliest closer is crossed. A median over the
     // catalogue would land between 2040 and 2060; that year is not an event
     // anyone experiences.
-    const m = derive([
-      closer(2040),
-      closer(2060),
-    ]);
+    const m = derive([closer(2040), closer(2060)]);
     expect(m.baselineTargetYear).toBeLessThan(2045);
     expect(m.band).not.toBeNull();
     expect(m.band!.p25).toBeLessThan(m.band!.p50);
@@ -408,11 +405,31 @@ describe('deriveClock — forces interpolate within the published range', () => 
       { effect: -0.9, significance: 0.9, domains: ['ocean'] },
     ];
     const wide = derive([
-      { effect: -0.4, significance: 0.9, tippingPoint: { centralYear: 2060, earliestYear: 2045, latestYear: 2080, closesWindow: true }, domains: ['ocean'] },
+      {
+        effect: -0.4,
+        significance: 0.9,
+        tippingPoint: {
+          centralYear: 2060,
+          earliestYear: 2045,
+          latestYear: 2080,
+          closesWindow: true,
+        },
+        domains: ['ocean'],
+      },
       ...forces,
     ]);
     const tight = derive([
-      { effect: -0.4, significance: 0.9, tippingPoint: { centralYear: 2060, earliestYear: 2058, latestYear: 2062, closesWindow: true }, domains: ['ocean'] },
+      {
+        effect: -0.4,
+        significance: 0.9,
+        tippingPoint: {
+          centralYear: 2060,
+          earliestYear: 2058,
+          latestYear: 2062,
+          closesWindow: true,
+        },
+        domains: ['ocean'],
+      },
       ...forces,
     ]);
     expect(Math.abs(wide.thresholds[0]!.shiftYears)).toBeGreaterThan(
@@ -424,7 +441,11 @@ describe('deriveClock — forces interpolate within the published range', () => 
     const thin = derive([ocean(), { effect: -0.9, significance: 0.9, domains: ['ocean'] }]);
     const strong = derive([
       ocean(),
-      ...Array.from({ length: 8 }, () => ({ effect: -0.9, significance: 0.9, domains: ['ocean'] as const })),
+      ...Array.from({ length: 8 }, () => ({
+        effect: -0.9,
+        significance: 0.9,
+        domains: ['ocean'] as const,
+      })),
     ]);
     expect(Math.abs(strong.shiftYears)).toBeGreaterThan(Math.abs(thin.shiftYears));
   });
@@ -436,12 +457,20 @@ describe('deriveClock — forces interpolate within the published range', () => 
 
   it('an UNRELATED-domain force does not move the threshold', () => {
     const calm = derive([ocean()]);
-    const withUnrelated = derive([ocean(), { effect: -0.9, significance: 0.9, domains: ['society'] }]);
+    const withUnrelated = derive([
+      ocean(),
+      { effect: -0.9, significance: 0.9, domains: ['society'] },
+    ]);
     expect(withUnrelated.targetYear).toBeCloseTo(calm.targetYear!, 3);
   });
 
   it('a systemic (undomained) force applies to every threshold', () => {
-    const anchor: ClockFactorInput = { effect: 0, significance: 0.9, tippingPoint: { centralYear: 2060, earliestYear: 2050, latestYear: 2075, closesWindow: true }, domains: ['ocean'] };
+    const anchor: ClockFactorInput = {
+      effect: 0,
+      significance: 0.9,
+      tippingPoint: { centralYear: 2060, earliestYear: 2050, latestYear: 2075, closesWindow: true },
+      domains: ['ocean'],
+    };
     const calm = derive([anchor]);
     const withSystemic = derive([anchor, { effect: -0.9, significance: 0.9, domains: [] }]);
     expect(withSystemic.targetYear!).toBeLessThan(calm.targetYear!);
@@ -451,8 +480,23 @@ describe('deriveClock — forces interpolate within the published range', () => 
 describe('deriveClock — assumed band from peers', () => {
   it('gives a range-less threshold the median peer half-width', () => {
     const m = derive([
-      { effect: 0, significance: 0.9, tippingPoint: { centralYear: 2050, earliestYear: 2040, latestYear: 2060, closesWindow: true }, domains: [] },
-      { effect: 0, significance: 0.9, tippingPoint: { centralYear: 2055, closesWindow: true }, domains: [] }, // no range
+      {
+        effect: 0,
+        significance: 0.9,
+        tippingPoint: {
+          centralYear: 2050,
+          earliestYear: 2040,
+          latestYear: 2060,
+          closesWindow: true,
+        },
+        domains: [],
+      },
+      {
+        effect: 0,
+        significance: 0.9,
+        tippingPoint: { centralYear: 2055, closesWindow: true },
+        domains: [],
+      }, // no range
     ]);
     // Peer half-widths are 10 and 10 → assumed spread 10.
     expect(m.assumedSpreadYears).toBe(10);
@@ -460,7 +504,12 @@ describe('deriveClock — assumed band from peers', () => {
 
   it('reports null when every threshold published its own range', () => {
     const m = derive([
-      { effect: 0, significance: 0.9, tippingPoint: { centralYear: 2050, earliestYear: 2045, latestYear: 2058 }, domains: [] },
+      {
+        effect: 0,
+        significance: 0.9,
+        tippingPoint: { centralYear: 2050, earliestYear: 2045, latestYear: 2058 },
+        domains: [],
+      },
     ]);
     expect(m.assumedSpreadYears).toBeNull();
   });
@@ -481,7 +530,12 @@ describe('deriveClock — derivation output', () => {
 
   it('lists each threshold with its shift and driving domains', () => {
     const m = derive([
-      { effect: -0.4, significance: 0.9, tippingPoint: { centralYear: 2060, earliestYear: 2050, latestYear: 2075, label: 'AMOC' }, domains: ['ocean'] },
+      {
+        effect: -0.4,
+        significance: 0.9,
+        tippingPoint: { centralYear: 2060, earliestYear: 2050, latestYear: 2075, label: 'AMOC' },
+        domains: ['ocean'],
+      },
       { effect: -0.9, significance: 0.9, domains: ['climate'] },
     ]);
     expect(m.thresholds).toHaveLength(1);
@@ -496,8 +550,20 @@ describe('deriveClock — derivation output', () => {
 describe('deriveClock — robustness', () => {
   it('excludes pending factors and counts them', () => {
     const m = derive([
-      { effect: -0.8, significance: 0.9, verificationState: 'pending', tippingPoint: { centralYear: 2040, closesWindow: true }, domains: ['ocean'] },
-      { effect: -0.5, significance: 0.9, verificationState: 'verified', tippingPoint: { centralYear: 2060, closesWindow: true }, domains: ['ocean'] },
+      {
+        effect: -0.8,
+        significance: 0.9,
+        verificationState: 'pending',
+        tippingPoint: { centralYear: 2040, closesWindow: true },
+        domains: ['ocean'],
+      },
+      {
+        effect: -0.5,
+        significance: 0.9,
+        verificationState: 'verified',
+        tippingPoint: { centralYear: 2060, closesWindow: true },
+        domains: ['ocean'],
+      },
     ]);
     expect(m.pendingCount).toBe(1);
     expect(m.contributingCount).toBe(1);
@@ -508,7 +574,12 @@ describe('deriveClock — robustness', () => {
     const m = derive([
       { effect: NaN, significance: 0.9, domains: ['ocean'] },
       { effect: -0.5, significance: Infinity, domains: ['ocean'] },
-      { effect: -0.5, significance: 0.9, tippingPoint: { centralYear: 2050, closesWindow: true }, domains: ['ocean'] },
+      {
+        effect: -0.5,
+        significance: 0.9,
+        tippingPoint: { centralYear: 2050, closesWindow: true },
+        domains: ['ocean'],
+      },
     ]);
     expect(m.rejectedCount).toBe(2);
     expect(m.contributingCount).toBe(1);

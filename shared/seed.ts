@@ -66,7 +66,8 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
       {
         id: 'c0000000-0000-4000-8000-000000000001',
         factorId: 'f0000000-0000-4000-8000-000000000001',
-        sourceUrl: 'https://nsidc.org/sea-ice-today/analyses/arctic-sea-ice-sets-record-low-maximum-2025',
+        sourceUrl:
+          'https://nsidc.org/sea-ice-today/analyses/arctic-sea-ice-sets-record-low-maximum-2025',
         publisher: 'National Snow and Ice Data Center (NSIDC)',
         quoteSnippet:
           'On March 22, Arctic sea ice likely reached its maximum extent for the year, at 14.33 million square kilometers, the lowest in the 47-year satellite record.',
@@ -95,7 +96,8 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
         id: 'c0000000-0000-4000-8000-000000000002',
         factorId: 'f0000000-0000-4000-8000-000000000002',
         sourceUrl: 'https://www.nature.com/articles/nature14338',
-        publisher: 'Nature (Schuur et al., 2015, "Climate change and the permafrost carbon feedback")',
+        publisher:
+          'Nature (Schuur et al., 2015, "Climate change and the permafrost carbon feedback")',
         quoteSnippet:
           'Northern permafrost soils hold on the order of 1,460–1,600 gigatons of organic carbon — roughly twice the carbon currently in the atmosphere.',
         verbatim: false,
@@ -129,7 +131,8 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
         id: 'c0000000-0000-4000-8000-000000000003',
         factorId: 'f0000000-0000-4000-8000-000000000003',
         sourceUrl: 'https://www.nature.com/articles/s41586-023-06970-0',
-        publisher: 'Nature (Flores et al., 2024, "Critical transitions in the Amazon forest system")',
+        publisher:
+          'Nature (Flores et al., 2024, "Critical transitions in the Amazon forest system")',
         quoteSnippet:
           'By 2050, 10% to 47% of Amazonian forests will be exposed to compounding disturbances that may trigger unexpected ecosystem transitions.',
         verbatim: true,
@@ -193,7 +196,8 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
         id: 'c0000000-0000-4000-8000-000000000005',
         factorId: 'f0000000-0000-4000-8000-000000000005',
         sourceUrl: 'https://www.ipbes.net/assessment-reports/pollinators',
-        publisher: 'IPBES (Assessment Report on Pollinators, Pollination and Food Production, 2016)',
+        publisher:
+          'IPBES (Assessment Report on Pollinators, Pollination and Food Production, 2016)',
         quoteSnippet:
           'Over 40% of invertebrate pollinator species — particularly bees and butterflies — face extinction; US$235–577 billion of annual global food production relies on pollinators.',
         verbatim: false,
@@ -280,7 +284,8 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
       {
         id: 'c0000000-0000-4000-8000-000000000008',
         factorId: 'f0000000-0000-4000-8000-000000000008',
-        sourceUrl: 'https://www.opensecrets.org/news/2025/02/federal-lobbying-set-new-record-in-2024/',
+        sourceUrl:
+          'https://www.opensecrets.org/news/2025/02/federal-lobbying-set-new-record-in-2024/',
         publisher: 'OpenSecrets',
         quoteSnippet: 'In 2024, lobbying spending reached a record-breaking $4.4 billion.',
         verbatim: true,
@@ -367,7 +372,8 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
       {
         id: 'c0000000-0000-4000-8000-000000000011',
         factorId: 'f0000000-0000-4000-8000-000000000011',
-        sourceUrl: 'https://www.goldmansachs.com/insights/articles/generative-ai-could-raise-global-gdp-by-7-percent',
+        sourceUrl:
+          'https://www.goldmansachs.com/insights/articles/generative-ai-could-raise-global-gdp-by-7-percent',
         publisher: 'Goldman Sachs Global Investment Research (2023)',
         quoteSnippet:
           'Generative AI could expose the equivalent of 300 million full-time jobs to automation worldwide.',
@@ -622,7 +628,8 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
         id: 'c0000000-0000-4000-8000-000000000020',
         factorId: 'f0000000-0000-4000-8000-000000000020',
         sourceUrl: 'https://report-2023.global-tipping-points.org/',
-        publisher: 'Global Tipping Points Report 2023 (University of Exeter, Global Systems Institute)',
+        publisher:
+          'Global Tipping Points Report 2023 (University of Exeter, Global Systems Institute)',
         quoteSnippet:
           'Positive tipping points have already been crossed in the adoption of solar PV and wind power globally, with solar PV capacity doubling every 2–3 years.',
         verbatim: false,
@@ -652,9 +659,11 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
       {
         id: 'c0000000-0000-4000-8000-000000000021',
         factorId: 'f0000000-0000-4000-8000-000000000021',
-        sourceUrl: 'https://www.rescoop.eu/uploads/rescoop/downloads/REScoop-Annual-Report-2023_digital.pdf',
+        sourceUrl:
+          'https://www.rescoop.eu/uploads/rescoop/downloads/REScoop-Annual-Report-2023_digital.pdf',
         publisher: 'REScoop.eu — European federation of citizen energy cooperatives',
-        quoteSnippet: 'REScoop.eu represents over 2,250 energy cooperatives and 1,500,000 European citizens.',
+        quoteSnippet:
+          'REScoop.eu represents over 2,250 energy cooperatives and 1,500,000 European citizens.',
         verbatim: false,
         analystNotes:
           'Not in the source review: REScoop.eu’s report is real but was not part of the source review, so this factor is held at "pending" and kept off the verified field and the Clock aggregate until it is reviewed. Pin placed in Germany, which hosts the largest number of energy cooperatives; the movement is pan-European.',
@@ -711,7 +720,8 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
       {
         id: 'c0000000-0000-4000-8000-000000000023',
         factorId: 'f0000000-0000-4000-8000-000000000023',
-        sourceUrl: 'https://www.sec.gov/files/staff-report-equity-options-market-struction-conditions-early-2021.pdf',
+        sourceUrl:
+          'https://www.sec.gov/files/staff-report-equity-options-market-struction-conditions-early-2021.pdf',
         publisher: 'U.S. Securities and Exchange Commission (Staff Report, 2021)',
         quoteSnippet:
           'GameStop’s share price rose from a January 4 close of $17.25 to over $500 in pre-market trading on January 28, 2021, driven by retail investors coordinating on social media.',

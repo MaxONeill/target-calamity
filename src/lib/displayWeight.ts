@@ -93,9 +93,7 @@ export function displayWeightScaler(
  * it receives the same structure with `significance` restretched. The ORIGINAL
  * array must keep being used for the Clock.
  */
-export function withDisplayWeight<T extends { significance: number }>(
-  items: readonly T[],
-): T[] {
+export function withDisplayWeight<T extends { significance: number }>(items: readonly T[]): T[] {
   const scale = displayWeightScaler(items.map((i) => i.significance));
   return items.map((item) => ({ ...item, significance: scale(item.significance) }));
 }

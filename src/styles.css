@@ -31,8 +31,9 @@
   --tc-signal: #c8b26a; /* amber — advisory / pending */
   --tc-live: #3fbf7f; /* green — live stream */
 
-  --tc-font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code",
-    Menlo, Consolas, "Liberation Mono", monospace;
+  --tc-font-mono:
+    ui-monospace, 'SF Mono', 'JetBrains Mono', 'Cascadia Code', Menlo, Consolas, 'Liberation Mono',
+    monospace;
 
   --tc-topbar-h: 44px;
   --tc-sidebar-w: 400px;
@@ -149,8 +150,8 @@ body {
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: var(--tc-topbar-h) 1fr;
   grid-template-areas:
-    "topbar"
-    "clock";
+    'topbar'
+    'clock';
   pointer-events: none;
 }
 
@@ -380,7 +381,9 @@ body {
   border-radius: 6px 0 0 6px;
   box-shadow: -8px 0 24px rgba(0, 0, 0, 0.4);
   cursor: pointer;
-  transition: color 120ms ease, border-color 120ms ease;
+  transition:
+    color 120ms ease,
+    border-color 120ms ease;
 }
 .tc-feed-tab:hover {
   color: var(--tc-ink);

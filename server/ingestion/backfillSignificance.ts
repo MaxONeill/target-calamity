@@ -149,9 +149,13 @@ export async function backfillSignificance(
     let rows = await rowsToScore(db, force);
     if (Number.isFinite(limit) && limit > 0) rows = rows.slice(0, limit);
 
-    logger.info(`[significance] ${rows.length} factor(s) to re-score (1 LLM call each, no retrieval).`);
+    logger.info(
+      `[significance] ${rows.length} factor(s) to re-score (1 LLM call each, no retrieval).`,
+    );
     if (dryRun || rows.length === 0) {
-      logger.info(dryRun ? '[significance] dry run — no calls, no writes.' : '[significance] nothing to do.');
+      logger.info(
+        dryRun ? '[significance] dry run — no calls, no writes.' : '[significance] nothing to do.',
+      );
       return;
     }
 
@@ -220,5 +224,3 @@ if (invokedDirectly) {
     process.exitCode = 1;
   });
 }
-
-

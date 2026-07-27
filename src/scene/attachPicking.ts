@@ -107,7 +107,12 @@ export function attachPicking(options: PickingOptions): () => void {
     if (pendingHover === null) return;
 
     const rect = canvas.getBoundingClientRect();
-    const next = pickAt(pendingHover.x - rect.left, pendingHover.y - rect.top, rect.width, rect.height);
+    const next = pickAt(
+      pendingHover.x - rect.left,
+      pendingHover.y - rect.top,
+      rect.width,
+      rect.height,
+    );
     pendingHover = null;
 
     if (next !== hoverId) {

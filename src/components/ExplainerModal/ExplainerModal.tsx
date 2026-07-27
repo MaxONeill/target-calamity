@@ -84,9 +84,9 @@ export function ExplainerModal({ onOpenChange }: ExplainerModalProps): JSX.Eleme
 
       const panel = panelRef.current;
       if (!panel) return;
-      const focusable = Array.from(
-        panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
-      ).filter((el) => el.offsetParent !== null || el === document.activeElement);
+      const focusable = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+        (el) => el.offsetParent !== null || el === document.activeElement,
+      );
       if (focusable.length === 0) {
         event.preventDefault();
         panel.focus();

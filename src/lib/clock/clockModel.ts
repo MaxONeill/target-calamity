@@ -39,11 +39,7 @@
  * so the model stays unit-testable.
  */
 import type { VerificationState } from '../../../shared/types.js';
-import {
-  DOMAIN_LABELS,
-  drivingDomains,
-  type Domain,
-} from '../../../shared/domains.js';
+import { DOMAIN_LABELS, drivingDomains, type Domain } from '../../../shared/domains.js';
 
 /**
  * A dated, (near-)irreversible threshold a factor represents. Optional on a
@@ -342,10 +338,7 @@ function baselinesAgree(a: string | undefined, b: string | undefined): boolean {
  * the last point would be inventing a year, which is the one thing this model
  * refuses to do.
  */
-export function dateFromProjection(
-  projection: Projection,
-  value: number,
-): number | null {
+export function dateFromProjection(projection: Projection, value: number): number | null {
   const pts = [...projection.points]
     .filter((p) => Number.isFinite(p.year) && Number.isFinite(p.value))
     .sort((a, b) => a.year - b.year);
@@ -510,10 +503,7 @@ function firstCrossingCeiling(dists: readonly ArrivalDist[]): number {
  * is the same rule as having no anchors at all, arrived at by the math instead
  * of by a special case.
  */
-function firstCrossingQuantile(
-  dists: readonly ArrivalDist[],
-  level: number,
-): number | null {
+function firstCrossingQuantile(dists: readonly ArrivalDist[], level: number): number | null {
   if (dists.length === 0) return null;
   if (firstCrossingCeiling(dists) < level) return null;
 
@@ -805,9 +795,7 @@ export function deriveClock(
   // p75 can be absent while the median exists — a single moderately-significant
   // anchor tops out below 0.75. Report no band rather than inventing an edge.
   const band: ClockBand | null =
-    targetYear !== null && p25 !== null && p75 !== null
-      ? { p25, p50: targetYear, p75 }
-      : null;
+    targetYear !== null && p25 !== null && p75 !== null ? { p25, p50: targetYear, p75 } : null;
 
   const shiftYears =
     baselineTargetYear !== null && targetYear !== null ? targetYear - baselineTargetYear : 0;
@@ -832,9 +820,7 @@ export function deriveClock(
       factorCount: systemic.count,
     });
   }
-  domainForces.sort(
-    (a, b) => Math.abs(b.netForce * b.weight) - Math.abs(a.netForce * a.weight),
-  );
+  domainForces.sort((a, b) => Math.abs(b.netForce * b.weight) - Math.abs(a.netForce * a.weight));
 
   // Anchors first, then by year — the Why panel reads top-down, and what the
   // countdown rests on should be what a reader sees first.
@@ -897,4 +883,3 @@ export function yearToEpochMs(year: number): number {
 export function targetDeadlineMs(model: ClockModel): number | null {
   return model.targetYear === null ? null : yearToEpochMs(model.targetYear);
 }
-

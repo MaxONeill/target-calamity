@@ -266,7 +266,7 @@ const EXTRACTION_SYSTEM =
   'state the threshold against something measurable — this is how the literature ' +
   'usually publishes it, e.g. "the Greenland ice sheet destabilises at about ' +
   '1.5 degC of warming" or "Amazon dieback beyond 20-25% deforested" — else null. ' +
-  'For quantityThreshold: quantity is WHAT IS MEASURED in the source\'s own words, ' +
+  "For quantityThreshold: quantity is WHAT IS MEASURED in the source's own words, " +
   'value/unit is where the threshold sits, lowValue/highValue the published range ' +
   '(null if none), and baseline is the reference the value is stated against ' +
   '(e.g. "pre-industrial (1850-1900)"). Give baseline whenever the source states ' +
@@ -326,10 +326,7 @@ export function renderSourceBlocks(docs: readonly RetrievedDocument[]): string {
     .join('\n\n---\n\n');
 }
 
-function extractionUserPrompt(
-  topic: string,
-  docs: readonly RetrievedDocument[],
-): string {
+function extractionUserPrompt(topic: string, docs: readonly RetrievedDocument[]): string {
   return (
     `Topic: ${topic}\n\n` +
     `${docs.length} retrieved source(s) follow. Extract the distinct, verifiable ` +

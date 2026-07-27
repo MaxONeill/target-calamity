@@ -64,7 +64,7 @@ describe('latLonToGridFrac', () => {
   it('wraps longitude past the antimeridian and clamps latitude to the poles', () => {
     const [gx, gy] = latLonToGridFrac(grid, 100, 190); // lat clamps to 90, lon wraps to -170
     expect(gy).toBeCloseTo(0, 9);
-    expect(gx).toBeCloseTo(((10) / 360) * 2, 6); // (-170+180)/360 · (w-1)
+    expect(gx).toBeCloseTo((10 / 360) * 2, 6); // (-170+180)/360 · (w-1)
   });
 });
 

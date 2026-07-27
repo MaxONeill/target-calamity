@@ -146,8 +146,8 @@ export function ClockDerivation({
 
       {!model.hasBaseline ? (
         <div className="tc-clock-indeterminate" role="status">
-          AWAITING A DATED TIPPING POINT — the countdown anchors to the
-          polycrisis's own thresholds; none are in view yet, so no target is shown.
+          AWAITING A DATED TIPPING POINT — the countdown anchors to the polycrisis's own thresholds;
+          none are in view yet, so no target is shown.
         </div>
       ) : null}
 
@@ -190,8 +190,8 @@ export function ClockDerivation({
             the aggregation the Clock used before it moved to first-crossing —
             a footnote describing the wrong model is worse than none. */}
         <p className="tc-clock-note">
-          Counting down to the earliest published change that cannot be undone.
-          A model, not a measurement — see&nbsp;
+          Counting down to the earliest published change that cannot be undone. A model, not a
+          measurement — see&nbsp;
           <span className="tc-clock-note-glyph">[i]</span>.
         </p>
         <button
@@ -206,5 +206,3 @@ export function ClockDerivation({
     </>
   );
 }
-
-

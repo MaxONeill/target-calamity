@@ -194,10 +194,7 @@ export class GlobeMesh {
 
     const netPolarity = weightedEffect / weightSum;
     rampColor(netPolarity, this.uniforms.uGlobalTint.value);
-    this.uniforms.uGlobalTintStrength.value = Math.min(
-      Math.abs(netPolarity),
-      1,
-    ) * GLOBAL_TINT_CAP;
+    this.uniforms.uGlobalTintStrength.value = Math.min(Math.abs(netPolarity), 1) * GLOBAL_TINT_CAP;
     this.emitNeedsRender();
   }
 

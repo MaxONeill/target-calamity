@@ -82,8 +82,7 @@ const SOURCES = {
       `https://api.opentopodata.org/v1/etopo1?locations=${lats
         .map((la, i) => `${la},${lons[i]}`)
         .join('|')}`,
-    parse: (json) =>
-      Array.isArray(json.results) ? json.results.map((r) => r?.elevation) : null,
+    parse: (json) => (Array.isArray(json.results) ? json.results.map((r) => r?.elevation) : null),
   },
   // Open-Elevation: global (SRTM/ocean=0). Independent host/quota.
   openelevation: {
@@ -93,8 +92,7 @@ const SOURCES = {
       `https://api.open-elevation.com/api/v1/lookup?locations=${lats
         .map((la, i) => `${la},${lons[i]}`)
         .join('|')}`,
-    parse: (json) =>
-      Array.isArray(json.results) ? json.results.map((r) => r?.elevation) : null,
+    parse: (json) => (Array.isArray(json.results) ? json.results.map((r) => r?.elevation) : null),
   },
   // Open-Meteo: ocean=0; emits bare `nan` for no-data cells (sanitized upstream).
   openmeteo: {
@@ -108,9 +106,15 @@ const SOURCES = {
 
 // Ordered failover pool. `--sources=a,b,c` (or ELEV_SOURCES) overrides; `--source=x`
 // pins a single one; default rotates through all three.
-const poolArg = argVal('sources', process.env.ELEV_SOURCES ?? argVal('source', process.env.ELEV_SOURCE));
+const poolArg = argVal(
+  'sources',
+  process.env.ELEV_SOURCES ?? argVal('source', process.env.ELEV_SOURCE),
+);
 const POOL_NAMES = poolArg
-  ? String(poolArg).split(',').map((s) => s.trim()).filter(Boolean)
+  ? String(poolArg)
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
   : ['opentopodata', 'openelevation', 'openmeteo'];
 const POOL = POOL_NAMES.map((n) => {
   const s = SOURCES[n];
@@ -263,7 +267,9 @@ async function main() {
         );
         return;
       }
-      console.log(`Existing grid is ${existing.width}×${existing.height}; re-baking at ${WIDTH}×${HEIGHT}.`);
+      console.log(
+        `Existing grid is ${existing.width}×${existing.height}; re-baking at ${WIDTH}×${HEIGHT}.`,
+      );
     } catch {
       /* corrupt output — re-bake */
     }
@@ -316,7 +322,8 @@ async function main() {
 
   // Success: drop the checkpoint so the next run's idempotent skip is clean.
   try {
-    if (existsSync(PROGRESS_FILE)) await writeFile(PROGRESS_FILE, JSON.stringify({ complete: true }));
+    if (existsSync(PROGRESS_FILE))
+      await writeFile(PROGRESS_FILE, JSON.stringify({ complete: true }));
   } catch {
     /* non-fatal */
   }

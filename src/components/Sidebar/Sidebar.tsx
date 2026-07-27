@@ -160,11 +160,7 @@ export function Sidebar({
           </span>
         </div>
 
-        <div
-          className="tc-sorttoggle"
-          role="group"
-          aria-label="Sort factor feed"
-        >
+        <div className="tc-sorttoggle" role="group" aria-label="Sort factor feed">
           {(['recent', 'magnitude'] as const).map((mode) => (
             <button
               key={mode}

@@ -33,11 +33,7 @@ describe('orderByInfluence', () => {
   });
 
   it('is descending', () => {
-    const ordered = orderByInfluence([
-      f('c', 0.2, 0.2),
-      f('a', 0.9, 0.9),
-      f('b', 0.5, 0.5),
-    ]);
+    const ordered = orderByInfluence([f('c', 0.2, 0.2), f('a', 0.9, 0.9), f('b', 0.5, 0.5)]);
     expect(ordered.map((x) => x.id)).toEqual(['a', 'b', 'c']);
   });
 

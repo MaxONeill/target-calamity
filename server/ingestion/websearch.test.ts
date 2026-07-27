@@ -156,7 +156,15 @@ describe('normalizeCandidate — citations resolve to REAL retrieved sources', (
 
   it('clamps out-of-domain numbers and collapses a bad spatialPath', () => {
     const c = normalizeCandidate(
-      { ...base, effect: -5, significance: 9, lat: 200, lon: -900, spatialPath: 'Nope!', sources: [] },
+      {
+        ...base,
+        effect: -5,
+        significance: 9,
+        lat: 200,
+        lon: -900,
+        spatialPath: 'Nope!',
+        sources: [],
+      },
       docs,
     );
     expect(c).toMatchObject({
@@ -267,7 +275,11 @@ describe('normalizeCandidate — citations resolve to REAL retrieved sources', (
 
   it('omits the tipping point when the model returns null', () => {
     const c = normalizeCandidate(
-      { ...base, tippingPoint: null, sources: [{ sourceIndex: 1, quoteSnippet: 'q', verbatim: true }] },
+      {
+        ...base,
+        tippingPoint: null,
+        sources: [{ sourceIndex: 1, quoteSnippet: 'q', verbatim: true }],
+      },
       docs,
     );
     expect(c!.tippingPoint).toBeUndefined();
@@ -277,8 +289,20 @@ describe('normalizeCandidate — citations resolve to REAL retrieved sources', (
 describe('renderSourceBlocks', () => {
   it('numbers sources from 1 and includes their real URLs', () => {
     const out = renderSourceBlocks([
-      { url: 'https://a.test/1', title: 'A', publisher: 'a.test', description: '', markdown: 'body A' },
-      { url: 'https://b.test/2', title: 'B', publisher: 'b.test', description: 'desc B', markdown: '' },
+      {
+        url: 'https://a.test/1',
+        title: 'A',
+        publisher: 'a.test',
+        description: '',
+        markdown: 'body A',
+      },
+      {
+        url: 'https://b.test/2',
+        title: 'B',
+        publisher: 'b.test',
+        description: 'desc B',
+        markdown: '',
+      },
     ]);
     expect(out).toContain('SOURCE 1');
     expect(out).toContain('https://a.test/1');
@@ -288,4 +312,3 @@ describe('renderSourceBlocks', () => {
     expect(out).toContain('desc B');
   });
 });
-

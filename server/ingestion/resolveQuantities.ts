@@ -62,8 +62,7 @@ interface ThresholdRow {
   projection_id: string | null;
 }
 
-const norm = (s: string | null | undefined): string =>
-  (s ?? '').trim().toLowerCase();
+const norm = (s: string | null | undefined): string => (s ?? '').trim().toLowerCase();
 
 async function projectionRows(db: Database): Promise<ProjectionRow[]> {
   const { rows } = await sql<ProjectionRow>`
@@ -225,4 +224,3 @@ if (invokedDirectly) {
     process.exitCode = 1;
   });
 }
-

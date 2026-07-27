@@ -82,13 +82,13 @@ Passing degrees in produces wrong coordinates that still satisfy `|v| = R`, so
 the bug is invisible to inspection and to any magnitude assertion.
 
 Every call site routes through it: pin instance matrices, the camera target, and
-the field baker's texel→direction map. The baker derives its mapping by *calling*
+the field baker's texel→direction map. The baker derives its mapping by _calling_
 the helper, which guarantees the baked field is the exact inverse of pin
 placement — otherwise the heatmap can end up rotated or mirrored relative to the
 pins it is supposed to explain.
 
 The regression test that catches this asserts the great-circle angle between
-London and Tokyo is 85.6°. A `|v| = R` test passes *under* the bug.
+London and Tokyo is 85.6°. A `|v| = R` test passes _under_ the bug.
 
 ### Render on demand
 
@@ -98,9 +98,9 @@ This page is meant to sit open for hours without holding a core at 100%.
 
 ### Alignment interpolates position, not orientation
 
-Slerping between two look-at *quaternions* injects roll: the horizon tilts
+Slerping between two look-at _quaternions_ injects roll: the horizon tilts
 mid-flight and rights itself at the end, so the artifact is invisible in any
-start/end screenshot. Instead the camera's *position* is animated on a
+start/end screenshot. Instead the camera's _position_ is animated on a
 fixed-radius orbit sphere and `lookAt` re-levels every frame, so the pole axis
 stays vertical by construction.
 
@@ -113,7 +113,7 @@ from a baked elevation grid and shaded green → brown → white by height. The
 field blends on top, capped, so where there is no evidence you read geography
 and where factors exist the signal tints through.
 
-Land shading keys off the *displaced vertex radius* rather than a second
+Land shading keys off the _displaced vertex radius_ rather than a second
 texture, so color and silhouette cannot disagree. **The four `ELEV_*` thresholds
 are calibrated to `DEFAULT_EXAGGERATION`** — changing the exaggeration without
 rescaling all four turns the planet uniformly white or flat green.
@@ -203,7 +203,7 @@ the nondeterminism reappears immediately.
 ### Similarity threshold is a filter, not a decision
 
 Retrieval and decision are different problems. Phase C retrieves the top-k
-nearest as *candidates*; the resolver decides escalate vs independent over that
+nearest as _candidates_; the resolver decides escalate vs independent over that
 set. A single hard scalar on high-dimensional cosine distance misfires in both
 directions — too tight duplicates ongoing events, too loose merges distinct ones.
 
@@ -214,7 +214,7 @@ filter. pgvector only uses the HNSW index for this shape; a bare
 `WHERE embedding <=> :q < 0.15` predicate falls back to a sequential scan
 computing the distance on every row.
 
-The order-by form is also *exact*: `<=>` computes true distance and HNSW only
+The order-by form is also _exact_: `<=>` computes true distance and HNSW only
 affects which rows are visited, so `candidates[0]` is the true nearest. Raise
 `hnsw.ef_search` well above the default for this workload — a neighbour missed
 because it was left at 40 is a false "no collision", which means a duplicate
@@ -243,7 +243,7 @@ Phase C read → D decide → write runs inside `pg_advisory_xact_lock` keyed on
 serialize. This closes a check-then-insert race that content-hash dedupe cannot,
 because different sources produce different hashes for the same event.
 
-The resolver call happens *inside* the lock, so it is held across a network round
+The resolver call happens _inside_ the lock, so it is held across a network round
 trip. That is an accepted trade: latency is not critical here and a miss is
 expensive. SERIALIZABLE alone is not relied on — predicate locking over an
 approximate index scan is unreliable and needs retry logic.
@@ -257,7 +257,7 @@ back-filled. A persisted source is therefore always one that was genuinely
 retrieved.
 
 **Stated plainly:** `verbatim` is the model's self-report about its own quote and
-is *not* machine-checked against the source text. Substring-matching the quote
+is _not_ machine-checked against the source text. Substring-matching the quote
 against the retrieved page is the obvious next step and is not implemented.
 
 ### No credentials means no output
@@ -270,8 +270,8 @@ factors stay `pending`.
 ### Ingested factors land pending
 
 Machine-extracted content is excluded from the field bake and the Clock
-aggregate until a reputability gate promotes it. The gate's deciding score *and
-its reasoning* are persisted on the factor and surfaced in the UI — a gate that
+aggregate until a reputability gate promotes it. The gate's deciding score _and
+its reasoning_ are persisted on the factor and surfaced in the UI — a gate that
 decides trust must itself be auditable.
 
 The threshold is a named constant because both failure modes are real: too high
@@ -288,7 +288,7 @@ The countdown target is derived in two stages:
 
 1. **Baseline** — the significance-weighted mean of central tipping years across
    factors that carry one. Nearer, heavier dated thresholds dominate.
-2. **Shift** — net force moves each threshold's central estimate *within* its own
+2. **Shift** — net force moves each threshold's central estimate _within_ its own
    published earliest/latest band: sooner (Calamity) or later (Humanity), damped
    by evidence mass.
 
@@ -328,7 +328,7 @@ Supplying any of them is a hard 400, not a silently dropped field. If a submitte
 could set those numbers, anyone could steer the Clock by hand and "empirical"
 would be hollow.
 
-Accepted submissions hand off to the *same* pipeline the scheduled worker uses,
+Accepted submissions hand off to the _same_ pipeline the scheduled worker uses,
 so there is no submission-specific scoring path that could diverge.
 
 ### Identity is two salted hashes

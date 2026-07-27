@@ -34,14 +34,14 @@ import { realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { sql } from 'kysely';
 import * as z from 'zod/v4';
-import { deriveClock, type ClockFactorInput, type Projection } from '../../src/lib/clock/clockModel.js';
+import {
+  deriveClock,
+  type ClockFactorInput,
+  type Projection,
+} from '../../src/lib/clock/clockModel.js';
 import { createDatabase, type Database } from '../db.js';
 import { notifyFieldChanged } from './notifyFieldChanged.js';
-import {
-  retrieveDocuments,
-  hasRetrievalCredentials,
-  publisherFromUrl,
-} from './retrieval.js';
+import { retrieveDocuments, hasRetrievalCredentials, publisherFromUrl } from './retrieval.js';
 import {
   getLlmClient,
   hasLiveCredentials,
@@ -81,7 +81,7 @@ const ASSESS_SYSTEM =
   'retreat all have published recovery behaviour, usually slow and usually ' +
   'conditional on the driving pressure being removed first. Say what those ' +
   'conditions are. ' +
-  'effort states what reversal demands, in the source\'s own framing — sustained ' +
+  "effort states what reversal demands, in the source's own framing — sustained " +
   'net-negative emissions, active restoration, cooling held below some level, or ' +
   'that no known pathway exists. ' +
   'timescaleYears is the PUBLISHED restoration timescale in years, with ' +
@@ -147,9 +147,7 @@ async function crossedRows(
     unit: p.unit,
     points: p.points,
     ...(p.baseline !== null ? { baseline: p.baseline } : {}),
-    ...(p.assumes_future_action !== null
-      ? { assumesFutureAction: p.assumes_future_action }
-      : {}),
+    ...(p.assumes_future_action !== null ? { assumesFutureAction: p.assumes_future_action } : {}),
   }));
 
   const byLabel = new Map<string, { id: string; name: string; assessed: boolean }>();
@@ -237,7 +235,9 @@ export async function backfillRecovery(
     );
     for (const r of rows) logger.info(`[recovery]   ${r.name.slice(0, 60)}`);
     if (dryRun || rows.length === 0) {
-      logger.info(dryRun ? '[recovery] dry run — no calls, no writes.' : '[recovery] nothing to do.');
+      logger.info(
+        dryRun ? '[recovery] dry run — no calls, no writes.' : '[recovery] nothing to do.',
+      );
       return;
     }
 
@@ -247,9 +247,7 @@ export async function backfillRecovery(
 
     for (const row of rows) {
       try {
-        const docs = await retrieveDocuments(
-          recoveryQuery(row.name),
-        );
+        const docs = await retrieveDocuments(recoveryQuery(row.name));
         if (docs.length === 0) {
           logger.warn(`[recovery] no sources for "${row.name.slice(0, 40)}".`);
           continue;

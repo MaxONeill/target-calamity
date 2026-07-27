@@ -18,9 +18,7 @@ export function useSelectedFactor(
 ): Factor | null {
   const [fetched, setFetched] = useState<Record<string, Factor>>({});
 
-  const fromFeed = selectedId
-    ? feedFactors.find((f) => f.id === selectedId) ?? null
-    : null;
+  const fromFeed = selectedId ? (feedFactors.find((f) => f.id === selectedId) ?? null) : null;
 
   useEffect(() => {
     if (!selectedId || fromFeed || fetched[selectedId]) return;
@@ -43,5 +41,5 @@ export function useSelectedFactor(
   }, [selectedId, fromFeed, fetched]);
 
   if (fromFeed) return fromFeed;
-  return selectedId ? fetched[selectedId] ?? null : null;
+  return selectedId ? (fetched[selectedId] ?? null) : null;
 }

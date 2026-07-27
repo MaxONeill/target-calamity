@@ -33,10 +33,7 @@ const COASTLINE_LIFT = 1.007;
  * is called when something actually changes rather than from a standing
  * animation loop, so an idle page costs nothing.
  */
-export function createScene(
-  container: HTMLDivElement,
-  callbacks: SceneCallbacks,
-): SceneHandle {
+export function createScene(container: HTMLDivElement, callbacks: SceneCallbacks): SceneHandle {
   const renderer = new THREE.WebGLRenderer({
     antialias: true,
     alpha: false,

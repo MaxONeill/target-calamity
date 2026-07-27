@@ -38,16 +38,16 @@ const VALID_BODY = {
 const IDENTITY: SubmitterIdentity = { ipHash: 'ip-hash-a', deviceHash: 'device-hash-a' };
 const OTHER_IDENTITY: SubmitterIdentity = { ipHash: 'ip-hash-b', deviceHash: 'device-hash-b' };
 
-function assessment(
-  verdict: NoiseAssessment['verdict'],
-  confidence = 0.9,
-): NoiseAssessment {
+function assessment(verdict: NoiseAssessment['verdict'], confidence = 0.9): NoiseAssessment {
   return { verdict, confidence, reason: 'test', provenance: 'offline-stub' };
 }
 
 function makeDeps(
   overrides: Partial<SubmissionDeps> & { verdict?: NoiseAssessment } = {},
-): SubmissionDeps & { accepted: { claim: string }[]; store: ReturnType<typeof createMemorySubmissionStore> } {
+): SubmissionDeps & {
+  accepted: { claim: string }[];
+  store: ReturnType<typeof createMemorySubmissionStore>;
+} {
   // The store stamps `created_at` itself, so it must share the decision core's
   // clock — otherwise the injected fake clock and the row timestamps disagree
   // and the window arithmetic is tested against noise.
@@ -103,9 +103,9 @@ describe('FactorSubmissionSchema — what a submitter may send', () => {
   });
 
   it('rejects any other unknown key too (strict, not a denylist)', () => {
-    expect(
-      FactorSubmissionSchema.safeParse({ ...VALID_BODY, spatialPath: 'global' }).success,
-    ).toBe(false);
+    expect(FactorSubmissionSchema.safeParse({ ...VALID_BODY, spatialPath: 'global' }).success).toBe(
+      false,
+    );
   });
 
   it('rejects a non-http(s) source URL', () => {
@@ -190,7 +190,10 @@ describe('decideSubmission — shadow ban', () => {
     const deps = makeDeps({ store });
 
     const first = await decideSubmission(request(), deps);
-    const second = await decideSubmission(request(IDENTITY, 'A different claim entirely here.'), deps);
+    const second = await decideSubmission(
+      request(IDENTITY, 'A different claim entirely here.'),
+      deps,
+    );
     expect(second.statusCode).toBe(first.statusCode);
     expect(second.body).toEqual(first.body);
   });

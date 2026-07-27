@@ -149,10 +149,7 @@ let directionGridCache: DirectionGrid | null = null;
  * result is the exact inverse of the pin placement, so W's argmax texel always
  * decodes back to the injected pin's lat/lon.
  */
-export function getDirectionGrid(
-  width = FIELD_WIDTH,
-  height = FIELD_HEIGHT,
-): DirectionGrid {
+export function getDirectionGrid(width = FIELD_WIDTH, height = FIELD_HEIGHT): DirectionGrid {
   const cached = directionGridCache;
   if (cached && cached.width === width && cached.height === height) {
     return cached;
@@ -267,16 +264,8 @@ export function bakeFieldData(
     // Latitude band: [lat0 − θ_max, lat0 + θ_max], clamped to the poles.
     const latMin = Math.max(-90, pin.lat - params.thetaMaxDeg);
     const latMax = Math.min(90, pin.lat + params.thetaMaxDeg);
-    const rowStart = clampInt(
-      Math.floor(((latMin + 90) / 180) * height),
-      0,
-      height - 1,
-    );
-    const rowEnd = clampInt(
-      Math.ceil(((latMax + 90) / 180) * height),
-      0,
-      height - 1,
-    );
+    const rowStart = clampInt(Math.floor(((latMin + 90) / 180) * height), 0, height - 1);
+    const rowEnd = clampInt(Math.ceil(((latMax + 90) / 180) * height), 0, height - 1);
 
     // Longitude band widens toward the poles as 1/cos(lat). If the cap reaches a
     // pole (or the band would exceed 180°), scan every column — the dot cutoff

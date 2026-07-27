@@ -35,7 +35,13 @@ import pg from 'pg';
 
 const { Pool } = pg;
 
-const MIGRATIONS_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'db', 'migrations');
+const MIGRATIONS_DIR = join(
+  dirname(fileURLToPath(import.meta.url)),
+  '..',
+  '..',
+  'db',
+  'migrations',
+);
 
 /** A file is a migration iff it is `NNN_something.sql` (excludes `.planned`). */
 const MIGRATION_FILE = /^\d+_.*\.sql$/;

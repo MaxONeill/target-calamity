@@ -30,10 +30,7 @@
  * is a hard 400 rather than a silently-dropped field.
  */
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import {
-  FactorSubmissionSchema,
-  SubmissionResponseSchema,
-} from '../../shared/schema.js';
+import { FactorSubmissionSchema, SubmissionResponseSchema } from '../../shared/schema.js';
 import type { SubmissionResponse } from '../../shared/types.js';
 import type { AppContext } from '../db.js';
 import {
@@ -121,11 +118,7 @@ export interface SubmissionDeps {
     note?: string | undefined;
   }) => Promise<NoiseAssessment>;
   /** Called (fire-and-forget) after an acceptance is recorded. */
-  onAccepted: (submission: {
-    claim: string;
-    sourceUrl: string;
-    note?: string | undefined;
-  }) => void;
+  onAccepted: (submission: { claim: string; sourceUrl: string; note?: string | undefined }) => void;
   now?: () => Date;
   windowMs?: number;
 }
@@ -186,7 +179,11 @@ export async function decideSubmission(
   // --- 4. Duplicate (free) -------------------------------------------------
   const normalized = normalizeSubmission(req.claim, req.sourceUrl);
   if (await deps.store.isDuplicate(normalized)) {
-    await deps.store.record({ ...base, status: 'duplicate', reason: 'same normalized claim + source' });
+    await deps.store.record({
+      ...base,
+      status: 'duplicate',
+      reason: 'same normalized claim + source',
+    });
     return { statusCode: 200, body: { ...DUPLICATE_RESPONSE } };
   }
 

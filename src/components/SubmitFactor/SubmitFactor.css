@@ -19,8 +19,7 @@
   --tc-calamity: #ff3b5c;
   --tc-pending: #d9a441;
   --tc-radius: 3px;
-  --tc-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo,
-    Consolas, monospace;
+  --tc-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'Cascadia Code', Menlo, Consolas, monospace;
 
   display: flex;
   flex-direction: column;
@@ -145,7 +144,9 @@
   border: 1px solid var(--tc-border-bright);
   border-radius: var(--tc-radius);
   padding: 8px 9px;
-  transition: border-color 120ms ease, background 120ms ease;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
 }
 
 .tc-submit__textarea {
@@ -201,7 +202,9 @@
   background: var(--tc-panel-3);
   color: var(--tc-text);
   cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
 }
 
 .tc-submit__btn:hover:not(:disabled) {

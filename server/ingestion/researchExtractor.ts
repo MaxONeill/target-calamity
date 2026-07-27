@@ -96,10 +96,7 @@ function defaultGate(candidate: CandidateFactor): GateResult {
  * verification state and primary citation. The rest of the loop (validate → embed
  * → dedupe → resolve → write) is unchanged, so /-19/-20/-21 all still hold.
  */
-export function createResearchExtractor(
-  research: ResearchFn,
-  gate?: SourceGate,
-): FactorExtractor {
+export function createResearchExtractor(research: ResearchFn, gate?: SourceGate): FactorExtractor {
   return {
     async extract(item: InboundIntelItem): Promise<ExtractedFactorDraft[]> {
       const candidates = await research(item.rawText);

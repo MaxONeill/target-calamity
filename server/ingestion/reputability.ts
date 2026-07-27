@@ -169,7 +169,7 @@ const SCORING_SYSTEM =
   'scientific assessments (Nature, Science, PNAS, IPCC, Copernicus/EGU journals, ' +
   'NOAA, NASA, WMO, national statistics offices); ~0.7-0.85 for established ' +
   'mainstream outlets and reputable NGO or institutional reports; ~0.4-0.6 for ' +
-  'REPOST AGGREGATORS that host other people\'s papers without editorial ' +
+  "REPOST AGGREGATORS that host other people's papers without editorial " +
   'responsibility (ResearchGate, Academia.edu, Scribd, content farms) even when ' +
   'the hosted paper is genuine — cite the publisher, not the mirror; <0.4 for ' +
   'anonymous blogs, social posts, and SEO content. ' +

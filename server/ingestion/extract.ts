@@ -173,7 +173,11 @@ export function truncatePreservingTables(text: string, max: number): string {
   // all, since even a partial series is readable and its header carries units.
   if (kept.length === 0 && ranked[0]) {
     const head = ranked[0].lines.join('\n').slice(0, tableBudget);
-    kept.push({ start: ranked[0].start, lines: [`${head}\n…[table truncated]`], chars: head.length });
+    kept.push({
+      start: ranked[0].start,
+      lines: [`${head}\n…[table truncated]`],
+      chars: head.length,
+    });
     used = head.length;
   }
 
@@ -223,7 +227,9 @@ export function truncatePreservingTables(text: string, max: number): string {
 const toMarkdown = new NodeHtmlMarkdown({ keepDataImages: false });
 
 /** Remove the elements whose text is markup, not content. */
-function stripNoise(doc: { querySelectorAll: (s: string) => Iterable<{ remove: () => void }> }): void {
+function stripNoise(doc: {
+  querySelectorAll: (s: string) => Iterable<{ remove: () => void }>;
+}): void {
   for (const el of doc.querySelectorAll('script, style, noscript, template, svg')) {
     el.remove();
   }
@@ -281,8 +287,7 @@ export function extractText(html: string, url: string): { title: string; text: s
       // dropped the most valuable thing on the page, so fall through to the
       // whole-body conversion rather than accept the loss.
       const srcRows = sourceTableRows(document);
-      const lostTables =
-        srcRows >= 3 && markdownTableRows(md) < srcRows * TABLE_RETENTION_MIN;
+      const lostTables = srcRows >= 3 && markdownTableRows(md) < srcRows * TABLE_RETENTION_MIN;
       if (md.length >= MIN_USEFUL_CHARS && !lostTables) {
         return { title: (article.title ?? title).trim() || title, text: md };
       }

@@ -97,10 +97,7 @@ async function findNearestFactors(
   }));
 }
 
-async function insertFactor(
-  trx: Transaction<DB>,
-  input: NewFactorInput,
-): Promise<string> {
+async function insertFactor(trx: Transaction<DB>, input: NewFactorInput): Promise<string> {
   const vec = vectorLiteral(input.embedding);
   // Dated tipping point persisted as JSONB; NULL when the draft had none.
   const tippingPointJson = input.tippingPoint ? JSON.stringify(input.tippingPoint) : null;
@@ -168,10 +165,7 @@ async function insertFactor(
   return id;
 }
 
-async function escalateFactor(
-  trx: Transaction<DB>,
-  input: EscalationWriteInput,
-): Promise<void> {
+async function escalateFactor(trx: Transaction<DB>, input: EscalationWriteInput): Promise<void> {
   // 1. Append the citation that justified this escalation, capturing its id.
   const { rows } = await sql<{ id: string }>`
     INSERT INTO citations (factor_id, source_url, publisher, quote_snippet, content_hash)
@@ -238,10 +232,7 @@ interface FactorDelta {
 }
 
 /** Emit the delta on the LISTEN/NOTIFY channel; delivered on transaction commit. */
-async function notifyFactorDelta(
-  trx: Transaction<DB>,
-  delta: FactorDelta,
-): Promise<void> {
+async function notifyFactorDelta(trx: Transaction<DB>, delta: FactorDelta): Promise<void> {
   await sql`SELECT pg_notify(${NOTIFY_CHANNEL}, ${JSON.stringify(delta)})`.execute(trx);
 }
 
@@ -268,10 +259,7 @@ export function createPgIngestionRepository(db: Kysely<DB>): IngestionRepository
       return rows.length > 0;
     },
 
-    async withBucketLock<T>(
-      bucketKey: string,
-      fn: (tx: IngestionTx) => Promise<T>,
-    ): Promise<T> {
+    async withBucketLock<T>(bucketKey: string, fn: (tx: IngestionTx) => Promise<T>): Promise<T> {
       return db.transaction().execute(async (trx) => {
         // Serialize the Phase C→D critical section for this spatial bucket.
         await sql`SELECT pg_advisory_xact_lock(hashtext(${bucketKey}))`.execute(trx);

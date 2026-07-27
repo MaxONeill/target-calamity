@@ -202,8 +202,8 @@ function TippingPointBlock({ tp }: { tp: TippingPoint }): JSX.Element {
       ) : null}
       {tp.label ? <p className="tc-details__tipping-label">{tp.label}</p> : null}
       <p className="tc-details__tipping-note">
-        A published, uncertain threshold estimate — not a measured deadline. It
-        informs the Clock's countdown baseline.
+        A published, uncertain threshold estimate — not a measured deadline. It informs the Clock's
+        countdown baseline.
       </p>
     </section>
   );
@@ -237,7 +237,10 @@ function ReputabilityBlock({
         <span className="tc-details__rep-score">{score.toFixed(2)}</span>
       </div>
       <div className="tc-details__rep-bar" aria-hidden="true">
-        <span className={`tc-details__rep-fill tc-details__rep-fill--${tone}`} style={{ width: `${pct}%` }} />
+        <span
+          className={`tc-details__rep-fill tc-details__rep-fill--${tone}`}
+          style={{ width: `${pct}%` }}
+        />
       </div>
       <p className="tc-details__rep-why">
         {state === 'verified'
@@ -281,14 +284,12 @@ function EffortsBlock({
     >
       <div className="tc-details__section-head">
         {heading}
-        {efforts.length > 0 ? (
-          <span className="tc-details__count">[{efforts.length}]</span>
-        ) : null}
+        {efforts.length > 0 ? <span className="tc-details__count">[{efforts.length}]</span> : null}
       </div>
       {efforts.length === 0 ? (
         <p className="tc-details__efforts-empty">
-          No effort found yet. That is a gap in what we have been able to
-          retrieve, not proof that nobody is working on it.
+          No effort found yet. That is a gap in what we have been able to retrieve, not proof that
+          nobody is working on it.
         </p>
       ) : (
         <ul className="tc-details__effort-list">
@@ -305,9 +306,7 @@ function EffortsBlock({
                   {e.name}
                   <span className="tc-cite__link-glyph"> {'↗'}</span>
                 </a>
-                {e.stage ? (
-                  <span className="tc-details__effort-stage">{e.stage}</span>
-                ) : null}
+                {e.stage ? <span className="tc-details__effort-stage">{e.stage}</span> : null}
               </div>
               <p className="tc-details__effort-desc">{e.description}</p>
               {e.publisher ? (
@@ -463,8 +462,8 @@ export function FactorDetails({ factor, pin, onClose }: FactorDetailsProps): JSX
           {pin.tippingPoint ? <TippingPointBlock tp={pin.tippingPoint} /> : null}
           <DetailMetrics effect={pin.effect} significance={pin.significance} />
           <div className="tc-details__loading">
-            Full record and sources are loading or unavailable — this factor's card
-            has not yet reached the feed. Its metrics are shown from the field set.
+            Full record and sources are loading or unavailable — this factor's card has not yet
+            reached the feed. Its metrics are shown from the field set.
           </div>
         </div>
       ) : null}

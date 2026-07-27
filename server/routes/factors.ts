@@ -331,7 +331,10 @@ function feedSeed(
 /* -------------------------------------------------------------------------- */
 
 export default async function factorsRoutes(fastify: FastifyInstance): Promise<void> {
-  const handler = async (req: FastifyRequest, reply: FastifyReply): Promise<FeedResponse | undefined> => {
+  const handler = async (
+    req: FastifyRequest,
+    reply: FastifyReply,
+  ): Promise<FeedResponse | undefined> => {
     const parsed = FeedQuerySchema.safeParse(req.query);
     if (!parsed.success) {
       reply.code(400).send({ error: 'invalid query parameters', detail: parsed.error.flatten() });
@@ -340,9 +343,12 @@ export default async function factorsRoutes(fastify: FastifyInstance): Promise<v
     const { sortMode, cursor: cursorToken } = parsed.data;
 
     // Resolve the viewport: all-or-nothing.
-    const partsPresent = [parsed.data.minLat, parsed.data.maxLat, parsed.data.minLon, parsed.data.maxLon].filter(
-      (v) => v !== undefined,
-    ).length;
+    const partsPresent = [
+      parsed.data.minLat,
+      parsed.data.maxLat,
+      parsed.data.minLon,
+      parsed.data.maxLon,
+    ].filter((v) => v !== undefined).length;
     let viewport: Viewport;
     if (partsPresent === 0) {
       viewport = FULL_GLOBE_VIEWPORT;
@@ -354,7 +360,9 @@ export default async function factorsRoutes(fastify: FastifyInstance): Promise<v
         maxLon: parsed.data.maxLon,
       });
     } else {
-      reply.code(400).send({ error: 'viewport requires all of minLat, maxLat, minLon, maxLon or none' });
+      reply
+        .code(400)
+        .send({ error: 'viewport requires all of minLat, maxLat, minLon, maxLon or none' });
       return undefined;
     }
 
@@ -402,7 +410,7 @@ export default async function factorsRoutes(fastify: FastifyInstance): Promise<v
     const factor =
       ctx.mode === 'db'
         ? await factorByIdDb(ctx.db, id)
-        : SEED_FACTORS.find((f) => f.id === id) ?? null;
+        : (SEED_FACTORS.find((f) => f.id === id) ?? null);
 
     if (!factor) {
       reply.code(404).send({ error: 'factor not found' });

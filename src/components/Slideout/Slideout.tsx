@@ -19,13 +19,7 @@ export interface SlideoutProps {
  * The right-anchored panel that slides over the globe, plus the tab that opens
  * it. Closed by default so the globe stays the full-bleed hero.
  */
-export function Slideout({
-  open,
-  mode,
-  onOpen,
-  onCollapse,
-  children,
-}: SlideoutProps): JSX.Element {
+export function Slideout({ open, mode, onOpen, onCollapse, children }: SlideoutProps): JSX.Element {
   return (
     <>
       <button

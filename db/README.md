@@ -5,15 +5,15 @@ the deviations they encode from the two specs.
 
 ## Layout
 
-| File | Status | What it is |
-| --- | --- | --- |
-| `migrations/001_init.sql` | **active** | Phase-1 core schema: `factors`, `citations`, `factor_revisions`, `schema_migrations` ledger, triggers, indexes. |
-| `migrations/002_ingestion.sql` | **active** | Phase-1 ingestion support: `citations.content_hash` ( idempotency key) + partial-unique index, and the `ingestion_quarantine` sink (finding 27). |
-| `migrations/003_tipping_points.sql` | **active** | `factors.tipping_point JSONB` (nullable) — the dated tipping-point threshold a factor may carry, matching the shared `TippingPointSchema`. Feeds the Clock's countdown baseline. |
-| `migrations/004_reputability.sql` | **active** | `factors.reputability_score REAL` + `reputability_reasoning TEXT` (both nullable) — the reputability gate's audit trail (deciding source's score + reasoning, /-37), with a `CHECK` bounding the score to `[0,1]` when present. |
-| `migrations/005_submissions.sql` | **active** | `submissions` + `banned_submitters` — anonymous Phase-1 factor submissions. Identity is stored ONLY as salted SHA-256 digests (`ip_hash`, `device_hash`); there is no raw-IP column. Carries the outcome trail (`accepted`/`rejected_noise`/`quarantined`/`rate_limited`/`duplicate`) and the shadow-ban list. |
-| `migrations/009_trigger_search_path.sql` | **active** | Adds `SET search_path = public, pg_catalog` to the three trigger functions from `001_init.sql`. They referenced `factors` / `factor_revisions` unqualified, so they resolved only when the *caller's* search_path included `public` — which `pg_restore` (`search_path = ''`) does not, making a data-only restore fail with `relation "factor_revisions" does not exist` unless `--disable-triggers` was passed. Bodies otherwise unchanged. |
-| `migrations/003_future_federation.sql.planned` | **not a migration** | Phase-2 `registered_nodes` DDL. The `.planned` suffix keeps the runner from applying it. Do not apply in Phase 1. |
+| File                                           | Status              | What it is                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ---------------------------------------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `migrations/001_init.sql`                      | **active**          | Phase-1 core schema: `factors`, `citations`, `factor_revisions`, `schema_migrations` ledger, triggers, indexes.                                                                                                                                                                                                                                                                                                                               |
+| `migrations/002_ingestion.sql`                 | **active**          | Phase-1 ingestion support: `citations.content_hash` ( idempotency key) + partial-unique index, and the `ingestion_quarantine` sink (finding 27).                                                                                                                                                                                                                                                                                              |
+| `migrations/003_tipping_points.sql`            | **active**          | `factors.tipping_point JSONB` (nullable) — the dated tipping-point threshold a factor may carry, matching the shared `TippingPointSchema`. Feeds the Clock's countdown baseline.                                                                                                                                                                                                                                                              |
+| `migrations/004_reputability.sql`              | **active**          | `factors.reputability_score REAL` + `reputability_reasoning TEXT` (both nullable) — the reputability gate's audit trail (deciding source's score + reasoning, /-37), with a `CHECK` bounding the score to `[0,1]` when present.                                                                                                                                                                                                               |
+| `migrations/005_submissions.sql`               | **active**          | `submissions` + `banned_submitters` — anonymous Phase-1 factor submissions. Identity is stored ONLY as salted SHA-256 digests (`ip_hash`, `device_hash`); there is no raw-IP column. Carries the outcome trail (`accepted`/`rejected_noise`/`quarantined`/`rate_limited`/`duplicate`) and the shadow-ban list.                                                                                                                                |
+| `migrations/009_trigger_search_path.sql`       | **active**          | Adds `SET search_path = public, pg_catalog` to the three trigger functions from `001_init.sql`. They referenced `factors` / `factor_revisions` unqualified, so they resolved only when the _caller's_ search_path included `public` — which `pg_restore` (`search_path = ''`) does not, making a data-only restore fail with `relation "factor_revisions" does not exist` unless `--disable-triggers` was passed. Bodies otherwise unchanged. |
+| `migrations/003_future_federation.sql.planned` | **not a migration** | Phase-2 `registered_nodes` DDL. The `.planned` suffix keeps the runner from applying it. Do not apply in Phase 1.                                                                                                                                                                                                                                                                                                                             |
 
 The migration runner (`server/db/migrate.ts`) only picks up files matching
 `^NNN_*.sql$`. `001_init.sql`, `002_ingestion.sql`, `003_tipping_points.sql`,
@@ -46,11 +46,11 @@ Verified against the `pgvector/pgvector:pg17` image with PostGIS added,
 i.e. **PostgreSQL 17.x, pgvector 0.8.5, ltree 1.3, PostGIS 3.6.4**. The hard floors
 the schema actually requires:
 
-| Component | Minimum | Why |
-| --- | --- | --- |
-| PostgreSQL | **13+** (we run 17) | `gen_random_uuid()` is a core built-in from PG13; `pgcrypto` is therefore **not** required (finding #7). |
-| pgvector | **0.7.0+** (we run 0.8.5) | `halfvec` type + `halfvec_cosine_ops` HNSW opclass. |
-| PostGIS | **3.0+** (we run 3.6.4) | `geography(Point,4326)` + GiST. |
+| Component  | Minimum                   | Why                                                                                                      |
+| ---------- | ------------------------- | -------------------------------------------------------------------------------------------------------- |
+| PostgreSQL | **13+** (we run 17)       | `gen_random_uuid()` is a core built-in from PG13; `pgcrypto` is therefore **not** required (finding #7). |
+| pgvector   | **0.7.0+** (we run 0.8.5) | `halfvec` type + `halfvec_cosine_ops` HNSW opclass.                                                      |
+| PostGIS    | **3.0+** (we run 3.6.4)   | `geography(Point,4326)` + GiST.                                                                          |
 
 Extensions enabled by the migration: `vector`, `ltree`, `postgis`.
 
@@ -96,7 +96,7 @@ container and exercised. Confirmed:
   4326, `zone_level` from `nlevel(spatial_path)`, `search_tsv` populated.
 - `nlevel`, `ST_MakePoint`, `ST_SetSRID`, and the `geometry→geography` cast are all
   `IMMUTABLE` — which is what makes the `zone_level` and `geog` **generated
-  columns** legal. The  trigger fallback is **not** needed.
+  columns** legal. The trigger fallback is **not** needed.
 - Event-log wiring: INSERT auto-writes a genesis `factor_revisions` row;
   an `escalation`/`de-escalation`/`correction` revision folds into the `factors`
   projection and bumps `updated_at`, while `seq` stays immutable.

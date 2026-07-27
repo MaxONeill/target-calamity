@@ -77,7 +77,7 @@ plausible-looking edit.
 
 1. **Feed** — `GET /api/factors`, cursor-paginated. Drives the sidebar and
    **nothing on the GPU**.
-2. **Field** — `GET /api/field`, fetched once and again *only* when SSE signals a
+2. **Field** — `GET /api/field`, fetched once and again _only_ when SSE signals a
    change. Never re-fetched on camera move, scroll, sort or selection.
 
 Keeping these separate is what makes two clients on the same `fieldEpoch` render
@@ -91,8 +91,8 @@ camera or pagination path.
   and it passes a `|v| = R` check.
 - Render-on-demand: no unconditional rAF. `requestRender()` is called on actual
   change only.
-- Grey/untinted geography means *no data* and must stay distinguishable from
-  purple, which means *documented opposing forces*.
+- Grey/untinted geography means _no data_ and must stay distinguishable from
+  purple, which means _documented opposing forces_.
 - Ingested factors land `pending` and stay out of the field bake and the Clock
   aggregate until the reputability gate promotes them.
 - The submission schema is `.strict()` on purpose: `effect`, `significance`,
@@ -109,7 +109,7 @@ These are product requirements, not preferences:
 
 - **Never fabricate to fill a gap.** No tipping-point factors means
   `hasBaseline: false` and a suppressed countdown, not a default target.
-- The Clock's shift is interpolation *inside* each threshold's published
+- The Clock's shift is interpolation _inside_ each threshold's published
   earliest/latest band — it never moves the band. Do not reintroduce an operator
   knob that lets the countdown travel past what a source actually published.
 - Paraphrased citations must never render as quotes; `verbatim` defaults to

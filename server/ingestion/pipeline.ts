@@ -173,9 +173,8 @@ export function createPipeline(deps: PipelineDeps) {
         const embedding = vectors[i]!;
         result.processedFactors++;
 
-        const outcome = await deps.repository.withBucketLock(
-          bucketKey(p.draft),
-          (tx) => this.reconcileOne(tx, p, embedding, deps.resolver),
+        const outcome = await deps.repository.withBucketLock(bucketKey(p.draft), (tx) =>
+          this.reconcileOne(tx, p, embedding, deps.resolver),
         );
 
         if (outcome.kind === 'insert') result.inserted++;
@@ -298,10 +297,7 @@ export function createPipeline(deps: PipelineDeps) {
 
 export type Pipeline = ReturnType<typeof createPipeline>;
 
-function candidateView(
-  c: FactorCandidate,
-  _p: PreparedFactor,
-): ResolutionCandidateView {
+function candidateView(c: FactorCandidate, _p: PreparedFactor): ResolutionCandidateView {
   // The DB candidate carries metrics + distance; name/description are not on the
   // FactorCandidate shape (kept lean for the pure math), so the resolver sees the
   // identifying metrics and distance. A richer view can be added if a resolver
@@ -316,7 +312,6 @@ function candidateView(
   };
 }
 
-
 /* -------------------------------------------------------------------------- */
 /* Re-exports                                                                 */
 /* -------------------------------------------------------------------------- */
@@ -330,4 +325,3 @@ export * from './ports.js';
 export * from './contentHash.js';
 export * from './researchExtractor.js';
 export * from './stubs.js';
-

@@ -36,14 +36,14 @@ import { realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { sql } from 'kysely';
 import * as z from 'zod/v4';
-import { deriveClock, type ClockFactorInput, type Projection } from '../../src/lib/clock/clockModel.js';
+import {
+  deriveClock,
+  type ClockFactorInput,
+  type Projection,
+} from '../../src/lib/clock/clockModel.js';
 import { createDatabase, type Database } from '../db.js';
 import { notifyFieldChanged } from './notifyFieldChanged.js';
-import {
-  retrieveDocuments,
-  hasRetrievalCredentials,
-  publisherFromUrl,
-} from './retrieval.js';
+import { retrieveDocuments, hasRetrievalCredentials, publisherFromUrl } from './retrieval.js';
 import {
   getLlmClient,
   hasLiveCredentials,
@@ -129,7 +129,9 @@ async function crossedRoots(
     baseline: string | null;
     assumes_future_action: boolean | null;
     points: { year: number; value: number }[];
-  }>`SELECT id, quantity, unit, baseline, assumes_future_action, points FROM projections`.execute(db);
+  }>`SELECT id, quantity, unit, baseline, assumes_future_action, points FROM projections`.execute(
+    db,
+  );
 
   const projections: Projection[] = projRows.map((p) => ({
     id: p.id,
@@ -137,9 +139,7 @@ async function crossedRoots(
     unit: p.unit,
     points: p.points,
     ...(p.baseline !== null ? { baseline: p.baseline } : {}),
-    ...(p.assumes_future_action !== null
-      ? { assumesFutureAction: p.assumes_future_action }
-      : {}),
+    ...(p.assumes_future_action !== null ? { assumesFutureAction: p.assumes_future_action } : {}),
   }));
 
   const byLabel = new Map<string, Row>();
@@ -257,7 +257,9 @@ export async function backfillContingency(
     );
     for (const r of roots) logger.info(`[contingency]   root: ${r.seed.slice(0, 90)}`);
     if (dryRun || roots.length === 0) {
-      logger.info(dryRun ? '[contingency] dry run — no calls, no writes.' : '[contingency] nothing to do.');
+      logger.info(
+        dryRun ? '[contingency] dry run — no calls, no writes.' : '[contingency] nothing to do.',
+      );
       return;
     }
 
@@ -287,9 +289,7 @@ export async function backfillContingency(
         seen.add(key);
 
         try {
-          const docs = await retrieveDocuments(
-            expansionQuery(current.statement),
-          );
+          const docs = await retrieveDocuments(expansionQuery(current.statement));
           if (docs.length === 0) continue;
 
           const out = await structuredCompletion({
@@ -355,7 +355,9 @@ export async function backfillContingency(
       logger.info(`[contingency] ${root.name.slice(0, 50)} — ${nodes} node(s).`);
     }
 
-    logger.info(`[contingency] done — ${totalNodes} requirement(s) across ${roots.length} chain(s).`);
+    logger.info(
+      `[contingency] done — ${totalNodes} requirement(s) across ${roots.length} chain(s).`,
+    );
     await notifyFieldChanged(db);
   } finally {
     await pool.end();
@@ -371,4 +373,3 @@ if (invokedDirectly) {
     process.exitCode = 1;
   });
 }
-

@@ -81,31 +81,31 @@ Phase D  resolver classifies → server recalculates
 
 ## Files
 
-| File                  | Responsibility                                                        |
-| --------------------- | --------------------------------------------------------------------- |
-| `llmClient.ts`        | Shared Fireworks (OpenAI-protocol) client + `hasLiveCredentials()` + `INGEST_MODEL` + `structuredCompletion()`. |
-| `llmClient.test.ts`   | Offline tests: provider pinning, credential gate, model selection, zod→JSON-Schema derivation. |
-| `retrieval.ts`  | The retrieval seam: search + page fetch/extract, `hasRetrievalCredentials()`, publisher derivation, caps. |
-| `search.ts`     | Provider selection (`SEARCH_PROVIDER`, else whichever key is set, Serper first). |
-| `serperSearch.ts` / `braveSearch.ts` | One file per engine, both returning `SearchHit[]`. |
-| `extract.ts`    | Fetch a page and convert it to markdown (Readability + node-html-markdown). Tables survive. |
-| `retrieval.test.ts` | Offline tests (injected `fetch`): request body contract, response normalisation, provenance, caps. |
-| `websearch.ts`        | Phase A live research (`researchFactors`): retrieval + typed extraction turn. Deterministic offline stub. |
-| `reputability.ts`     | Source-credibility gate (`scoreSource`) + `REPUTABILITY_VERIFY_THRESHOLD`. LLM judge + offline heuristic. |
-| `noiseFilter.ts`      | Cheap triage in FRONT of the loop for anonymous submissions (`classifySubmission`, ): one constrained call → `plausible`/`spam`/`abuse`/`nonsense`. Injection-hardened; deterministic offline stub. |
-| `noiseFilter.test.ts` | Offline-stub tests: verdicts, injection markers, `shouldAutoBan` thresholds, no live call. |
-| `embeddings.ts`       | Phase B client. Fireworks embeddings (OpenAI-compatible) + deterministic offline stub. |
-| `dedupe.ts`           | Pure Phase C query contract + Phase D decision/escalation math.        |
-| `dedupe.test.ts`      | Unit tests for the pure math (`recalculateOnEscalation`, `compareCandidates`, `resolveOutcome`, …). |
-| `resolver.ts`         | Phase D LIVE LLM entity resolver (`createLlmResolver`) — proposes relation + metrics; deterministic layer clamps/validates. |
-| `resolver.test.ts`    | Offline tests: `verdictFromProposal`, clamping/directionality, deterministic stub fallback (no live call). |
-| `memoryRepository.ts` | In-memory `IngestionRepository`/`IngestionTx` — the offline counterpart to `pgRepository.ts` (offline `--once` cycle + `pipeline.test.ts`). |
-| `pipeline.test.ts`    | End-to-end OFFLINE integration test: research → embed → dedupe → gate → resolve → persist, plus idempotency + collision→escalation. |
-| `websearch.test.ts`   | Offline-stub tests: deterministic candidates, in-domain values, no-cred fallback. |
-| `reputability.test.ts`| Offline-stub tests: domain heuristic, `[0,1]` bound, verified/pending threshold gating. |
-| `pipeline.ts`         | Impure A→D orchestration: idempotency, batching, quarantine, tx locks. Phase A wired to `researchFactors` via `createResearchExtractor`. |
-| `pgRepository.ts`     | The CONCRETE Kysely/Postgres adapter for the ports (write-path contract + `pg_notify`). |
-| `worker.ts`           | Scheduled worker (`npm run ingest`): cadence, bounded batch, reputability gate wiring, `runIngestOnce()`. |
+| File                                 | Responsibility                                                                                                                                                                                      |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `llmClient.ts`                       | Shared Fireworks (OpenAI-protocol) client + `hasLiveCredentials()` + `INGEST_MODEL` + `structuredCompletion()`.                                                                                     |
+| `llmClient.test.ts`                  | Offline tests: provider pinning, credential gate, model selection, zod→JSON-Schema derivation.                                                                                                      |
+| `retrieval.ts`                       | The retrieval seam: search + page fetch/extract, `hasRetrievalCredentials()`, publisher derivation, caps.                                                                                           |
+| `search.ts`                          | Provider selection (`SEARCH_PROVIDER`, else whichever key is set, Serper first).                                                                                                                    |
+| `serperSearch.ts` / `braveSearch.ts` | One file per engine, both returning `SearchHit[]`.                                                                                                                                                  |
+| `extract.ts`                         | Fetch a page and convert it to markdown (Readability + node-html-markdown). Tables survive.                                                                                                         |
+| `retrieval.test.ts`                  | Offline tests (injected `fetch`): request body contract, response normalisation, provenance, caps.                                                                                                  |
+| `websearch.ts`                       | Phase A live research (`researchFactors`): retrieval + typed extraction turn. Deterministic offline stub.                                                                                           |
+| `reputability.ts`                    | Source-credibility gate (`scoreSource`) + `REPUTABILITY_VERIFY_THRESHOLD`. LLM judge + offline heuristic.                                                                                           |
+| `noiseFilter.ts`                     | Cheap triage in FRONT of the loop for anonymous submissions (`classifySubmission`, ): one constrained call → `plausible`/`spam`/`abuse`/`nonsense`. Injection-hardened; deterministic offline stub. |
+| `noiseFilter.test.ts`                | Offline-stub tests: verdicts, injection markers, `shouldAutoBan` thresholds, no live call.                                                                                                          |
+| `embeddings.ts`                      | Phase B client. Fireworks embeddings (OpenAI-compatible) + deterministic offline stub.                                                                                                              |
+| `dedupe.ts`                          | Pure Phase C query contract + Phase D decision/escalation math.                                                                                                                                     |
+| `dedupe.test.ts`                     | Unit tests for the pure math (`recalculateOnEscalation`, `compareCandidates`, `resolveOutcome`, …).                                                                                                 |
+| `resolver.ts`                        | Phase D LIVE LLM entity resolver (`createLlmResolver`) — proposes relation + metrics; deterministic layer clamps/validates.                                                                         |
+| `resolver.test.ts`                   | Offline tests: `verdictFromProposal`, clamping/directionality, deterministic stub fallback (no live call).                                                                                          |
+| `memoryRepository.ts`                | In-memory `IngestionRepository`/`IngestionTx` — the offline counterpart to `pgRepository.ts` (offline `--once` cycle + `pipeline.test.ts`).                                                         |
+| `pipeline.test.ts`                   | End-to-end OFFLINE integration test: research → embed → dedupe → gate → resolve → persist, plus idempotency + collision→escalation.                                                                 |
+| `websearch.test.ts`                  | Offline-stub tests: deterministic candidates, in-domain values, no-cred fallback.                                                                                                                   |
+| `reputability.test.ts`               | Offline-stub tests: domain heuristic, `[0,1]` bound, verified/pending threshold gating.                                                                                                             |
+| `pipeline.ts`                        | Impure A→D orchestration: idempotency, batching, quarantine, tx locks. Phase A wired to `researchFactors` via `createResearchExtractor`.                                                            |
+| `pgRepository.ts`                    | The CONCRETE Kysely/Postgres adapter for the ports (write-path contract + `pg_notify`).                                                                                                             |
+| `worker.ts`                          | Scheduled worker (`npm run ingest`): cadence, bounded batch, reputability gate wiring, `runIngestOnce()`.                                                                                           |
 
 Everything the loop touches outside itself is an **injected port**. The port
 _interfaces_ (`IngestionRepository` / `IngestionTx`) live in `pipeline.ts`; the
@@ -125,8 +125,8 @@ Built and wired to a live database:
   inside the transaction, so the SSE route (`server/routes/stream.ts`) fans deltas
   to browsers — this module is the emitter that route documents.
 - **Worker entrypoint** (`worker.ts`, `npm run ingest`) running `processBatch`.
-- **Idempotency, batching, value-validation, quarantine, the  dedup query
-  shape, the  escalation math, and advisory-lock concurrency** — all
+- **Idempotency, batching, value-validation, quarantine, the dedup query
+  shape, the escalation math, and advisory-lock concurrency** — all
   production paths, covered by `dedupe.test.ts` for the pure half.
 
 Now **built and live**, superseding the earlier Phase-1 scope note:
@@ -156,34 +156,41 @@ Now **built** (superseding the earlier out-of-scope notes):
 ## Key exports
 
 `embeddings.ts`
+
 - `EMBEDDING_DIMENSIONS = 512`, `DEFAULT_EMBEDDING_MODEL`
 - `EmbeddingClient` (interface), `createRemoteEmbeddingClient`, `createStubEmbeddingClient`, `stubEmbedding`
 - `createEmbeddingClient(env)` — selects real vs stub; **throws in production if no key**
 
 `dedupe.ts`
+
 - `SIMILARITY_QUERY_SHAPE`, `CANDIDATE_TOP_K`, `COLLISION_DISTANCE_THRESHOLD`, `CANDIDATE_DISTANCE_CEILING`
 - `FactorCandidate`, `filterCandidates`, `compareCandidates`, `selectParent`
-- `escalationLambda`, `recalculateOnEscalation` — the  formula (pure)
+- `escalationLambda`, `recalculateOnEscalation` — the formula (pure)
 - `ResolverVerdict`, `ResolutionOutcome`, `resolveOutcome`
 
 `llmClient.ts`
+
 - `getLlmClient(env)` (OpenAI-protocol client pinned to `FIREWORKS_BASE_URL`), `hasLiveCredentials(env)`, `ingestModel(env)`, `DEFAULT_INGEST_MODEL`, `structuredCompletion(args)`, `jsonSchemaOf(zodSchema)`
 
 `retrieval.ts`
+
 - `retrieveDocuments(query, opts)` → `RetrievedDocument[]`, `hasRetrievalCredentials(env)`
 - `normalizeResults`, `publisherFromUrl`, `truncateContent` (pure), `DEFAULT_MAX_RESULTS`, `DEFAULT_MAX_CONTENT_CHARS`
 
 `websearch.ts`
+
 - `researchFactors(topic, opts)` → `CandidateFactor[]` (live retrieval + extraction; offline stub when either key is missing)
 - `normalizeCandidate(raw, docs)`, `renderSourceBlocks(docs)` (pure; the provenance-substitution seam)
 - `researchFactorsOffline(topic)` — deterministic offline candidates
 - types: `CandidateFactor`, `ResearchedSource`, `ResearchOptions`
 
 `reputability.ts`
+
 - `scoreSource(input, opts)` → `{ score, reasoning, provenance }`; `scoreSourceOffline(input)`
 - `REPUTABILITY_VERIFY_THRESHOLD` (0.7), types `SourceToScore`, `ReputabilityScore`
 
 `pipeline.ts`
+
 - `createPipeline(deps)` / `createPipelineFromEnv(env, ports)` → `{ processBatch, reconcileOne, embeddings }`
 - Ports: `IngestionRepository`, `IngestionTx`, `FactorExtractor`, `EntityResolver`, `SourceAllowlist`
 - Write shapes: `NewFactorInput`, `EscalationWriteInput`, `CitationWriteInput`, `RevisionInput`, `QuarantineEntry`
@@ -192,19 +199,23 @@ Now **built** (superseding the earlier out-of-scope notes):
 - Offline stubs: `createStubExtractor`, `createStubResolver`
 
 `worker.ts`
+
 - `runIngestOnce(logger?)` — one guarded LIVE cycle (no-op without DB + creds)
 - `runIngestOnceOffline(logger?)` — one fully-offline cycle vs an in-memory repo (the `--once` fallback with no creds)
 - `buildReputabilityGate(logger, opts)` — the source gate (deciding score + reasoning → `GateResult`, )
 
 `resolver.ts`
+
 - `createLlmResolver(client?)` — live Phase D resolver; `verdictFromProposal`, `deriveDirectionality`, `clampTo` (pure, tested)
 
 `memoryRepository.ts`
+
 - `createMemoryIngestionRepository()` — offline `IngestionRepository` with `.factors()` / `.quarantined()` inspection
 
 ## Decisions
 
 ### idempotency, batching, structured extraction
+
 - **Idempotency runs first.** `contentHash(item)` (SHA-256 of the canonical URL,
   or publisher + normalized text when there is no URL) is checked against the
   repository **before** extraction or embedding, so re-ingesting the same article
@@ -217,12 +228,14 @@ Now **built** (superseding the earlier out-of-scope notes):
   see finding 27.
 
 ### 512-dim Matryoshka embeddings
+
 `createOpenAIEmbeddingClient` requests `dimensions: 512` from the API so the
 provider truncates server-side (the prefix is Matryoshka-valid only when the
 model emits it — we never slice a 1536-vector ourselves). Matches the
 `halfvec(512)` column.
 
 ### Similarity threshold is a candidate filter, not a decision
+
 Phase C retrieves `CANDIDATE_TOP_K` (20) nearest within `CANDIDATE_DISTANCE_CEILING`
 (0.30). `0.15` survives as `COLLISION_DISTANCE_THRESHOLD`, documented
 with its failure modes in both directions (too tight → duplicate events; too
@@ -231,14 +244,16 @@ escalate/independent call over the candidate set; a fixed scalar on cosine
 distance cannot.
 
 ### The k-NN query shape
+
 `SIMILARITY_QUERY_SHAPE` is `ORDER BY embedding <=> :q LIMIT :k`, **not** a
 `WHERE embedding <=> :q < 0.15` predicate, which would force a sequential scan
 (pgvector only uses HNSW for the order-by-limit shape). The order-by form is index-served and returns rows in
-*exact* distance order, so `candidates[0]` is the true nearest and `distance` is
+_exact_ distance order, so `candidates[0]` is the true nearest and `distance` is
 exact. The repository is expected to raise `hnsw.ef_search` above the default 40
 for this dedup workload (a miss = a false "no collision" = a duplicate insert).
 
 ### Explicit escalation recalculation
+
 `recalculateOnEscalation` pins the recalculation to a citation-count-weighted
 convex blend:
 
@@ -262,11 +277,13 @@ significance = clamp((1-λ)·sig_parent    + λ·sig_new,     0,  1)
   recomputed if the formula changes.
 
 ### verification state
+
 New factors are inserted with `verificationState: 'pending'`. Machine-extracted
 content is marked unreviewed and (per /finding 27) excluded from the field
 bake and headline visuals until promoted to `verified`.
 
 ### finding 29 — multi-collision + concurrency
+
 - **Deterministic parent selection.** `compareCandidates` is a total order:
   exact cosine distance → oldest `created_at` → smallest `id`. Never HNSW visit
   order. `resolveOutcome` falls back to this nearest parent if the resolver names
@@ -290,6 +307,7 @@ bake and headline visuals until promoted to `verified`.
     locking over an approximate HNSW scan is unreliable and needs retry logic.
 
 ### finding 27 — untrusted write path (partial; the parts this module owns)
+
 - **Value validation.** `ExtractedFactorSchema` re-checks every extracted VALUE
   (JSON-schema constrains shape, not range): `effect ∈ [-1,1]`,
   `significance ∈ [0,1]`, `lat/lon` bounds, `spatialPath` rooted at `global` with
@@ -331,7 +349,7 @@ the vetting: `server/submissions/vetting.ts` builds the same
 `createPipelineFromEnv` the worker builds, with the submitted claim as the Phase A
 research topic and the cited URL appended, and feeds it exactly one item. Effect,
 significance, lat/lon and the verified/pending decision therefore come from the
-same Phase A extraction and the same  gate — a submitter supplies only a
+same Phase A extraction and the same gate — a submitter supplies only a
 claim and a source (the request schema is `.strict()` precisely so that stays
 true).
 

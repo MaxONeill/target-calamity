@@ -63,9 +63,7 @@ describe('scoreSourceOffline — deterministic domain heuristic', () => {
   });
 
   it('leaves a placeholder/self-published domain pending', () => {
-    expect(gate(scoreSourceOffline(src({ url: 'https://example.org/x' })).score)).toBe(
-      'pending',
-    );
+    expect(gate(scoreSourceOffline(src({ url: 'https://example.org/x' })).score)).toBe('pending');
     expect(gate(scoreSourceOffline(src({ url: 'https://medium.com/@x/post' })).score)).toBe(
       'pending',
     );

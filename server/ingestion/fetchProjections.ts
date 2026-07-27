@@ -125,10 +125,14 @@ export async function fetchProjections(
 
     logger.info(`[projections] ${wanted.length} quantity/unit pair(s) without a curve.`);
     for (const w of wanted) {
-      logger.info(`[projections]   want: ${w.quantity} (${w.unit})${w.baseline ? ` vs ${w.baseline}` : ''}`);
+      logger.info(
+        `[projections]   want: ${w.quantity} (${w.unit})${w.baseline ? ` vs ${w.baseline}` : ''}`,
+      );
     }
     if (dryRun || wanted.length === 0) {
-      logger.info(dryRun ? '[projections] plan only — no calls made.' : '[projections] nothing to do.');
+      logger.info(
+        dryRun ? '[projections] plan only — no calls made.' : '[projections] nothing to do.',
+      );
       return;
     }
 
@@ -198,7 +202,3 @@ if (invokedDirectly) {
     process.exitCode = 1;
   });
 }
-
-
-
-

@@ -122,9 +122,7 @@ export interface IpResolutionInput {
 
 export function resolveClientIp(input: IpResolutionInput): string {
   if (input.trustProxy) {
-    const raw = Array.isArray(input.forwardedFor)
-      ? input.forwardedFor[0]
-      : input.forwardedFor;
+    const raw = Array.isArray(input.forwardedFor) ? input.forwardedFor[0] : input.forwardedFor;
     const first = raw?.split(',')[0]?.trim();
     if (first) return normalizeIp(first);
   }
@@ -223,7 +221,5 @@ export function normalizeSubmission(claim: string, sourceUrl: string): Normalize
 
 /** Stable content key for a normalized submission (used by the in-memory store). */
 export function submissionContentHash(normalized: NormalizedSubmission): string {
-  return createHash('sha256')
-    .update(`${normalized.claim} ${normalized.sourceUrl}`)
-    .digest('hex');
+  return createHash('sha256').update(`${normalized.claim} ${normalized.sourceUrl}`).digest('hex');
 }

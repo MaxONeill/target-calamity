@@ -181,11 +181,7 @@ export class OrbitRig {
     const theta = options.initial?.theta ?? 0;
     const phi = options.initial?.phi ?? Math.PI / 2;
     const distance = options.initial?.distance ?? this.#minDistance * 2.2;
-    this.#spherical.set(
-      this.#clampDistance(distance),
-      this.#clampPhi(phi),
-      theta,
-    );
+    this.#spherical.set(this.#clampDistance(distance), this.#clampPhi(phi), theta);
     this.#spherical.makeSafe();
 
     this.#addListeners();
