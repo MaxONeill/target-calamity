@@ -47,6 +47,24 @@ function RequirementBranch({
         </a>
       ) : null}
 
+      {/* The routing surface. These are counter-efforts already tracked whose
+          wording is semantically close to this requirement — related work, not
+          a claim that any of them satisfies it. Saying "working on this" would
+          overstate a similarity score, which is the same failure as an invented
+          dependency wearing a friendlier face. */}
+      {node.efforts.length > 0 ? (
+        <div className="tc-req-efforts">
+          <span className="tc-req-efforts-head">Related work being tracked</span>
+          <ul className="tc-req-efforts-list">
+            {node.efforts.map((e) => (
+              <li key={e.factorId}>{e.name}</li>
+            ))}
+          </ul>
+        </div>
+      ) : node.status !== 'exists' ? (
+        <p className="tc-req-untracked">Nothing in the set addresses this yet.</p>
+      ) : null}
+
       {children.length > 0 ? (
         <ul className="tc-req-children">
           {children.map((c) => (

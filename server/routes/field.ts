@@ -158,6 +158,8 @@ interface RequirementRow {
   publisher: string | null;
   quote: string | null;
   reasoning: string | null;
+  /** Aggregated in the query; `[]` when nothing tracked addresses this. */
+  efforts: { factorId: string; name: string; distance: number }[];
 }
 
 /**
@@ -170,10 +172,25 @@ interface RequirementRow {
  */
 async function requirementsDb(db: Database): Promise<FieldResponse['requirements']> {
   const { rows } = await sql<RequirementRow>`
-    SELECT id, factor_id, parent_id, statement, status, depth,
-           source_url, publisher, quote, reasoning
-      FROM requirements
-     ORDER BY factor_id, depth, id
+    SELECT r.id, r.factor_id, r.parent_id, r.statement, r.status, r.depth,
+           r.source_url, r.publisher, r.quote, r.reasoning,
+           -- Counter-efforts inline, closest first. json_agg with a FILTER so a
+           -- requirement nothing addresses yields an empty array rather than a
+           -- row of nulls — an untracked requirement is a real finding and has
+           -- to survive the read path intact.
+           COALESCE(
+             json_agg(
+               json_build_object('factorId', ef.id, 'name', ef.name, 'distance', e.distance)
+               ORDER BY e.distance
+             ) FILTER (WHERE ef.id IS NOT NULL),
+             '[]'::json
+           ) AS efforts
+      FROM requirements r
+      LEFT JOIN requirement_efforts e ON e.requirement_id = r.id
+      LEFT JOIN factors ef ON ef.id = e.factor_id
+     GROUP BY r.id, r.factor_id, r.parent_id, r.statement, r.status, r.depth,
+              r.source_url, r.publisher, r.quote, r.reasoning
+     ORDER BY r.factor_id, r.depth, r.id
   `.execute(db);
 
   return rows.map((r) => ({
@@ -183,6 +200,7 @@ async function requirementsDb(db: Database): Promise<FieldResponse['requirements
     statement: r.statement,
     status: r.status as FieldResponse['requirements'][number]['status'],
     depth: r.depth,
+    efforts: r.efforts,
     // SQL nulls stripped rather than passed through: the schemas are
     // `.optional()` and never `.nullable()`, per the project's read-path rule.
     ...(r.source_url !== null ? { sourceUrl: r.source_url } : {}),
@@ -260,4 +278,5 @@ export default async function fieldRoutes(fastify: FastifyInstance): Promise<voi
     return FieldResponseSchema.parse(response);
   });
 }
+
 

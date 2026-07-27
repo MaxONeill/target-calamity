@@ -166,6 +166,27 @@ export const RequirementSchema = z.object({
   publisher: z.string().optional(),
   quote: z.string().optional(),
   reasoning: z.string().optional(),
+  /**
+   * Counter-efforts already tracked that relate to this requirement.
+   *
+   * A SEMANTIC match between the requirement's wording and the factor's — not a
+   * claim the factor satisfies it. `distance` travels so the closeness is
+   * visible, and the UI says "related work" rather than "solution". Overstating
+   * that link would be the same failure as an invented dependency, dressed as
+   * helpfulness.
+   *
+   * An empty array is meaningful: nothing in the set addresses this. That is a
+   * gap in what the tracker knows about, and worth showing as one.
+   */
+  efforts: z
+    .array(
+      z.object({
+        factorId: z.string().uuid(),
+        name: z.string(),
+        distance: z.number(),
+      }),
+    )
+    .default([]),
 });
 
 export const TippingPointSchema = z.object({

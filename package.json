@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Target: Calamity â€” an empirical, non-linear reality tracker rendered on a 3D WebGL globe.",
+  "description": "Target: Calamity Ã¢â‚¬â€ an empirical, non-linear reality tracker rendered on a 3D WebGL globe.",
   "scripts": {
     "dev": "vite",
     "server": "tsx watch --env-file-if-exists=.env server/index.ts",
@@ -19,6 +19,7 @@
     "backfill:closers": "tsx --env-file-if-exists=.env server/ingestion/backfillWindowClosers.ts",
     "ingest:projections": "tsx --env-file-if-exists=.env server/ingestion/fetchProjections.ts",
     "backfill:quantities": "tsx --env-file-if-exists=.env server/ingestion/backfillQuantityThresholds.ts",
+    "resolve:efforts": "tsx --env-file-if-exists=.env server/ingestion/resolveEfforts.ts",
     "resolve:quantities": "tsx --env-file-if-exists=.env server/ingestion/resolveQuantities.ts",
     "report:coverage": "tsx --env-file-if-exists=.env server/ingestion/coverageReport.ts",
     "backfill:significance": "tsx --env-file-if-exists=.env server/ingestion/backfillSignificance.ts",
