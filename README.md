@@ -56,7 +56,9 @@ Clock is labelled a _modeled projection, not a measurement_.
 
 ### Interaction
 
-- **Drag** or **WASDQE** to orbit; **wheel** / **Q**/**E** to zoom.
+- **Drag** to orbit; **wheel** to zoom. There are deliberately no keyboard
+  controls — they were bound to `window`, so typing a claim into the submission
+  form flew the globe around underneath it.
 - **Click a pin** or **click a card** to fly the camera to face that factor over
   750ms and select it. Any manual camera input **drops the lock instantly**.
 - The globe repaints **on demand only** — there is no free-running render loop.
@@ -145,10 +147,20 @@ factors + gate decisions, and exits 0.
 ### Verify
 
 ```bash
-npx tsc --noEmit    # strict typecheck (exact-optional, no-unchecked-index, …)
+npm run verify      # typecheck + lint + format check + tests — the full gate
+npm test            # vitest, fully offline; never makes a live provider call
 npm run build       # tsc + vite production build
-npm test            # vitest: geo, clock model, and field kernel suites
 ```
+
+`npm test` is offline by design. The one suite that runs real SQL against the
+real schema skips — visibly — unless `DATABASE_URL` is set:
+
+```bash
+DATABASE_URL="postgres://calamity:calamity_dev_pw@localhost:5432/calamity" npx vitest run
+```
+
+Worth running after any migration: it is what catches a writer that a new
+constraint has quietly broken.
 
 ## Stack
 
@@ -204,10 +216,30 @@ are **system-assigned** by the vetting pipeline. Sending any of them is a hard
 400, not a silently dropped field — if a submitter could set them, anyone could
 steer the Clock's aggregate by hand.
 
-Checks run **cheapest-first** so a rejected submission never costs money: schema
-→ ban lookup → rate limit → duplicate → one small noise-classifier call → the
-existing ingestion pipeline. A shadow-banned submitter receives the byte-identical
-success payload a genuine one does and is never told otherwise.
+Checks run **cheapest-first**, and **nothing in the request path costs money**:
+schema → ban lookup → rate limit → duplicate → a deterministic noise heuristic
+(pure string matching, no network). The submission lands `queued` and stops
+there.
+
+A shadow-banned submitter gets the byte-identical success payload a genuine one
+does — including the same 429 on their second attempt of the day, since a ban
+that skipped the rate limiter was detectable by submitting twice.
+
+### Draining the queue
+
+The paid half — LLM classification, then retrieval, extraction, embeddings and
+the write — runs only when an operator asks. It is a CLI job with no HTTP route.
+
+```bash
+npm run submissions:drain -- --list      # free: show the queue, exit
+npm run submissions:drain -- --dry-run   # verdicts only, writes nothing
+npm run submissions:drain -- --limit 5   # drain 5, oldest first
+```
+
+Needs `DATABASE_URL`; refuses to run without provider keys, because the offline
+path would write `example.org` placeholder factors into the database. Each row
+is stamped `vetted_at` whichever way it goes, so a re-run never re-pays; a row
+whose pipeline failed stays queued and is retried.
 
 Environment:
 
@@ -243,7 +275,7 @@ src/
 scripts/       fetch-elevation.mjs (npm run fetch:elevation)
 public/        elevation-grid.json — the baked Open-Meteo grid
 server/        Fastify API (factors, field, stream, submit), pagination, Kysely db layer
-  submissions/ identity hashing, store, vetting handoff
+  submissions/ identity hashing, store, queue drain, vetting handoff
   db/migrate.ts  migration runner (npm run db:migrate) over the schema_migrations ledger
   ingestion/   the A→D reconciliation loop, split by responsibility:
                types.ts / ports.ts (shapes + injected interfaces),
