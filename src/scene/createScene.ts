@@ -4,7 +4,13 @@ import { Coastlines } from '../globe/Coastlines.js';
 import { createLandMask } from '../globe/landMask.js';
 import { PinLayer } from '../globe/PinLayer.js';
 import { GlobalRing } from '../globe/GlobalRing.js';
-import { OrbitRig, GLOBE_RADIUS, MIN_ZOOM, MAX_ZOOM } from '../camera/OrbitRig.js';
+import {
+  OrbitRig,
+  GLOBE_RADIUS,
+  MIN_ZOOM,
+  MAX_ZOOM,
+  distanceAfterWheelNotches,
+} from '../camera/OrbitRig.js';
 import { OrbitAlignment } from '../camera/alignment.js';
 import { attachInterrupt } from '../camera/interrupt.js';
 import { attachPicking } from './attachPicking.js';
@@ -41,6 +47,18 @@ const AUTO_ROTATE_RATE = (Math.PI * 2) / 240;
  * drifting under the cursor.
  */
 const AUTO_ROTATE_RESUME_MS = 3000;
+
+/**
+ * Opening distance, expressed as wheel clicks out from the old framing.
+ *
+ * Written in notches rather than as a number because zoom is multiplicative:
+ * `MIN_ZOOM * 2.4` was the previous framing and "three clicks further out" is a
+ * factor of exp(100 * 0.0015 * 3), not an addition. Saying it in the unit the
+ * request came in keeps the intent legible and survives a change to the wheel
+ * sensitivity.
+ */
+const INITIAL_FRAMING = MIN_ZOOM * 2.4;
+const INITIAL_ZOOM_OUT_NOTCHES = 3;
 
 /**
  * Builds the three.js instrument and returns the handle React drives it through.
@@ -180,7 +198,7 @@ export function createScene(container: HTMLDivElement, callbacks: SceneCallbacks
     initial: {
       theta: homeSpherical.theta,
       phi: homeSpherical.phi,
-      distance: MIN_ZOOM * 2.4,
+      distance: distanceAfterWheelNotches(INITIAL_FRAMING, INITIAL_ZOOM_OUT_NOTCHES),
     },
     onChange: requestRender,
     // Only TURNING the globe pauses the drift. A wheel zoom changes how close

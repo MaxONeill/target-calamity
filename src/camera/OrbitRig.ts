@@ -66,6 +66,33 @@ export const MAX_ZOOM = 8 * GLOBE_RADIUS;
  */
 export const POLAR_LIMIT = 1e-3;
 
+/** Default wheel sensitivity, as a fraction of distance per unit of deltaY. */
+export const WHEEL_ZOOM_SPEED = 0.0015;
+
+/**
+ * One detent of a mouse wheel, in `deltaY` pixels. Browsers report 100 per
+ * notch in the default pixel delta mode.
+ */
+export const WHEEL_NOTCH_DELTA = 100;
+
+/**
+ * The distance reached by scrolling `notches` clicks out from `distance`
+ * (negative scrolls in).
+ *
+ * Zoom is multiplicative — `radius * exp(deltaY * speed)` — so "three clicks
+ * out" is not an offset that can be written as a number in the framing. Callers
+ * that want to express an opening distance in wheel clicks go through here, so
+ * the exponent lives next to the handler that applies it and the two cannot
+ * drift into disagreeing about what a click is worth.
+ */
+export function distanceAfterWheelNotches(
+  distance: number,
+  notches: number,
+  speed: number = WHEEL_ZOOM_SPEED,
+): number {
+  return distance * Math.exp(WHEEL_NOTCH_DELTA * speed * notches);
+}
+
 /** Immutable orbit pivot — the globe center. Never reassigned. */
 const ORBIT_TARGET = new THREE.Vector3(0, 0, 0);
 
@@ -154,7 +181,7 @@ export class OrbitRig {
     this.#minDistance = options.minDistance ?? MIN_ZOOM;
     this.#maxDistance = options.maxDistance ?? MAX_ZOOM;
     this.#rotateSpeed = options.rotateSpeed ?? 0.005;
-    this.#wheelZoomSpeed = options.wheelZoomSpeed ?? 0.0015;
+    this.#wheelZoomSpeed = options.wheelZoomSpeed ?? WHEEL_ZOOM_SPEED;
     this.#onChange = options.onChange;
     this.#onUserInput = options.onUserInput;
 
