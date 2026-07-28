@@ -94,9 +94,24 @@ within an hour of DNS resolving. Nothing to configure and nothing to renew.
 
 Domain limits are per plan — 1 on Trial, 2 per service on Hobby, 20 on Pro.
 
-Then update `SHARE_URL` in `src/components/Share/Share.tsx` and redeploy. It is
-the only hard-coded placeholder left; the share text and every share-intent URL
-are derived from it.
+### Two domains, one canonical
+
+Both `targetcalamity.org` (canonical) and `targetcalamity.com` (defensive) are
+added to the same web service — Hobby allows two per service — so each gets its
+own certificate. Serving identical content on both would be duplicate content,
+so set:
+
+| Variable         | Value                | What it does                                                                                                    |
+| ---------------- | -------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `CANONICAL_HOST` | `targetcalamity.org` | Every other hostname 308s to it, path and query intact. Unset (dev, previews) the hook is not installed at all. |
+
+`/api/health` is exempt: Railway's healthcheck calls it on an internal hostname
+and a redirect there would fail an otherwise-good deploy. The redirect is 308
+rather than 301 so a POST stays a POST — a 301 lets a client re-issue a factor
+submission as a GET.
+
+`SHARE_URL` in `src/components/Share/Share.tsx` and the `<link rel="canonical">`
+in `index.html` must both name the same host as `CANONICAL_HOST`.
 
 ## Notes
 

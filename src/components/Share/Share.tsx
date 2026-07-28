@@ -11,10 +11,12 @@ import { createPortal } from 'react-dom';
 import './Share.css';
 
 /**
- * The link people share.
- * TODO: point at the canonical public URL once the domain is live.
+ * The link people share — the CANONICAL host, matching `CANONICAL_HOST` on the
+ * server. The .com is registered defensively and 308s here, so sharing it would
+ * work but would send every recipient through a redirect and show them an
+ * address the site does not use.
  */
-const SHARE_URL = 'https://targetcalamity.com';
+const SHARE_URL = 'https://targetcalamity.org';
 
 /**
  * What a shared link says about itself.

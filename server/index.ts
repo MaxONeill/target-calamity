@@ -88,6 +88,44 @@ if (ctx.mode === 'db') {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Canonical host                                                             */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Redirect every other hostname to the canonical one.
+ *
+ * The deployment answers on more than one domain — the .com was registered
+ * defensively alongside the .org, and Railway serves both from this same
+ * service with a certificate each. Serving identical content on both is
+ * duplicate content: search engines pick a winner themselves, links split
+ * between two addresses, and the share URL stops matching what people see.
+ *
+ * Off unless `CANONICAL_HOST` is set, so localhost, preview deployments and
+ * seed mode are untouched — a redirect that fires in development would send a
+ * developer to production, which is a memorable way to lose an afternoon.
+ *
+ * TWO CARVE-OUTS, both load-bearing:
+ *   - `/api/health` is exempt. Railway's healthcheck calls it on an internal
+ *     hostname; redirecting that would fail the check and roll back a deploy
+ *     that is otherwise fine.
+ *   - 308, not 301. A 301 permits a client to re-issue a POST as a GET, which
+ *     would silently turn a factor submission into a page view. 308 preserves
+ *     the method.
+ */
+const canonicalHost = process.env.CANONICAL_HOST?.trim().toLowerCase();
+if (canonicalHost) {
+  app.addHook('onRequest', async (request, reply) => {
+    if (request.url.startsWith('/api/health')) return;
+    // `host` carries the port; compare on the hostname alone so an explicit
+    // :443 or a proxy-added port does not read as a different site.
+    const host = request.headers.host?.toLowerCase().split(':')[0];
+    if (!host || host === canonicalHost) return;
+    await reply.code(308).redirect(`https://${canonicalHost}${request.url}`);
+  });
+  app.log.info(`Canonical host ${canonicalHost} — other hostnames 308 to it.`);
+}
+
+/* -------------------------------------------------------------------------- */
 /* Routes                                                                     */
 /* -------------------------------------------------------------------------- */
 
