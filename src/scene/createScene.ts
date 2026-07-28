@@ -9,6 +9,8 @@ import { OrbitAlignment } from '../camera/alignment.js';
 import { attachInterrupt } from '../camera/interrupt.js';
 import { attachPicking } from './attachPicking.js';
 import { applyRealTerrain, landReliefSampler } from './terrain.js';
+import { latLonToVector3 } from '../lib/geo.js';
+import { viewerLocation } from '../lib/viewerLocation.js';
 import type { SceneCallbacks, SceneHandle } from './types.js';
 
 /**
@@ -25,6 +27,20 @@ const GLOBE_DETAIL = 100;
  * to the surface that the lines still read as sitting on it.
  */
 const COASTLINE_LIFT = 1.007;
+
+/**
+ * Ambient rotation rate, radians per second. One revolution in ~4 minutes:
+ * fast enough to read as alive, slow enough that it is not competing with the
+ * reader for attention while they look at a pin.
+ */
+const AUTO_ROTATE_RATE = (Math.PI * 2) / 240;
+
+/**
+ * How long after the last manual input before ambient rotation resumes. Long
+ * enough that letting go to read something does not immediately start the globe
+ * drifting under the cursor.
+ */
+const AUTO_ROTATE_RESUME_MS = 3000;
 
 /**
  * Builds the three.js instrument and returns the handle React drives it through.
@@ -80,13 +96,94 @@ export function createScene(container: HTMLDivElement, callbacks: SceneCallbacks
     frameHandle ??= requestAnimationFrame(renderFrame);
   };
 
+  /* ---------------------------------------------------------------------- *
+   * Ambient rotation                                                        *
+   * ---------------------------------------------------------------------- *
+   *
+   * THE ONE STANDING rAF IN THE APP, and it only stands while it is actually
+   * rotating. Render-on-demand is the rule everywhere else and it still holds
+   * when this is paused: the loop cancels itself rather than idling, so a
+   * reader looking at a selected pin costs no frames at all.
+   *
+   * It yields to everything. Manual input defers it (see `onUserInput` on the
+   * rig, which fires on drag and wheel alike), a selected factor suspends it
+   * outright — the camera has been flown somewhere deliberate and drifting off
+   * it would undo the alignment the click just performed — and it never runs
+   * before the field has loaded, so the globe is not spinning behind a spinner.
+   */
+  let disposed = false;
+  let rotating = false;
+  let rotateHandle: number | null = null;
+  let rotateLastTime = 0;
+  let resumeTimer: ReturnType<typeof setTimeout> | null = null;
+  let selectionHolds = false;
+  let fieldReady = false;
+
+  const rotateTick = (now: number): void => {
+    if (!rotating) {
+      rotateHandle = null;
+      return;
+    }
+    // Clamped: a backgrounded tab resumes with a huge delta, which would snap
+    // the globe round instead of continuing from where it was.
+    const dt = Math.min((now - rotateLastTime) / 1000, 0.1);
+    rotateLastTime = now;
+    rig.orbitBy(AUTO_ROTATE_RATE * dt);
+    rotateHandle = requestAnimationFrame(rotateTick);
+  };
+
+  const startAutoRotate = (): void => {
+    if (rotating || selectionHolds || !fieldReady || disposed) return;
+    rotating = true;
+    rotateLastTime = performance.now();
+    rotateHandle ??= requestAnimationFrame(rotateTick);
+  };
+
+  const stopAutoRotate = (): void => {
+    rotating = false;
+    if (rotateHandle !== null) {
+      cancelAnimationFrame(rotateHandle);
+      rotateHandle = null;
+    }
+  };
+
+  /** Pause now, and resume once the reader has been still for a moment. */
+  const deferAutoRotate = (): void => {
+    stopAutoRotate();
+    if (resumeTimer !== null) clearTimeout(resumeTimer);
+    resumeTimer = setTimeout(() => {
+      resumeTimer = null;
+      startAutoRotate();
+    }, AUTO_ROTATE_RESUME_MS);
+  };
+
+  /*
+   * Open with the viewer's own part of the world facing them, rather than a
+   * fixed angle that lands most readers on an ocean.
+   *
+   * The lat/lon -> direction conversion goes through `latLonToVector3` and
+   * nothing else: hand-rolled trig on a coordinate is how the globe ends up
+   * mirrored relative to its own pins, and it passes a |v| = R check while
+   * doing it. Spherical only reads the resulting VECTOR, which is generic
+   * geometry rather than geography.
+   */
+  const home = viewerLocation();
+  const homeSpherical = new THREE.Spherical().setFromVector3(
+    latLonToVector3(home.lat, home.lon, GLOBE_RADIUS),
+  );
+
   const rig = new OrbitRig(camera, {
     domElement: canvas,
     radius: GLOBE_RADIUS,
     minDistance: MIN_ZOOM,
     maxDistance: MAX_ZOOM,
-    initial: { theta: Math.PI * 0.25, phi: Math.PI * 0.42, distance: MIN_ZOOM * 2.4 },
+    initial: {
+      theta: homeSpherical.theta,
+      phi: homeSpherical.phi,
+      distance: MIN_ZOOM * 2.4,
+    },
     onChange: requestRender,
+    onUserInput: () => deferAutoRotate(),
   });
   const alignment = new OrbitAlignment(camera, rig);
   const interruptGuard = attachInterrupt(alignment, {
@@ -125,13 +222,24 @@ export function createScene(container: HTMLDivElement, callbacks: SceneCallbacks
   // coastline overlay, which never requests a redraw of its own.
   requestRender();
 
-  let disposed = false;
   void applyRealTerrain(globe, landMask, () => disposed, requestRender);
 
   return {
     setFieldPins(pinSet): void {
       globe.update(pinSet);
       pins.update(pinSet);
+    },
+
+    /**
+     * The field has been applied at least once — the globe is showing data
+     * rather than an unwritten shader, so it is safe to reveal and to rotate.
+     * React owns the decision because only it knows the fetch resolved; an
+     * empty pin set is a legitimate answer, not a signal that nothing arrived.
+     */
+    setFieldReady(ready): void {
+      fieldReady = ready;
+      if (ready) startAutoRotate();
+      else stopAutoRotate();
     },
 
     setGlobalFactors(factors): void {
@@ -148,6 +256,18 @@ export function createScene(container: HTMLDivElement, callbacks: SceneCallbacks
     setSelected(id): void {
       pins.setSelected(id);
       ring.setSelected(id);
+      // A selection holds the camera where the alignment put it. Resuming the
+      // drift would slowly undo the framing the click just asked for.
+      selectionHolds = id !== null;
+      if (selectionHolds) {
+        stopAutoRotate();
+        if (resumeTimer !== null) {
+          clearTimeout(resumeTimer);
+          resumeTimer = null;
+        }
+      } else {
+        deferAutoRotate();
+      }
     },
 
     alignToLatLon(lat, lon): void {
@@ -161,6 +281,8 @@ export function createScene(container: HTMLDivElement, callbacks: SceneCallbacks
 
     dispose(): void {
       disposed = true;
+      stopAutoRotate();
+      if (resumeTimer !== null) clearTimeout(resumeTimer);
       if (frameHandle !== null) cancelAnimationFrame(frameHandle);
       resizeObserver.disconnect();
       detachPicking();

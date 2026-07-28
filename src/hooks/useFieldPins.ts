@@ -16,6 +16,8 @@ export interface FieldPinsState {
   /** Contingency chains for crossed thresholds. Empty until expansion runs. */
   requirements: Requirement[];
   /** Refetches the field set. Called on mount and on a stream invalidation. */
+  /** The first field fetch has settled, successfully or not. */
+  settled: boolean;
   reloadField: () => Promise<void>;
 }
 
@@ -33,6 +35,13 @@ export function useFieldPins(): FieldPinsState {
   const [globalFactors, setGlobalFactors] = useState<GlobalFactor[]>([]);
   const [projections, setProjections] = useState<Projection[]>([]);
   const [requirements, setRequirements] = useState<Requirement[]>([]);
+  /**
+   * Has the first field fetch SETTLED — not succeeded. Set in `finally`, so a
+   * failed fetch also releases the globe: the honest no-data state is plain
+   * geography, and holding a spinner forever because the network was down would
+   * be a worse lie than showing an empty planet.
+   */
+  const [settled, setSettled] = useState(false);
 
   const reloadField = useCallback(async (): Promise<void> => {
     try {
@@ -45,6 +54,8 @@ export function useFieldPins(): FieldPinsState {
       setRequirements(parsed.requirements);
     } catch (err) {
       console.error('[field] fetch failed:', err);
+    } finally {
+      setSettled(true);
     }
   }, []);
 
@@ -52,5 +63,5 @@ export function useFieldPins(): FieldPinsState {
     void reloadField();
   }, [reloadField]);
 
-  return { fieldPins, globalFactors, projections, requirements, reloadField };
+  return { fieldPins, globalFactors, projections, requirements, settled, reloadField };
 }

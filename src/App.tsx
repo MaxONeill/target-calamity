@@ -36,7 +36,8 @@ export function App(): React.JSX.Element {
   const appRef = useRef<HTMLDivElement>(null);
 
   const feed = useFactorFeed();
-  const { fieldPins, globalFactors, projections, requirements, reloadField } = useFieldPins();
+  const { fieldPins, globalFactors, projections, requirements, settled, reloadField } =
+    useFieldPins();
   const panel = useSlideoutPanel();
 
   // Touch gestures for the panel. Opening is restricted to a right-edge strip
@@ -94,6 +95,7 @@ export function App(): React.JSX.Element {
     // a corpus-relative number.
     fieldPins: scenePins,
     globalFactors: sceneGlobalFactors,
+    fieldReady: settled,
     selectedId: panel.selectedId,
     landVisible,
     onPickFactor: useCallback(
@@ -151,7 +153,19 @@ export function App(): React.JSX.Element {
 
   return (
     <div className="tc-app" data-panel-open={panel.open} ref={appRef}>
-      <div className="tc-globe-mount" ref={mountRef} aria-hidden="true" />
+      {/* Hidden until the field has been applied. The shader's inputs are
+          undefined before the first `setFieldPins`, and an unwritten field
+          renders as every point at maximum displacement in white — a flash of
+          a spiked white ball on every load. Revealing on data rather than on
+          mount means the first thing anyone sees is the real planet. */}
+      <div className="tc-globe-mount" ref={mountRef} aria-hidden="true" data-ready={settled} />
+
+      {!settled ? (
+        <div className="tc-globe-loading" role="status" aria-live="polite">
+          <div className="tc-globe-loading__ring" aria-hidden="true" />
+          <span className="tc-visually-hidden">Loading the field</span>
+        </div>
+      ) : null}
 
       <div className="tc-overlay">
         {/* Touch-only catcher for the edge swipe that opens the feed. It exists

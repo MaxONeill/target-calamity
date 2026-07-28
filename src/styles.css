@@ -109,8 +109,64 @@ body {
   position: absolute;
   inset: 0;
   z-index: 0;
-  transition: transform 240ms ease;
+  transition:
+    transform 240ms ease,
+    opacity 400ms ease;
   will-change: transform;
+  /*
+   * Hidden until the field is applied. Before the first setFieldPins the
+   * shader's inputs are undefined, which renders as every point at maximum
+   * displacement in white — the spiked white ball that flashed on every load.
+   *
+   * Opacity, not `display: none` or `visibility`: the canvas must keep its box
+   * so the ResizeObserver sizes the renderer correctly, and so the first real
+   * frame is already composited when it fades in rather than being drawn after.
+   */
+  opacity: 0;
+}
+
+.tc-globe-mount[data-ready='true'] {
+  opacity: 1;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Loading state                                                              */
+/* -------------------------------------------------------------------------- */
+
+.tc-globe-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.tc-globe-loading__ring {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid var(--tc-hairline-strong);
+  /* One lit arc, so the rotation is legible without a second colour. */
+  border-top-color: var(--tc-ink-dim);
+  animation: tc-globe-spin 900ms linear infinite;
+}
+
+@keyframes tc-globe-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* A spinner that cannot spin should not pulse in its place — it just holds,
+   and the live region still announces the state. */
+@media (prefers-reduced-motion: reduce) {
+  .tc-globe-loading__ring {
+    animation: none;
+  }
+  .tc-globe-mount {
+    transition: none;
+  }
 }
 
 /* When the slideout is open it would otherwise overlap the globe, forcing a

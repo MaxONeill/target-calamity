@@ -11,6 +11,8 @@ export interface UseSceneOptions {
    */
   sceneRef: MutableRefObject<SceneHandle | null>;
   fieldPins: readonly FieldPin[];
+  /** First field fetch has settled — gates the reveal and the ambient rotation. */
+  fieldReady: boolean;
   globalFactors: readonly GlobalFactor[];
   /** The selected factor id, emphasized in the scene. Null when none. */
   selectedId: string | null;
@@ -32,6 +34,7 @@ export function useScene({
   mountRef,
   sceneRef,
   fieldPins,
+  fieldReady,
   globalFactors,
   selectedId,
   landVisible,
@@ -72,6 +75,14 @@ export function useScene({
   useEffect(() => {
     sceneRef.current?.setGlobalFactors(globalFactors);
   }, [globalFactors, sceneRef]);
+
+  // AFTER the pin/global effects above, so the shader has been written before
+  // the globe is revealed. Effects run in declaration order, which is what
+  // makes "ready" mean the field is actually on screen rather than merely
+  // fetched.
+  useEffect(() => {
+    sceneRef.current?.setFieldReady(fieldReady);
+  }, [fieldReady, sceneRef]);
 
   useEffect(() => {
     sceneRef.current?.setSelected(selectedId);

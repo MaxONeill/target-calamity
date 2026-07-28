@@ -12,6 +12,11 @@ export interface SceneHandle {
    * Same rule as {@link setFieldPins} — data-driven only.
    */
   setGlobalFactors(factors: readonly GlobalFactor[]): void;
+  /**
+   * Marks the field as applied. Gates both the reveal and the ambient
+   * rotation — see the implementation in createScene.
+   */
+  setFieldReady(ready: boolean): void;
   /** Emphasizes the hovered factor (pin or ring arc), or clears it with null. */
   setHighlighted(id: string | null): void;
   /** Emphasizes the selected factor (pin or ring arc), or clears it with null. */

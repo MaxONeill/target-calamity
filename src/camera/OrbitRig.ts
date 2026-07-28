@@ -226,6 +226,23 @@ export class OrbitRig {
   }
 
   /** Programmatically set the orbit distance (clamped) and re-apply. */
+  /**
+   * Advance the azimuth by `deltaTheta` radians. The one mutator that is NOT a
+   * user gesture — the ambient rotation drives the globe through it.
+   *
+   * Deliberately does not call `syncFromCamera()` the way a manual manipulation
+   * does: that exists so a gesture picks up wherever an alignment flight left
+   * the camera, and re-syncing on every ambient frame would fight an in-flight
+   * alignment instead of yielding to it. The caller pauses rotation while
+   * anything else is driving.
+   */
+  orbitBy(deltaTheta: number): void {
+    if (!this.#enabled || deltaTheta === 0) return;
+    this.#spherical.theta += deltaTheta;
+    this.apply();
+    this.#emitChange();
+  }
+
   setDistance(distance: number): void {
     this.#spherical.radius = this.#clampDistance(distance);
     this.apply();
