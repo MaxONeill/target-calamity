@@ -78,10 +78,25 @@ Either way it needs `DATABASE_URL`, `FIREWORKS_API_KEY`, a search key, and
 
 ## 4. Domain + TLS
 
-Add your domain (e.g. `targetcalamity.com`) to the web service in Railway; it
-issues TLS automatically. Then update the two placeholders in
-`src/components/FightTheClock/FightTheClock.tsx` (`SHARE_URL`, `DISCORD_URL`) and
-redeploy.
+Railway **Settings → Public Networking → + Custom Domain**, enter the domain,
+and it hands you two DNS records. Add **both** at your registrar — a `CNAME`
+(e.g. `g05ns7.up.railway.app`) and a `TXT` for ownership. The domain will not
+verify with only the CNAME, which is the usual reason one sits on "pending".
+
+**The apex is the part that bites.** DNS forbids a CNAME on a root domain, so
+`targetcalamity.com` (as opposed to `www.targetcalamity.com`) needs a registrar
+that fakes one — CNAME flattening or an ALIAS/ANAME record. Cloudflare, DNSimple
+and Namecheap do; GoDaddy and Hostinger do not. If yours does not, the standard
+fix is to point the nameservers at Cloudflare and manage DNS there.
+
+TLS is automatic: Railway provisions a Let's Encrypt certificate, normally
+within an hour of DNS resolving. Nothing to configure and nothing to renew.
+
+Domain limits are per plan — 1 on Trial, 2 per service on Hobby, 20 on Pro.
+
+Then update `SHARE_URL` in `src/components/Share/Share.tsx` and redeploy. It is
+the only hard-coded placeholder left; the share text and every share-intent URL
+are derived from it.
 
 ## Notes
 
