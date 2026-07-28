@@ -69,6 +69,14 @@ export const POLAR_LIMIT = 1e-3;
 /** Immutable orbit pivot — the globe center. Never reassigned. */
 const ORBIT_TARGET = new THREE.Vector3(0, 0, 0);
 
+/**
+ * What kind of manipulation began. Reported to `onUserInput` so a listener can
+ * treat zooming differently from turning the globe: a wheel changes how close
+ * the camera is, not where it is pointed, so it has no quarrel with an ambient
+ * rotation the way a drag does.
+ */
+export type ManipulationSource = 'drag' | 'pinch' | 'wheel';
+
 export interface OrbitRigOptions {
   /** Element that receives pointer/wheel listeners (typically the canvas). */
   domElement: HTMLElement;
@@ -87,11 +95,13 @@ export interface OrbitRigOptions {
   /** Called after any state change so the host can render on demand. */
   onChange?: () => void;
   /**
-   * Called at the very start of a manual manipulation (pointer down / wheel).
+   * Called at the very start of a manual manipulation, with what kind it is.
    * Useful as a hook, though the interrupt handler in src/camera/interrupt.ts
-   * attaches its own independent listeners.
+   * attaches its own independent listeners — and that one DOES fire on the
+   * wheel, because a zoom should still drop an in-flight alignment lock even
+   * though it leaves the ambient rotation alone.
    */
-  onUserInput?: () => void;
+  onUserInput?: (source: ManipulationSource) => void;
 }
 
 /** Read-only view of the rig's spherical state. */
@@ -111,7 +121,7 @@ export class OrbitRig {
   readonly #rotateSpeed: number;
   readonly #wheelZoomSpeed: number;
   readonly #onChange: (() => void) | undefined;
-  readonly #onUserInput: (() => void) | undefined;
+  readonly #onUserInput: ((source: ManipulationSource) => void) | undefined;
 
   /** Spherical state. `phi` measured from +Y, per THREE.Spherical. */
   readonly #spherical = new THREE.Spherical();
@@ -276,9 +286,9 @@ export class OrbitRig {
    * an in-flight or just-cancelled alignment hands off seamlessly, and notifies
    * the user-input hook.
    */
-  #beginInteraction(): void {
+  #beginInteraction(source: ManipulationSource): void {
     this.syncFromCamera();
-    this.#onUserInput?.();
+    this.#onUserInput?.(source);
   }
 
   // --- Internal: listener wiring -----------------------------------------
@@ -311,7 +321,7 @@ export class OrbitRig {
       this.#activePointerId = event.pointerId;
       this.#lastPointerX = event.clientX;
       this.#lastPointerY = event.clientY;
-      this.#beginInteraction();
+      this.#beginInteraction('drag');
       window.addEventListener('pointermove', this.#onPointerMove);
       window.addEventListener('pointerup', this.#onPointerUp);
       window.addEventListener('pointercancel', this.#onPointerUp);
@@ -321,7 +331,7 @@ export class OrbitRig {
       this.#dragging = false;
       this.#activePointerId = null;
       this.#pinchLastDistance = this.#pointerDistance();
-      this.#beginInteraction();
+      this.#beginInteraction('pinch');
     }
   };
 
@@ -396,7 +406,7 @@ export class OrbitRig {
         this.#activePointerId = id;
         this.#lastPointerX = survivor.x;
         this.#lastPointerY = survivor.y;
-        this.#beginInteraction();
+        this.#beginInteraction('drag');
       }
       return;
     }
@@ -419,7 +429,7 @@ export class OrbitRig {
   readonly #onWheel = (event: WheelEvent): void => {
     if (!this.#enabled) return;
     event.preventDefault();
-    this.#beginInteraction();
+    this.#beginInteraction('wheel');
 
     // Positive deltaY (scroll down) zooms out; multiplicative for smooth feel.
     const factor = Math.exp(event.deltaY * this.#wheelZoomSpeed);

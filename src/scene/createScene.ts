@@ -183,7 +183,14 @@ export function createScene(container: HTMLDivElement, callbacks: SceneCallbacks
       distance: MIN_ZOOM * 2.4,
     },
     onChange: requestRender,
-    onUserInput: () => deferAutoRotate(),
+    // Only TURNING the globe pauses the drift. A wheel zoom changes how close
+    // the camera is, not where it points, so the two are not competing for the
+    // same axis — pausing on zoom just made the globe stop for no visible
+    // reason. Pinch is a two-finger gesture on the globe itself and its first
+    // contact has already deferred as a drag, which is the right outcome.
+    onUserInput: (source) => {
+      if (source === 'drag') deferAutoRotate();
+    },
   });
   const alignment = new OrbitAlignment(camera, rig);
   const interruptGuard = attachInterrupt(alignment, {
