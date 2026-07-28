@@ -8,10 +8,54 @@ const RING_RADIUS = 1.42;
 const MAX_THICKNESS = 0.075;
 /** Thickness floor, so a near-zero-significance factor is still clickable. */
 const MIN_THICKNESS = 0.018;
-/** Gap between adjacent arcs, in radians. */
+/** Preferred gap between adjacent arcs, in radians. */
 const ARC_GAP = 0.035;
+
+/**
+ * Ceiling on the share of the ring the gaps may claim in total.
+ *
+ * A fixed gap does not survive a growing set. `ARC_GAP * n` reaches the whole
+ * circle at 179 factors and passes it at 180 — the usable angle goes NEGATIVE,
+ * and arcs laid out from a negative budget wrap back over the start of the
+ * ring. The live set is already at 74, where gaps take 41% of the circumference
+ * and the arcs are competing for what is left, so this is not a distant
+ * hypothetical: it is why the smallest arc is a sliver.
+ *
+ * Capping the total shrinks the gap as the ring fills, which keeps the budget
+ * positive at any count and hands the recovered angle back to the arcs.
+ */
+const MAX_GAP_FRACTION = 0.35;
 /** Radial segments per arc. Enough that the curve reads as smooth. */
 const ARC_SEGMENTS = 48;
+
+/**
+ * Angular floor for an arc, in radians — the tap target.
+ *
+ * Width encodes influence, and below this it stops doing so. That is a real
+ * cost and it is taken deliberately: with the live set, the lightest factor
+ * ("Three reviews completed", influence 0.03 against a total of 32.5) swept
+ * 0.0034 rad, which is about one pixel of a 500px globe. An arc nobody can hit
+ * communicates nothing at all, so a width that slightly overstates it is the
+ * lesser inaccuracy. `MIN_THICKNESS` above already makes exactly this trade in
+ * the radial direction and for exactly this reason.
+ *
+ * What survives: ORDER is untouched, and every arc above the floor stays
+ * proportional to every other one above it. What is lost: an arc at the floor
+ * is no longer readable as a magnitude, only as "below the floor".
+ */
+const MIN_ARC_SWEEP = 0.045;
+
+/**
+ * Ceiling on how much of the ring the floors may claim, as a fraction of the
+ * angle each arc would get if all were equal.
+ *
+ * Without it the floor is unbounded in aggregate: at 74 global factors a flat
+ * 0.045 rad reserves 3.33 of the 3.69 usable radians and proportionality is
+ * gone — every arc becomes the floor plus a rounding error. Capping the floor
+ * at half the equal share means a crowded ring degrades toward equal-width
+ * arcs rather than lying about them, and an uncrowded one gets the full target.
+ */
+const MAX_FLOOR_FRACTION = 0.5;
 
 /**
  * Per-state visuals. Selected takes precedence over highlighted.
@@ -81,12 +125,56 @@ export function orderByInfluence<T extends { id: string; effect: number; signifi
 }
 
 /**
+ * Gap to use between arcs when there are `count` of them. Shrinks below
+ * {@link ARC_GAP} once the gaps would otherwise claim more than
+ * {@link MAX_GAP_FRACTION} of the ring.
+ */
+export function arcGap(count: number): number {
+  if (count <= 0) return ARC_GAP;
+  return Math.min(ARC_GAP, (Math.PI * 2 * MAX_GAP_FRACTION) / count);
+}
+
+/**
+ * Angular width for each arc, in the order given, summing to `usableAngle`.
+ *
+ * Proportional to influence, with {@link MIN_ARC_SWEEP} as a floor so the
+ * lightest factor is still a tap target. The floor is reserved for every arc
+ * first and the REMAINDER is shared out by influence, which keeps the result
+ * summing to the budget exactly — scaling proportional widths and then clamping
+ * the small ones would overflow the ring by however much the clamping added.
+ *
+ * @param usableAngle total angle available to arcs, gaps already subtracted
+ */
+export function arcSweeps(
+  factors: readonly { effect: number; significance: number }[],
+  usableAngle: number,
+): number[] {
+  const n = factors.length;
+  if (n === 0) return [];
+  if (usableAngle <= 0) return factors.map(() => 0);
+
+  const equalShare = usableAngle / n;
+  // Never reserve more than the cap: on a crowded ring the floor degrades
+  // toward equal widths instead of exceeding the angle that exists.
+  const floor = Math.min(MIN_ARC_SWEEP, equalShare * MAX_FLOOR_FRACTION);
+  const remainder = usableAngle - floor * n;
+
+  const total = factors.reduce((sum, f) => sum + fieldInfluence(f), 0);
+  return factors.map((f) => {
+    // Equal shares when every influence is zero, so the ring never collapses.
+    const share = total > 0 ? fieldInfluence(f) / total : 1 / n;
+    return floor + remainder * share;
+  });
+}
+
+/**
  * Renders placeless factors as a ring of arcs encircling the globe.
  *
  * A factor with no location cannot honestly be drawn at a point on the surface,
  * but it still carries charge. Arcs run clockwise in descending FIELD INFLUENCE
  * — |effect| * significance, the measure the field bake and the feed also rank
- * by — and each arc's angular width is proportional to that same number, so the
+ * by — and each arc's angular width is proportional to that same number above the
+ * tap-target floor (see {@link MIN_ARC_SWEEP}), so the
  * ring reads as one global band whose heaviest members are both first and the
  * largest targets. Colour follows the same effect ramp as the pins.
  *
@@ -131,22 +219,18 @@ export class GlobalRing {
 
     if (factors.length > 0) {
       const ordered = orderByInfluence(factors);
-      const totalInfluence = ordered.reduce((sum, f) => sum + fieldInfluence(f), 0);
-      const usableAngle = Math.PI * 2 - ARC_GAP * ordered.length;
+      const gap = arcGap(ordered.length);
+      const usableAngle = Math.PI * 2 - gap * ordered.length;
+      const sweeps = arcSweeps(ordered, usableAngle);
 
       let cursor = 0;
-      for (const factor of ordered) {
-        // Equal shares when every influence is zero, so the ring never
-        // collapses to nothing and stays clickable.
-        const share =
-          totalInfluence > 0 ? fieldInfluence(factor) / totalInfluence : 1 / ordered.length;
-        const sweep = usableAngle * share;
-
+      ordered.forEach((factor, i) => {
+        const sweep = sweeps[i] ?? 0;
         const arc = this.#buildArc(factor, cursor, cursor + sweep);
         this.#arcs.push(arc);
         this.object3D.add(arc.mesh);
-        cursor += sweep + ARC_GAP;
-      }
+        cursor += sweep + gap;
+      });
     }
 
     // A rebuild drops the meshes the ids pointed at; re-apply so a selection that
