@@ -8,22 +8,28 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
-import './FightTheClock.css';
+import './Share.css';
 
 /**
- * The link people share and rally around.
+ * The link people share.
  * TODO: point at the canonical public URL once the domain is live.
  */
 const SHARE_URL = 'https://targetcalamity.com';
-const SHARE_TITLE = 'Fight the Clock';
-/** The copyable one-liner shown in the share field. */
-const SHARE_TEXT = `${SHARE_TITLE}: ${SHARE_URL}`;
 
 /**
- * Invite to the community server.
- * TODO: replace with the real Discord invite.
+ * What a shared link says about itself.
+ *
+ * Was "Fight the Clock" — a rallying cry, which is the one thing this share
+ * text should not be. A link posted to a stranger's feed is the project's first
+ * impression, and a slogan asks them to join something before it has told them
+ * what it is. The site's own <meta name="description"> already says what it is,
+ * so this echoes it: the name, then the claim it actually makes.
  */
-const DISCORD_URL = 'https://discord.gg/REPLACE_ME';
+const SHARE_TITLE = 'Target: Calamity';
+const SHARE_BLURB =
+  "an empirical tracker of humanity's window of viable course-correction against cascading systemic tipping points";
+/** The copyable one-liner shown in the share field. */
+const SHARE_TEXT = `${SHARE_TITLE} — ${SHARE_BLURB}. ${SHARE_URL}`;
 
 /**
  * Share targets, each a platform share-intent URL. Chosen for a grassroots
@@ -33,8 +39,11 @@ const DISCORD_URL = 'https://discord.gg/REPLACE_ME';
  */
 const SHARE_TARGETS: ReadonlyArray<{ name: string; color: string; href: string }> = (() => {
   const url = encodeURIComponent(SHARE_URL);
+  // Platforms that render their own link preview (X, Facebook, LinkedIn) get the
+  // bare title, since the blurb would duplicate the description they unfurl.
+  // Plain-text targets get the full line, where nothing unfurls it for them.
   const title = encodeURIComponent(SHARE_TITLE);
-  const textUrl = encodeURIComponent(`${SHARE_TITLE} ${SHARE_URL}`);
+  const textUrl = encodeURIComponent(`${SHARE_TITLE} — ${SHARE_BLURB}. ${SHARE_URL}`);
   return [
     {
       name: 'X',
@@ -73,13 +82,12 @@ const FOCUSABLE_SELECTOR = [
 ].join(',');
 
 /**
- * A call-to-action that opens a share + join dialog: copy the link, push it to a
- * social platform, or jump into the Discord.
+ * A share dialog: copy the link or push it to a social platform.
  *
- * It collects nothing, so there is no data-handling surface — the trigger is
- * positioned by its parent slot; the dialog is portalled to the body.
+ * It collects nothing, so there is no data-handling surface. The trigger is a
+ * topbar link beside SOURCE; the dialog is portalled to the body.
  */
-export function FightTheClock(): React.JSX.Element {
+export function Share(): React.JSX.Element {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [canNativeShare, setCanNativeShare] = useState(false);
@@ -175,37 +183,37 @@ export function FightTheClock(): React.JSX.Element {
       <button
         ref={triggerRef}
         type="button"
-        className="tc-fight__trigger"
+        className="tc-share__trigger"
         onClick={openShare}
         aria-haspopup="dialog"
       >
-        Fight the Clock
+        SHARE
       </button>
 
       {open &&
         createPortal(
           <div
-            className="tc-fight__backdrop"
+            className="tc-share__backdrop"
             onMouseDown={(e) => {
               if (e.target === e.currentTarget) close();
             }}
           >
             <div
               ref={dialogRef}
-              className="tc-fight__dialog"
+              className="tc-share__dialog"
               role="dialog"
               aria-modal="true"
               aria-labelledby={titleId}
               tabIndex={-1}
               onKeyDown={onDialogKeyDown}
             >
-              <div className="tc-fight__head">
-                <h2 id={titleId} className="tc-fight__title">
-                  Fight the Clock
+              <div className="tc-share__head">
+                <h2 id={titleId} className="tc-share__title">
+                  Share
                 </h2>
                 <button
                   type="button"
-                  className="tc-fight__close"
+                  className="tc-share__close"
                   onClick={close}
                   aria-label="Close"
                 >
@@ -213,17 +221,21 @@ export function FightTheClock(): React.JSX.Element {
                 </button>
               </div>
 
-              <div className="tc-fight__body">
-                <p className="tc-fight__intro">
+              <div className="tc-share__body">
+                {/* The old copy ended "the first step is showing up", which
+                    pointed at the Discord invite below it. With that gone the
+                    line had nowhere to send anyone, so it says what sharing
+                    actually does instead of implying a destination. */}
+                <p className="tc-share__intro">
                   Something has to be done, and it&apos;ll take out-of-the-box thinking. We may not
                   know exactly what to do, but we know it&apos;ll be easier together.{' '}
-                  <b>The first step is showing up</b>.
+                  <b>Passing this on is a start</b>.
                 </p>
 
-                <div className="tc-fight__share-field">
+                <div className="tc-share__share-field">
                   <input
                     ref={urlRef}
-                    className="tc-fight__url"
+                    className="tc-share__url"
                     type="text"
                     readOnly
                     value={SHARE_TEXT}
@@ -233,17 +245,21 @@ export function FightTheClock(): React.JSX.Element {
                   {/* `void`: onCopy handles its own failure (it falls back to
                       selecting the field), so the promise is intentionally not
                       awaited here. Same pattern as onNativeShare. */}
-                  <button type="button" className="tc-fight__copy" onClick={() => void onCopy()}>
+                  <button type="button" className="tc-share__copy" onClick={() => void onCopy()}>
                     {copied ? 'Copied' : 'Copy'}
                   </button>
                 </div>
 
-                <ul className="tc-fight__targets">
+                {/* The "Join the Conversation" heading and Discord invite that
+                    sat below this are gone. Nothing replaces them: a community
+                    link is a promise to run a community, and there is no reason
+                    for the share dialog to make one. */}
+                <ul className="tc-share__targets">
                   {canNativeShare ? (
                     <li>
                       <button
                         type="button"
-                        className="tc-fight__target tc-fight__target--native"
+                        className="tc-share__target tc-share__target--native"
                         onClick={onNativeShare}
                       >
                         Share…
@@ -253,7 +269,7 @@ export function FightTheClock(): React.JSX.Element {
                   {SHARE_TARGETS.map((target) => (
                     <li key={target.name}>
                       <a
-                        className="tc-fight__target"
+                        className="tc-share__target"
                         style={{ backgroundColor: target.color }}
                         href={target.href}
                         target="_blank"
@@ -265,18 +281,6 @@ export function FightTheClock(): React.JSX.Element {
                     </li>
                   ))}
                 </ul>
-
-                <div className="tc-fight__join">
-                  <h3 className="tc-fight__join-title">Join the Conversation</h3>
-                  <a
-                    className="tc-fight__discord"
-                    href={DISCORD_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Join our Discord
-                  </a>
-                </div>
               </div>
             </div>
           </div>,
@@ -286,4 +290,4 @@ export function FightTheClock(): React.JSX.Element {
   );
 }
 
-export default FightTheClock;
+export default Share;

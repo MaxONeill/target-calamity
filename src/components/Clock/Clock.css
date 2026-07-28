@@ -161,7 +161,7 @@
 }
 .tc-clock[data-expanded='true'] .tc-clock-expander {
   /* Bounded so opening the Why panel scrolls INSIDE the panel rather than growing
-     it down over the bottom controls (the Fight the Clock button). The reserve
+     it down over the bottom controls. The reserve
      accounts for the panel's ~130px top offset plus ~110px of bottom controls. */
   max-height: min(640px, calc(100dvh - 240px));
   opacity: 1;

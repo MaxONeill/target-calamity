@@ -1,5 +1,6 @@
 import type React from 'react';
 import { STREAM_LABEL, type StreamStatus } from '../../hooks/useFactorStream.js';
+import { Share } from '../Share/index.js';
 
 export interface StatusBarProps {
   streamStatus: StreamStatus;
@@ -39,10 +40,17 @@ export function StatusBar({ streamStatus }: StatusBarProps): React.JSX.Element {
         <span className="tc-brand-alpha">(Alpha)</span>
       </div>
 
-      <a className="tc-source-link" href={REPO_URL} target="_blank" rel="noreferrer noopener">
-        SOURCE
-        <span aria-hidden="true"> ↗</span>
-      </a>
+      {/* Share sits beside SOURCE rather than in a bottom-centre CTA slot. The
+          slot cost the globe's visible centre — and had to shift with it when
+          the panel opened — for a control nobody needs while reading. Both are
+          secondary actions of the same weight, so they share a corner. */}
+      <div className="tc-topbar-links">
+        <Share />
+        <a className="tc-source-link" href={REPO_URL} target="_blank" rel="noreferrer noopener">
+          SOURCE
+          <span aria-hidden="true"> ↗</span>
+        </a>
+      </div>
     </header>
   );
 }

@@ -1,39 +1,39 @@
 /*
- * Fight the Clock — bottom-centre call-to-action and its pledge dialog.
- * Shares the app's dark instrument palette; the trigger is the one saturated
- * accent at the bottom of the scene.
+ * The share trigger (a topbar link beside SOURCE) and its dialog.
+ * Shares the app's dark instrument palette. The trigger is deliberately quiet —
+ * it matches SOURCE rather than drawing the eye; the platform tiles inside the
+ * dialog are the only saturated colour, and they borrow each brand's own.
  */
 
-.tc-fight__trigger {
-  font-family: var(--tc-mono, ui-monospace, monospace);
-  font-size: 12px;
-  font-weight: 600;
+/*
+ * The trigger lives in the topbar beside SOURCE, so it is styled to match it
+ * rather than to shout. It was an amber pill on the globe's centre line — right
+ * for a primary call to action, wrong for a secondary control sitting in a
+ * header. Matching SOURCE keeps the two reading as the pair they now are.
+ */
+.tc-share__trigger {
+  font-family: inherit;
+  font-size: 10.5px;
   letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: #0a0c10;
-  background: #d9a441;
+  color: var(--tc-ink-dim);
+  background: none;
   border: none;
-  border-radius: 4px;
-  padding: 10px 22px;
+  border-bottom: 1px solid transparent;
+  padding: 0;
   cursor: pointer;
-  box-shadow:
-    0 8px 26px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(217, 164, 65, 0.3);
-  transition:
-    background 120ms ease,
-    transform 120ms ease;
+  white-space: nowrap;
 }
-.tc-fight__trigger:hover {
-  background: #e8b855;
-  transform: translateY(-1px);
+.tc-share__trigger:hover {
+  color: var(--tc-ink);
+  border-bottom-color: var(--tc-hairline-strong);
 }
-.tc-fight__trigger:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(217, 164, 65, 0.5);
+.tc-share__trigger:focus-visible {
+  outline: 2px solid var(--tc-humanity);
+  outline-offset: 2px;
 }
 
 /* Dialog ------------------------------------------------------------------- */
-.tc-fight__backdrop {
+.tc-share__backdrop {
   position: fixed;
   inset: 0;
   z-index: 40;
@@ -45,7 +45,7 @@
   backdrop-filter: blur(4px);
 }
 
-.tc-fight__dialog {
+.tc-share__dialog {
   width: 100%;
   max-width: 440px;
   max-height: 90vh;
@@ -58,25 +58,25 @@
   color: #c6d0dc;
   font-family: var(--tc-mono, ui-monospace, monospace);
 }
-.tc-fight__dialog * {
+.tc-share__dialog * {
   box-sizing: border-box;
 }
 
-.tc-fight__head {
+.tc-share__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 16px 18px;
   border-bottom: 1px solid #232a36;
 }
-.tc-fight__title {
+.tc-share__title {
   margin: 0;
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.06em;
   color: #e6ecf3;
 }
-.tc-fight__close {
+.tc-share__close {
   font: inherit;
   font-size: 14px;
   line-height: 1;
@@ -87,20 +87,20 @@
   cursor: pointer;
   border-radius: 3px;
 }
-.tc-fight__close:hover,
-.tc-fight__close:focus-visible {
+.tc-share__close:hover,
+.tc-share__close:focus-visible {
   outline: none;
   color: #c6d0dc;
   background: rgba(255, 255, 255, 0.05);
 }
 
-.tc-fight__body {
+.tc-share__body {
   display: flex;
   flex-direction: column;
   gap: 16px;
   padding: 18px;
 }
-.tc-fight__intro {
+.tc-share__intro {
   margin: 0;
   font-size: 12.5px;
   line-height: 1.55;
@@ -108,11 +108,11 @@
 }
 
 /* Share field: the copyable one-liner + a Copy button. */
-.tc-fight__share-field {
+.tc-share__share-field {
   display: flex;
   gap: 8px;
 }
-.tc-fight__url {
+.tc-share__url {
   flex: 1 1 auto;
   min-width: 0;
   font-family: inherit;
@@ -123,12 +123,12 @@
   border-radius: 4px;
   padding: 9px 10px;
 }
-.tc-fight__url:focus {
+.tc-share__url:focus {
   outline: none;
   border-color: #6fb7c9;
   box-shadow: 0 0 0 2px rgba(111, 183, 201, 0.25);
 }
-.tc-fight__copy {
+.tc-share__copy {
   flex: 0 0 auto;
   font: inherit;
   font-size: 12px;
@@ -141,16 +141,16 @@
   padding: 0 16px;
   cursor: pointer;
 }
-.tc-fight__copy:hover {
+.tc-share__copy:hover {
   background: #e8b855;
 }
-.tc-fight__copy:focus-visible {
+.tc-share__copy:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px rgba(217, 164, 65, 0.45);
 }
 
 /* Social share row. */
-.tc-fight__targets {
+.tc-share__targets {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -158,7 +158,7 @@
   grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
   gap: 8px;
 }
-.tc-fight__target {
+.tc-share__target {
   display: block;
   text-align: center;
   font-family: inherit;
@@ -173,61 +173,21 @@
   cursor: pointer;
   transition: filter 120ms ease;
 }
-.tc-fight__target:hover {
+.tc-share__target:hover {
   filter: brightness(1.15);
 }
-.tc-fight__target:focus-visible {
+.tc-share__target:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.55);
 }
-.tc-fight__target--native {
+.tc-share__target--native {
   background: #10141b;
   border: 1px solid #303a4a;
   color: #c6d0dc;
 }
 
-/* Join the conversation. */
-.tc-fight__join {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding-top: 16px;
-  border-top: 1px solid #232a36;
-}
-.tc-fight__join-title {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #7c8798;
-}
-.tc-fight__discord {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: #ffffff;
-  text-decoration: none;
-  background: #5865f2; /* Discord brand */
-  border-radius: 4px;
-  padding: 11px 16px;
-  transition: filter 120ms ease;
-}
-.tc-fight__discord:hover {
-  filter: brightness(1.1);
-}
-.tc-fight__discord:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(88, 101, 242, 0.6);
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .tc-fight__trigger,
-  .tc-fight__target,
-  .tc-fight__discord {
+  .tc-share__target {
     transition: none;
   }
 }

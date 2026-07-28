@@ -219,7 +219,19 @@ export function normalizeSubmission(claim: string, sourceUrl: string): Normalize
   };
 }
 
-/** Stable content key for a normalized submission (used by the in-memory store). */
+/**
+ * Stable content key for a normalized submission (used by the in-memory store).
+ *
+ * The `\0` separator stops a claim/URL boundary from colliding — without it,
+ * ("ab", "c") and ("a", "bc") hash identically — and NUL is chosen because it
+ * cannot appear in either normalized field.
+ *
+ * WRITE IT AS THE ESCAPE, never as a literal NUL byte in the source. It was a
+ * raw byte here, which made ripgrep classify this whole file as binary and skip
+ * it in every code search: `grep resolveClientIp` silently returned nothing, and
+ * a function nobody can find is a function nobody maintains. The escape compiles
+ * to the identical character.
+ */
 export function submissionContentHash(normalized: NormalizedSubmission): string {
-  return createHash('sha256').update(`${normalized.claim} ${normalized.sourceUrl}`).digest('hex');
+  return createHash('sha256').update(`${normalized.claim}\0${normalized.sourceUrl}`).digest('hex');
 }

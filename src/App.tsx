@@ -2,7 +2,6 @@ import type React from 'react';
 import { useCallback, useMemo, useRef } from 'react';
 import { Clock } from './components/Clock/index.js';
 import { FactorDetails } from './components/FactorDetails/index.js';
-import { FightTheClock } from './components/FightTheClock/index.js';
 import { Sidebar } from './components/Sidebar/index.js';
 import { Slideout } from './components/Slideout/Slideout.js';
 import { StatusBar } from './components/StatusBar/StatusBar.js';
@@ -170,11 +169,8 @@ export function App(): React.JSX.Element {
           />
         </div>
 
-        {/* Bottom-centre CTA. Shifts with the globe when the panel opens so it
-            stays under the globe's visible centre (see .tc-fight-slot). */}
-        <div className="tc-fight-slot">
-          <FightTheClock />
-        </div>
+        {/* The bottom-centre CTA slot is gone; the share trigger now lives in
+            the topbar beside SOURCE (see StatusBar). */}
 
         <Slideout
           open={panel.open}
