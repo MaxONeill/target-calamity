@@ -8,6 +8,7 @@ import type { z } from 'zod';
 import type {
   ZoneLevelSchema,
   SortModeSchema,
+  SortDirectionSchema,
   VerificationStateSchema,
   LocationKindSchema,
   TippingPointSchema,
@@ -32,6 +33,7 @@ import type {
 
 export type ZoneLevel = z.infer<typeof ZoneLevelSchema>;
 export type SortMode = z.infer<typeof SortModeSchema>;
+export type SortDirection = z.infer<typeof SortDirectionSchema>;
 export type VerificationState = z.infer<typeof VerificationStateSchema>;
 export type LocationKind = z.infer<typeof LocationKindSchema>;
 

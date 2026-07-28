@@ -169,8 +169,14 @@ export function App(): React.JSX.Element {
           />
         </div>
 
-        {/* The bottom-centre CTA slot is gone; the share trigger now lives in
-            the topbar beside SOURCE (see StatusBar). */}
+        {/* The only instruction on screen. The globe is an unlabelled
+            instrument — a reader who does not know the pins are clickable has
+            no way to discover the detail panel, and nothing else on screen says
+            so. Kept to one grey line: an interface that needs a paragraph of
+            instructions has a different problem. */}
+        <p className="tc-pin-hint" aria-hidden="true">
+          Select a pin to read its sources
+        </p>
 
         <Slideout
           open={panel.open}
@@ -193,6 +199,10 @@ export function App(): React.JSX.Element {
               onSelect={selectFactor}
               sortMode={feed.sortMode}
               onSortModeChange={feed.setSortMode}
+              direction={feed.direction}
+              onDirectionChange={feed.setDirection}
+              search={feed.search}
+              onSearchChange={feed.setSearch}
               onLoadMore={feed.loadMore}
               hasMore={feed.hasMore}
               loading={feed.loading}

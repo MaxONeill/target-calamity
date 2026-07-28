@@ -16,7 +16,7 @@ import type React from 'react';
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
-import type { Factor, SortMode } from '../../../shared/types.js';
+import type { Factor, SortDirection, SortMode } from '../../../shared/types.js';
 import { FactorCard } from '../FactorCard/index.js';
 import './Sidebar.css';
 
@@ -26,6 +26,10 @@ export interface SidebarProps {
   onSelect: (id: string) => void;
   sortMode: SortMode;
   onSortModeChange: (mode: SortMode) => void;
+  direction: SortDirection;
+  onDirectionChange: (direction: SortDirection) => void;
+  search: string;
+  onSearchChange: (search: string) => void;
   onLoadMore: () => void;
   hasMore: boolean;
   loading: boolean;
@@ -33,9 +37,32 @@ export interface SidebarProps {
   onOpenSubmit: () => void;
 }
 
+/**
+ * `Impact` is |effect| x significance — reach times weight of evidence — and is
+ * the default because it answers the question a reader arrives with: what
+ * matters most here. `Effect` is SIGNED, so descending leads with Humanity and
+ * ascending with Calamity; that is the only ordering where the direction toggle
+ * carries meaning rather than just reversing a magnitude.
+ */
 const SORT_LABELS: Record<SortMode, string> = {
+  impact: 'Impact',
+  effect: 'Effect',
+  significance: 'Significance',
   recent: 'Recent',
-  magnitude: 'Magnitude',
+};
+
+const SORT_ORDER: readonly SortMode[] = ['impact', 'effect', 'significance', 'recent'];
+
+/**
+ * What each direction means, per mode. "Ascending / Descending" is accurate and
+ * useless — the reader wants to know which end they get, and for a signed
+ * effect the answer is a word, not an arrow.
+ */
+const DIRECTION_LABELS: Record<SortMode, { asc: string; desc: string }> = {
+  impact: { asc: 'Lightest first', desc: 'Heaviest first' },
+  effect: { asc: 'Calamity first', desc: 'Humanity first' },
+  significance: { asc: 'Least evidenced', desc: 'Best evidenced' },
+  recent: { asc: 'Oldest first', desc: 'Newest first' },
 };
 
 export function Sidebar({
@@ -44,6 +71,10 @@ export function Sidebar({
   onSelect,
   sortMode,
   onSortModeChange,
+  direction,
+  onDirectionChange,
+  search,
+  onSearchChange,
   onLoadMore,
   hasMore,
   loading,
@@ -161,20 +192,49 @@ export function Sidebar({
           </span>
         </div>
 
-        <div className="tc-sorttoggle" role="group" aria-label="Sort factor feed">
-          {(['recent', 'magnitude'] as const).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              className="tc-sorttoggle__btn"
-              aria-pressed={sortMode === mode}
-              onClick={() => {
-                if (sortMode !== mode) onSortModeChange(mode);
-              }}
+        {/* Search is server-side and debounced in the hook, so this reflects
+            keystrokes immediately while the query lags behind it. `type=search`
+            gives the platform clear-button and the right mobile keyboard. */}
+        <input
+          type="search"
+          className="tc-sidebar__search"
+          value={search}
+          onChange={(e) => onSearchChange(e.currentTarget.value)}
+          placeholder="Search factors…"
+          aria-label="Search factors by name or description"
+          autoComplete="off"
+          spellCheck={false}
+        />
+
+        <div className="tc-sortrow">
+          <label className="tc-sortrow__field">
+            <span className="tc-visually-hidden">Sort by</span>
+            <select
+              className="tc-sortrow__select"
+              value={sortMode}
+              onChange={(e) => onSortModeChange(e.currentTarget.value as SortMode)}
             >
-              {SORT_LABELS[mode]}
-            </button>
-          ))}
+              {SORT_ORDER.map((mode) => (
+                <option key={mode} value={mode}>
+                  {SORT_LABELS[mode]}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {/* One button, not a pair: direction is binary, so a toggle showing
+              the CURRENT state is less to read than two mutually-exclusive
+              options where one is always inert. */}
+          <button
+            type="button"
+            className="tc-sortrow__dir"
+            onClick={() => onDirectionChange(direction === 'desc' ? 'asc' : 'desc')}
+            aria-label={`Sort direction: ${DIRECTION_LABELS[sortMode][direction]}. Activate to reverse.`}
+            title="Reverse sort order"
+          >
+            <span aria-hidden="true">{direction === 'desc' ? '↓' : '↑'}</span>
+            <span className="tc-sortrow__dirlabel">{DIRECTION_LABELS[sortMode][direction]}</span>
+          </button>
         </div>
       </header>
 

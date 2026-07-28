@@ -24,9 +24,17 @@ import {
   FactorByIdResponseSchema,
   FeedResponseSchema,
   SortModeSchema,
+  SortDirectionSchema,
+  SearchQuerySchema,
   ViewportSchema,
 } from '../../shared/schema.js';
-import type { Factor, FeedResponse, Viewport } from '../../shared/types.js';
+import type {
+  Factor,
+  FeedResponse,
+  SortDirection,
+  SortMode,
+  Viewport,
+} from '../../shared/types.js';
 import type { Database } from '../db.js';
 import {
   CursorError,
@@ -45,11 +53,12 @@ const FEED_PAGE_SIZE = 50;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * Magnitude mode is a bounded top-N snapshot, not deep pagination (:
- * `abs(effect)` is Phase-D-mutated and unsafe as a keyset key). This caps the
- * "heaviest disruptions" view at a fixed budget.
+ * Every mode except `recent` is a bounded top-N snapshot rather than deep
+ * pagination: they order on effect/significance, which Phase D mutates, and a
+ * keyset over a moving column skips and repeats rows. This caps those views at
+ * a fixed budget.
  */
-const MAGNITUDE_CAP = 200;
+const RANKED_CAP = 200;
 
 /* -------------------------------------------------------------------------- */
 /* Query-param contract                                                       */
@@ -61,7 +70,9 @@ const MAGNITUDE_CAP = 200;
  * whole globe; all four → a clipped viewport; a partial set → 400.
  */
 const FeedQuerySchema = z.object({
-  sortMode: SortModeSchema.default('recent'),
+  sortMode: SortModeSchema.default('impact'),
+  direction: SortDirectionSchema.default('desc'),
+  search: SearchQuerySchema.default(''),
   cursor: z.string().optional(),
   minLat: z.coerce.number().gte(-90).lte(90).optional(),
   maxLat: z.coerce.number().gte(-90).lte(90).optional(),
@@ -262,18 +273,40 @@ function mapFactorRow(factor: Factor): Factor {
   return stripNullPlacement(stripNullReputability(stripNullTippingPoint(factor)));
 }
 
+/**
+ * Full-text predicate over the generated `search_tsv` column (migration 001,
+ * GIN-indexed). `websearch_to_tsquery` rather than `plainto_tsquery` so a reader
+ * can type quoted phrases and `-exclusions` and have them mean what they look
+ * like; unlike `to_tsquery` it cannot raise on malformed input, which matters
+ * when the input is whatever someone typed.
+ */
+function searchFilter(search: string): RawBuilder<unknown> {
+  return sql`f.search_tsv @@ websearch_to_tsquery('english', ${search})`;
+}
+
 async function recentFeedDb(
   db: Database,
+  direction: SortDirection,
+  search: string,
   viewport: Viewport,
   cursor: RecentCursor | null,
 ): Promise<FeedResponse> {
   const conditions: RawBuilder<unknown>[] = [viewportFilter(viewport)];
+  if (search) conditions.push(searchFilter(search));
   if (cursor) {
     // Keyset over the immutable insert-only key. `seq` is unique, so `id` is a
-    // belt-and-suspenders tiebreak that matches the (seq DESC, id DESC) index.
-    conditions.push(sql`(f.seq, f.id) < (${cursor.seq}::bigint, ${cursor.id}::uuid)`);
+    // belt-and-suspenders tiebreak matching the (seq, id) index. The comparison
+    // FLIPS WITH DIRECTION: ascending walks forward from the cursor, descending
+    // back from it, and using one comparator for both silently returns page one
+    // forever in the other direction.
+    conditions.push(
+      direction === 'asc'
+        ? sql`(f.seq, f.id) > (${cursor.seq}::bigint, ${cursor.id}::uuid)`
+        : sql`(f.seq, f.id) < (${cursor.seq}::bigint, ${cursor.id}::uuid)`,
+    );
   }
   const where = sql`WHERE ${sql.join(conditions, sql` AND `)}`;
+  const order = direction === 'asc' ? sql`f.seq ASC, f.id ASC` : sql`f.seq DESC, f.id DESC`;
 
   const { rows } = await sql<FeedRow>`
     SELECT ${FACTOR_JSON} AS factor, f.seq::text AS seq, f.id AS id
@@ -281,7 +314,7 @@ async function recentFeedDb(
     ${CITATIONS_LATERAL}
     ${EFFORTS_LATERAL}
     ${where}
-    ORDER BY f.seq DESC, f.id DESC
+    ORDER BY ${order}
     LIMIT ${FEED_PAGE_SIZE}
   `.execute(db);
 
@@ -295,18 +328,42 @@ async function recentFeedDb(
   return { factors: rows.map((r) => mapFactorRow(r.factor)), nextCursor };
 }
 
-async function magnitudeFeedDb(db: Database, viewport: Viewport): Promise<FeedResponse> {
-  const where = sql`WHERE ${viewportFilter(viewport)}`;
+/**
+ * The ranking expression per mode. `impact` multiplies reach by evidence, from
+ * the RAW columns — never `displayWeight`, which is corpus-relative and would
+ * make a factor's rank depend on what else happens to be ingested.
+ */
+function rankExpression(sortMode: 'effect' | 'significance' | 'impact'): RawBuilder<unknown> {
+  if (sortMode === 'effect') return sql`f.effect`;
+  if (sortMode === 'significance') return sql`f.significance`;
+  return sql`ABS(f.effect) * f.significance`;
+}
+
+async function rankedFeedDb(
+  db: Database,
+  sortMode: 'effect' | 'significance' | 'impact',
+  direction: SortDirection,
+  search: string,
+  viewport: Viewport,
+): Promise<FeedResponse> {
+  const conditions: RawBuilder<unknown>[] = [viewportFilter(viewport)];
+  if (search) conditions.push(searchFilter(search));
+  const where = sql`WHERE ${sql.join(conditions, sql` AND `)}`;
+  const rank = rankExpression(sortMode);
+  // `id` breaks ties in a fixed direction so a page is reproducible even when
+  // many factors share a score, which they do — significance clusters by tier.
+  const order = direction === 'asc' ? sql`${rank} ASC, f.id ASC` : sql`${rank} DESC, f.id DESC`;
+
   const { rows } = await sql<FeedRow>`
     SELECT ${FACTOR_JSON} AS factor, f.seq::text AS seq, f.id AS id
     FROM factors f
     ${CITATIONS_LATERAL}
     ${EFFORTS_LATERAL}
     ${where}
-    ORDER BY ABS(f.effect) DESC, f.id DESC
-    LIMIT ${MAGNITUDE_CAP}
+    ORDER BY ${order}
+    LIMIT ${RANKED_CAP}
   `.execute(db);
-  // Bounded snapshot: never paginated.
+  // Bounded snapshot: never paginated — see RANKED_CAP.
   return { factors: rows.map((r) => mapFactorRow(r.factor)), nextCursor: null };
 }
 
@@ -328,32 +385,61 @@ async function factorByIdDb(db: Database, id: string): Promise<Factor | null> {
 /* Seed mode (no DATABASE_URL)                                                 */
 /* -------------------------------------------------------------------------- */
 
-function feedSeed(
-  sortMode: 'recent' | 'magnitude',
+/**
+ * Seed-mode search: case-insensitive substring over name + description.
+ *
+ * NOT the same matcher as DB mode, and the difference is worth stating rather
+ * than hiding. Postgres uses `search_tsv`, which stems ("collapsing" matches
+ * "collapse") and ignores stop words; this matches literal characters. Seed
+ * mode is a 22-factor demo with no tsvector to query, and reimplementing an
+ * English stemmer to make a fallback agree with Postgres would be a far larger
+ * lie than the divergence it fixed.
+ */
+function seedMatches(factor: Factor, search: string): boolean {
+  const needle = search.toLowerCase();
+  return (
+    factor.name.toLowerCase().includes(needle) || factor.description.toLowerCase().includes(needle)
+  );
+}
+
+/** Mirrors {@link rankExpression} for the in-memory set. */
+function seedRank(factor: Factor, sortMode: 'effect' | 'significance' | 'impact'): number {
+  if (sortMode === 'effect') return factor.effect;
+  if (sortMode === 'significance') return factor.significance;
+  return Math.abs(factor.effect) * factor.significance;
+}
+
+export function feedSeed(
+  sortMode: SortMode,
+  direction: SortDirection,
+  search: string,
   viewport: Viewport,
   cursor: RecentCursor | null,
 ): FeedResponse {
   // Array position is the implicit insert order; seq = index + 1, mirroring the
   // DB's insert-only identity so the same keyset logic applies.
-  const visible = SEED_FACTORS.map((f, i) => ({ f, seq: i + 1 })).filter((x) =>
-    factorInViewport(x.f.lat, x.f.lon, viewport),
+  const visible = SEED_FACTORS.map((f, i) => ({ f, seq: i + 1 })).filter(
+    (x) => factorInViewport(x.f.lat, x.f.lon, viewport) && (!search || seedMatches(x.f, search)),
   );
 
-  if (sortMode === 'magnitude') {
+  if (sortMode !== 'recent') {
+    const sign = direction === 'asc' ? 1 : -1;
     const page = [...visible]
       .sort((a, b) => {
-        const d = Math.abs(b.f.effect) - Math.abs(a.f.effect);
+        const d = (seedRank(a.f, sortMode) - seedRank(b.f, sortMode)) * sign;
         if (d !== 0) return d;
-        return a.f.id < b.f.id ? 1 : a.f.id > b.f.id ? -1 : 0; // id DESC
+        // Tiebreak on id, in the same direction, matching the SQL path.
+        return a.f.id < b.f.id ? -sign : a.f.id > b.f.id ? sign : 0;
       })
-      .slice(0, MAGNITUDE_CAP);
+      .slice(0, RANKED_CAP);
     return { factors: page.map((x) => x.f), nextCursor: null };
   }
 
-  let ordered = [...visible].sort((a, b) => b.seq - a.seq); // seq DESC
+  const sign = direction === 'asc' ? 1 : -1;
+  let ordered = [...visible].sort((a, b) => (a.seq - b.seq) * sign);
   if (cursor) {
     const boundary = Number(cursor.seq);
-    ordered = ordered.filter((x) => x.seq < boundary);
+    ordered = ordered.filter((x) => (direction === 'asc' ? x.seq > boundary : x.seq < boundary));
   }
   const page = ordered.slice(0, FEED_PAGE_SIZE);
 
@@ -386,7 +472,7 @@ export default async function factorsRoutes(fastify: FastifyInstance): Promise<v
       reply.code(400).send({ error: 'invalid query parameters', detail: parsed.error.flatten() });
       return undefined;
     }
-    const { sortMode, cursor: cursorToken } = parsed.data;
+    const { sortMode, direction, search, cursor: cursorToken } = parsed.data;
 
     // Resolve the viewport: all-or-nothing.
     const partsPresent = [
@@ -428,11 +514,23 @@ export default async function factorsRoutes(fastify: FastifyInstance): Promise<v
     let response: FeedResponse;
     if (ctx.mode === 'db') {
       response =
-        sortMode === 'magnitude'
-          ? await magnitudeFeedDb(ctx.db, viewport)
-          : await recentFeedDb(ctx.db, viewport, cursor?.mode === 'recent' ? cursor : null);
+        sortMode === 'recent'
+          ? await recentFeedDb(
+              ctx.db,
+              direction,
+              search,
+              viewport,
+              cursor?.mode === 'recent' ? cursor : null,
+            )
+          : await rankedFeedDb(ctx.db, sortMode, direction, search, viewport);
     } else {
-      response = feedSeed(sortMode, viewport, cursor?.mode === 'recent' ? cursor : null);
+      response = feedSeed(
+        sortMode,
+        direction,
+        search,
+        viewport,
+        cursor?.mode === 'recent' ? cursor : null,
+      );
     }
 
     // Re-validate our own response against the shared contract.

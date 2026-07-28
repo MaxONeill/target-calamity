@@ -35,12 +35,44 @@ export const DomainSchema = z.enum(DOMAINS);
 export const ZoneLevelSchema = z.enum(['global', 'national']);
 
 /**
- * Feed sort mode. `recent` keys on insertion recency; `magnitude` keys on
- * absolute impact index |effect|. The cursor is
- * mode-tagged so a cursor minted under one mode can never be replayed
- * against the other.
+ * Feed sort mode — WHICH COLUMN orders the list. Direction is separate
+ * ({@link SortDirectionSchema}), so every mode can be read either way round.
+ *
+ *   recent        insertion order, on the immutable `seq`
+ *   effect        SIGNED effect: desc puts Humanity first, asc puts Calamity
+ *                 first. Signed rather than absolute because the direction
+ *                 toggle makes the sign the useful axis; `impact` covers the
+ *                 magnitude reading.
+ *   significance  weight of the evidence, on its own
+ *   impact        |effect| x significance — reach times evidence, the "how much
+ *                 does this matter" ordering, and the default
+ *
+ * `impact` is computed from the RAW stored values, never from
+ * `src/lib/displayWeight.ts`: that stretch is corpus-relative and render-only,
+ * so ordering by it would make a factor's rank a property of whatever else
+ * happened to be ingested.
+ *
+ * ONLY `recent` PAGINATES. The other three order on columns ingestion mutates
+ * (an escalation folds new weights into effect/significance), so a keyset
+ * cursor over them can skip or repeat rows as the data moves underneath it —
+ * the reason the pagination rule keys on `seq` alone. They are served as a
+ * bounded snapshot instead. The cursor is mode-tagged regardless, so one minted
+ * under a given mode can never be replayed against another.
  */
-export const SortModeSchema = z.enum(['recent', 'magnitude']);
+export const SortModeSchema = z.enum(['recent', 'effect', 'significance', 'impact']);
+
+/** Sort direction. Applies to every {@link SortModeSchema}. */
+export const SortDirectionSchema = z.enum(['asc', 'desc']);
+
+/**
+ * Free-text search over name + description, matched server-side against the
+ * `search_tsv` generated column (migration 001) via `websearch_to_tsquery`, so
+ * it searches the WHOLE corpus rather than whatever the client has paged in.
+ * Bounded because it reaches a GIN index either way and an unbounded string is
+ * a free denial-of-service.
+ */
+export const SEARCH_MAX = 120;
+export const SearchQuerySchema = z.string().trim().max(SEARCH_MAX);
 
 /**
  * Verification lifecycle. LLM-ingested factors land as `pending`,
@@ -599,8 +631,12 @@ export const CursorSchema = z.discriminatedUnion('mode', [
  * cursor and restarts from page one.
  */
 export const FeedRequestSchema = z.object({
-  sortMode: SortModeSchema.default('recent'),
+  sortMode: SortModeSchema.default('impact'),
+  /** Ascending or descending. Defaults to descending — heaviest first. */
+  direction: SortDirectionSchema.default('desc'),
   viewport: ViewportSchema,
+  /** Free-text query, or empty for no filter. */
+  search: SearchQuerySchema.default(''),
   /** Opaque base64url cursor token, or null for the first page. */
   cursor: z.string().nullable().default(null),
 });

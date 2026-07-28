@@ -416,6 +416,45 @@ body {
    the panel width when the slideout opens so it tracks the globe's visible
    centre (matching the .tc-globe-mount transform and its >=700px guard). */
 /*
+ * The one instruction on screen: the pins are clickable.
+ *
+ * Bottom-centre, grey, and non-interactive — `pointer-events: none` so it can
+ * never intercept a drag aimed at the globe behind it, and aria-hidden because
+ * it is a visual affordance hint, not content. A screen reader reaches the
+ * factor list directly, where selection is an ordinary button.
+ *
+ * It shifts with the globe when the panel opens, for the same reason the old
+ * CTA did: it should stay under the globe's visible centre rather than drift
+ * behind the sidebar.
+ */
+.tc-pin-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  margin: 0;
+  z-index: 2;
+  pointer-events: none;
+  white-space: nowrap;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--tc-ink-dim);
+  opacity: 0.72;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
+  transition: transform 240ms ease;
+}
+@media (min-width: 700px) {
+  .tc-app[data-panel-open='true'] .tc-pin-hint {
+    transform: translateX(calc(-50% - var(--tc-sidebar-w) / 2));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tc-pin-hint {
+    transition: none;
+  }
+}
+
+/*
  * The bottom-centre CTA slot is gone. It occupied the globe's visible centre
  * and had to translate with it whenever the panel opened, all to host a control
  * nobody needs while reading. The share trigger now sits in the topbar beside

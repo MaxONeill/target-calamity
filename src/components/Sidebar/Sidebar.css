@@ -92,49 +92,112 @@
   font-variant-numeric: tabular-nums;
 }
 
-.tc-sorttoggle {
-  display: flex;
+/* -------------------------------------------------------------------------- */
+/* Search + sort controls                                                     */
+/* -------------------------------------------------------------------------- */
+
+.tc-sidebar__search {
+  width: 100%;
   margin-top: 10px;
+  appearance: none;
+  background: var(--tc-panel);
   border: 1px solid var(--tc-border-bright);
   border-radius: var(--tc-radius);
-  overflow: hidden;
+  color: var(--tc-text);
+  font-family: inherit;
+  font-size: 12px;
+  padding: 7px 9px;
 }
 
-.tc-sorttoggle__btn {
-  flex: 1 1 50%;
-  appearance: none;
-  border: 0;
-  background: var(--tc-panel);
+.tc-sidebar__search::placeholder {
   color: var(--tc-text-dim);
+}
+
+.tc-sidebar__search:focus-visible {
+  outline: 1px solid var(--tc-humanity);
+  outline-offset: -2px;
+}
+
+.tc-sortrow {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+/*
+ * The mode picker is a <select>, not the row of buttons this replaced. Four
+ * modes as buttons wrapped onto two lines in a 320px panel and cost more
+ * vertical space than the first factor card; a select stays one line at any
+ * width and brings its own platform keyboard handling.
+ */
+.tc-sortrow__field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.tc-sortrow__select {
+  width: 100%;
+  appearance: none;
+  background: var(--tc-panel);
+  border: 1px solid var(--tc-border-bright);
+  border-radius: var(--tc-radius);
+  color: var(--tc-text);
   font-family: inherit;
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding: 7px 8px;
   cursor: pointer;
+}
+
+.tc-sortrow__select:focus-visible {
+  outline: 1px solid var(--tc-humanity);
+  outline-offset: -2px;
+}
+
+.tc-sortrow__dir {
+  flex: 0 1 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  appearance: none;
+  background: var(--tc-panel);
+  border: 1px solid var(--tc-border-bright);
+  border-radius: var(--tc-radius);
+  color: var(--tc-text-dim);
+  font-family: inherit;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  padding: 7px 9px;
+  cursor: pointer;
+  white-space: nowrap;
   transition:
     background 120ms ease,
     color 120ms ease;
 }
 
-.tc-sorttoggle__btn + .tc-sorttoggle__btn {
-  border-left: 1px solid var(--tc-border);
-}
-
-.tc-sorttoggle__btn:hover {
+.tc-sortrow__dir:hover {
   color: var(--tc-text);
   background: var(--tc-panel-2);
 }
 
-.tc-sorttoggle__btn[aria-pressed='true'] {
-  background: var(--tc-panel-3);
-  color: var(--tc-text);
-  box-shadow: inset 0 -2px 0 0 var(--tc-humanity);
+.tc-sortrow__dir:focus-visible {
+  outline: 1px solid var(--tc-humanity);
+  outline-offset: -2px;
 }
 
-.tc-sorttoggle__btn:focus-visible {
-  outline: 1px solid var(--tc-humanity);
-  outline-offset: -3px;
+/* The label is the useful half, but it is the first thing to go when the panel
+   is narrow — the arrow still carries the state. */
+@media (max-width: 380px) {
+  .tc-sortrow__dirlabel {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tc-sortrow__dir {
+    transition: none;
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -306,8 +369,5 @@
 @media (prefers-reduced-motion: reduce) {
   .tc-sidebar__spinner {
     animation-duration: 1.6s;
-  }
-  .tc-sorttoggle__btn {
-    transition: none;
   }
 }
