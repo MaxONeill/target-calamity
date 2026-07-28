@@ -5,7 +5,14 @@
  * The rig is the single owner of manual camera control:
  *   - pointer drag  → orbit (mutate theta/phi)
  *   - mouse wheel   → zoom  (mutate radius)
- *   - WASDQE keys   → orbit (A/D azimuth, W/S polar) + zoom (Q out / E in)
+ *
+ * NO KEYBOARD CONTROL, deliberately. WASDQE used to orbit and zoom, bound to
+ * `window` because the canvas is not focusable. That is precisely why it had to
+ * go: the globe moved while the user typed a claim into the submission form.
+ * A window-level key handler cannot reliably tell "typing" from "driving the
+ * camera" — guarding on `event.target` being an input is a denylist that breaks
+ * again on the next textarea, contenteditable, or focused dialog. Pointer and
+ * wheel have no such ambiguity, so camera control is theirs alone.
  *
  * Design notes:
  *   - The orbit pivot is the origin and is NEVER reassigned: the globe
@@ -13,9 +20,9 @@
  *     after an automated alignment.
  *   - `phi` (polar angle from +Y) is clamped away from the poles by POLAR_LIMIT
  *     so the look-at basis (up × forward) never collapses.
- *   - Render-on-demand: the rig does not run an unconditional rAF loop.
- *     It fires `onChange` only when state actually changes, and it spins an
- *     internal rAF ONLY while a movement key is held (continuous keyboard orbit).
+ *   - Render-on-demand: the rig does not run an unconditional rAF loop, and
+ *     since the keyboard loop was removed it runs no internal rAF at all. It
+ *     fires `onChange` only when state actually changes.
  *   - Every manipulation begins with `syncFromCamera()`, so if an automated
  *     alignment (src/camera/alignment.ts) left the camera somewhere, manual
  *     control resumes seamlessly from that exact pose regardless of the order in
@@ -62,23 +69,6 @@ export const POLAR_LIMIT = 1e-3;
 /** Immutable orbit pivot — the globe center. Never reassigned. */
 const ORBIT_TARGET = new THREE.Vector3(0, 0, 0);
 
-/** Physical key codes for WASDQE camera control. */
-const KEY_AZIMUTH_NEG = 'KeyA';
-const KEY_AZIMUTH_POS = 'KeyD';
-const KEY_POLAR_UP = 'KeyW';
-const KEY_POLAR_DOWN = 'KeyS';
-const KEY_ZOOM_OUT = 'KeyQ';
-const KEY_ZOOM_IN = 'KeyE';
-
-const MOVEMENT_KEYS: ReadonlySet<string> = new Set([
-  KEY_AZIMUTH_NEG,
-  KEY_AZIMUTH_POS,
-  KEY_POLAR_UP,
-  KEY_POLAR_DOWN,
-  KEY_ZOOM_OUT,
-  KEY_ZOOM_IN,
-]);
-
 export interface OrbitRigOptions {
   /** Element that receives pointer/wheel listeners (typically the canvas). */
   domElement: HTMLElement;
@@ -92,18 +82,14 @@ export interface OrbitRigOptions {
   initial?: { theta?: number; phi?: number; distance?: number };
   /** Orbit sensitivity for pointer drag, radians per pixel. */
   rotateSpeed?: number;
-  /** Keyboard orbit rate, radians per second. */
-  keyOrbitSpeed?: number;
-  /** Keyboard zoom rate, fraction of distance per second. */
-  keyZoomSpeed?: number;
   /** Wheel zoom sensitivity, fraction per wheel-delta unit. */
   wheelZoomSpeed?: number;
   /** Called after any state change so the host can render on demand. */
   onChange?: () => void;
   /**
-   * Called at the very start of a manual manipulation (pointer down / wheel /
-   * first movement keypress). Useful as a hook, though the interrupt handler in
-   * src/camera/interrupt.ts attaches its own independent listeners.
+   * Called at the very start of a manual manipulation (pointer down / wheel).
+   * Useful as a hook, though the interrupt handler in src/camera/interrupt.ts
+   * attaches its own independent listeners.
    */
   onUserInput?: () => void;
 }
@@ -123,8 +109,6 @@ export class OrbitRig {
   readonly #minDistance: number;
   readonly #maxDistance: number;
   readonly #rotateSpeed: number;
-  readonly #keyOrbitSpeed: number;
-  readonly #keyZoomSpeed: number;
   readonly #wheelZoomSpeed: number;
   readonly #onChange: (() => void) | undefined;
   readonly #onUserInput: (() => void) | undefined;
@@ -151,11 +135,6 @@ export class OrbitRig {
   /** Distance between the two pinch pointers on the previous move, in px. */
   #pinchLastDistance = 0;
 
-  // Held movement keys and the internal keyboard-orbit rAF.
-  readonly #heldKeys = new Set<string>();
-  #keyRafId: number | null = null;
-  #keyLastTime = 0;
-
   #disposed = false;
 
   constructor(camera: THREE.PerspectiveCamera, options: OrbitRigOptions) {
@@ -165,8 +144,6 @@ export class OrbitRig {
     this.#minDistance = options.minDistance ?? MIN_ZOOM;
     this.#maxDistance = options.maxDistance ?? MAX_ZOOM;
     this.#rotateSpeed = options.rotateSpeed ?? 0.005;
-    this.#keyOrbitSpeed = options.keyOrbitSpeed ?? 1.2;
-    this.#keyZoomSpeed = options.keyZoomSpeed ?? 1.4;
     this.#wheelZoomSpeed = options.wheelZoomSpeed ?? 0.0015;
     this.#onChange = options.onChange;
     this.#onUserInput = options.onUserInput;
@@ -210,8 +187,6 @@ export class OrbitRig {
     this.#enabled = value;
     if (!value) {
       this.#endDrag();
-      this.#heldKeys.clear();
-      this.#stopKeyLoop();
     }
   }
 
@@ -257,14 +232,12 @@ export class OrbitRig {
     this.#emitChange();
   }
 
-  /** Remove all listeners and stop the internal keyboard loop. */
+  /** Remove all listeners. */
   dispose(): void {
     if (this.#disposed) return;
     this.#disposed = true;
     this.#removeListeners();
     this.#endDrag();
-    this.#heldKeys.clear();
-    this.#stopKeyLoop();
   }
 
   // --- Internal: clamping -------------------------------------------------
@@ -296,10 +269,6 @@ export class OrbitRig {
   #addListeners(): void {
     this.#dom.addEventListener('pointerdown', this.#onPointerDown);
     this.#dom.addEventListener('wheel', this.#onWheel, { passive: false });
-    // Key events are global: the canvas is not guaranteed to be focusable.
-    window.addEventListener('keydown', this.#onKeyDown);
-    window.addEventListener('keyup', this.#onKeyUp);
-    window.addEventListener('blur', this.#onWindowBlur);
   }
 
   #removeListeners(): void {
@@ -307,9 +276,6 @@ export class OrbitRig {
     this.#dom.removeEventListener('wheel', this.#onWheel);
     window.removeEventListener('pointermove', this.#onPointerMove);
     window.removeEventListener('pointerup', this.#onPointerUp);
-    window.removeEventListener('keydown', this.#onKeyDown);
-    window.removeEventListener('keyup', this.#onKeyUp);
-    window.removeEventListener('blur', this.#onWindowBlur);
   }
 
   // --- Internal: pointer drag --------------------------------------------
@@ -444,93 +410,5 @@ export class OrbitRig {
 
     this.apply();
     this.#emitChange();
-  };
-
-  // --- Internal: keyboard orbit (continuous while held) ------------------
-
-  readonly #onKeyDown = (event: KeyboardEvent): void => {
-    if (!this.#enabled) return;
-    if (!MOVEMENT_KEYS.has(event.code)) return;
-    if (event.repeat) return; // rAF drives continuous motion, not key-repeat
-
-    const wasIdle = this.#heldKeys.size === 0;
-    this.#heldKeys.add(event.code);
-    if (wasIdle) {
-      this.#beginInteraction();
-      this.#startKeyLoop();
-    }
-  };
-
-  readonly #onKeyUp = (event: KeyboardEvent): void => {
-    if (!MOVEMENT_KEYS.has(event.code)) return;
-    this.#heldKeys.delete(event.code);
-    if (this.#heldKeys.size === 0) this.#stopKeyLoop();
-  };
-
-  readonly #onWindowBlur = (): void => {
-    // Losing focus drops all held keys so motion doesn't "stick".
-    if (this.#heldKeys.size === 0) return;
-    this.#heldKeys.clear();
-    this.#stopKeyLoop();
-  };
-
-  #startKeyLoop(): void {
-    if (this.#keyRafId !== null) return;
-    this.#keyLastTime = performance.now();
-    this.#keyRafId = requestAnimationFrame(this.#keyTick);
-  }
-
-  #stopKeyLoop(): void {
-    if (this.#keyRafId === null) return;
-    cancelAnimationFrame(this.#keyRafId);
-    this.#keyRafId = null;
-  }
-
-  readonly #keyTick = (now: number): void => {
-    if (this.#heldKeys.size === 0) {
-      this.#keyRafId = null;
-      return;
-    }
-
-    const dt = Math.min((now - this.#keyLastTime) / 1000, 0.1); // clamp long gaps
-    this.#keyLastTime = now;
-
-    let changed = false;
-
-    if (this.#heldKeys.has(KEY_AZIMUTH_NEG)) {
-      this.#spherical.theta -= this.#keyOrbitSpeed * dt;
-      changed = true;
-    }
-    if (this.#heldKeys.has(KEY_AZIMUTH_POS)) {
-      this.#spherical.theta += this.#keyOrbitSpeed * dt;
-      changed = true;
-    }
-    if (this.#heldKeys.has(KEY_POLAR_UP)) {
-      this.#spherical.phi = this.#clampPhi(this.#spherical.phi - this.#keyOrbitSpeed * dt);
-      changed = true;
-    }
-    if (this.#heldKeys.has(KEY_POLAR_DOWN)) {
-      this.#spherical.phi = this.#clampPhi(this.#spherical.phi + this.#keyOrbitSpeed * dt);
-      changed = true;
-    }
-    if (this.#heldKeys.has(KEY_ZOOM_OUT)) {
-      this.#spherical.radius = this.#clampDistance(
-        this.#spherical.radius * (1 + this.#keyZoomSpeed * dt),
-      );
-      changed = true;
-    }
-    if (this.#heldKeys.has(KEY_ZOOM_IN)) {
-      this.#spherical.radius = this.#clampDistance(
-        this.#spherical.radius * (1 - this.#keyZoomSpeed * dt),
-      );
-      changed = true;
-    }
-
-    if (changed) {
-      this.apply();
-      this.#emitChange();
-    }
-
-    this.#keyRafId = requestAnimationFrame(this.#keyTick);
   };
 }

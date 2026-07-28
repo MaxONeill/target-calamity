@@ -5,8 +5,15 @@
  * (WASDQE/Pointer Drag), all active automated camera animations must immediately
  * drop lock via an explicit interrupt handler to prevent viewport fighting."
  *
- * This binds capture-phase pointer and keyboard listeners that cancel an
- * in-flight {@link OrbitAlignment} the instant the user touches the controls.
+ * This binds capture-phase pointer and wheel listeners that cancel an in-flight
+ * {@link OrbitAlignment} the instant the user touches the controls.
+ *
+ * NO KEY LISTENER, though the requirement above names WASDQE. Keyboard camera
+ * control was removed from `OrbitRig` because a window-level key handler moved
+ * the globe while the user typed into the submission form. Keys no longer
+ * manipulate the camera, so a keypress is no longer manual manipulation and must
+ * NOT drop an alignment's lock — cancelling a flight because someone typed "a"
+ * in a text field is the same bug wearing different clothes.
  *
  * Race-safety — token counter, NOT a boolean:
  *   A naive `if (animating) stop()` boolean flag has a window: an animation
@@ -22,22 +29,8 @@
  */
 import type { OrbitAlignment } from './alignment';
 
-/** Physical key codes that count as manual camera manipulation (WASDQE). */
-const INTERRUPT_KEYS: ReadonlySet<string> = new Set([
-  'KeyW',
-  'KeyA',
-  'KeyS',
-  'KeyD',
-  'KeyQ',
-  'KeyE',
-]);
-
 export interface InterruptGuardOptions {
-  /**
-   * Element that receives pointer/wheel listeners (typically the canvas). Key
-   * listeners are attached to `window`, since the canvas is not guaranteed to be
-   * focusable.
-   */
+  /** Element that receives the pointer/wheel listeners (typically the canvas). */
   target: HTMLElement;
   /**
    * Also drop lock on wheel zoom. Default true — a wheel zoom is manual
@@ -58,7 +51,7 @@ export interface InterruptGuard {
 
 /**
  * Wire manual-input interrupts to an {@link OrbitAlignment}. Any primary pointer
- * press, wheel zoom, or WASDQE keypress cancels the in-flight flight immediately.
+ * press or wheel zoom cancels the in-flight flight immediately.
  *
  * Listeners are registered in the CAPTURE phase so they run before the OrbitRig's
  * own handlers apply motion — the alignment is torn down and the rig re-synced to
@@ -91,24 +84,16 @@ export function attachInterrupt(
     fire();
   };
 
-  const onKeyDown = (event: KeyboardEvent): void => {
-    if (!INTERRUPT_KEYS.has(event.code)) return;
-    fire();
-  };
-
   target.addEventListener('pointerdown', onPointerDown, { capture: true });
   if (interruptOnWheel) {
     target.addEventListener('wheel', onWheel, { capture: true, passive: true });
   }
-  window.addEventListener('keydown', onKeyDown, { capture: true });
-
   return {
     dispose(): void {
       target.removeEventListener('pointerdown', onPointerDown, { capture: true });
       if (interruptOnWheel) {
         target.removeEventListener('wheel', onWheel, { capture: true });
       }
-      window.removeEventListener('keydown', onKeyDown, { capture: true });
     },
   };
 }
