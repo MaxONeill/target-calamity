@@ -189,7 +189,7 @@ export function App(): React.JSX.Element {
             so. Kept to one grey line: an interface that needs a paragraph of
             instructions has a different problem. */}
         <p className="tc-pin-hint" aria-hidden="true">
-          Select a pin to read its sources
+          Select a pin to learn more
         </p>
 
         <Slideout
