@@ -88,6 +88,64 @@ if (ctx.mode === 'db') {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Security headers                                                           */
+/* -------------------------------------------------------------------------- */
+
+/** Set on a real deployment; also gates HSTS below. */
+const canonicalHost = process.env.CANONICAL_HOST?.trim().toLowerCase();
+
+/**
+ * Baseline response headers. Hand-rolled rather than pulling in a helmet
+ * dependency: it is a dozen constants, and every one of them is a decision
+ * worth being able to read here.
+ *
+ * The CSP is tight because this app genuinely loads nothing from anywhere else.
+ * The external origins in the bundle (x.com, reddit, whatsapp…) are share-link
+ * HREFS — top-level navigations, which CSP does not govern — not subresources.
+ *
+ *   style-src allows 'unsafe-inline' because index.html carries an inline
+ *   <style> block for the first-paint background. Everything else is 'self'.
+ *
+ *   img-src allows data: and blob: because the globe builds its land-mask
+ *   texture on a canvas rather than fetching one.
+ *
+ *   connect-src is 'self' only: the feed, the field and the SSE stream are all
+ *   same-origin, so anything reaching outward is a bug or an injection.
+ *
+ * Referrer-Policy matters more here than it looks. Without it the full URL goes
+ * to every share target a reader clicks through to. This app hashes IPs so a
+ * database dump cannot recover them; leaking browsing context to third parties
+ * by default would undercut that for no benefit.
+ */
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "worker-src 'self' blob:",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "object-src 'none'",
+].join('; ');
+
+app.addHook('onSend', async (_request, reply) => {
+  void reply.header('Content-Security-Policy', CSP);
+  void reply.header('X-Content-Type-Options', 'nosniff');
+  void reply.header('X-Frame-Options', 'DENY');
+  void reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+  void reply.header('Permissions-Policy', 'geolocation=(), microphone=(), camera=(), payment=()');
+  // HSTS only on a real deployment. Sent from a local http server it would pin
+  // localhost to https in the developer's browser, which is a memorable
+  // afternoon and not a security win.
+  if (canonicalHost) {
+    void reply.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+});
+
+/* -------------------------------------------------------------------------- */
 /* Canonical host                                                             */
 /* -------------------------------------------------------------------------- */
 
@@ -112,7 +170,6 @@ if (ctx.mode === 'db') {
  *     would silently turn a factor submission into a page view. 308 preserves
  *     the method.
  */
-const canonicalHost = process.env.CANONICAL_HOST?.trim().toLowerCase();
 if (canonicalHost) {
   app.addHook('onRequest', async (request, reply) => {
     if (request.url.startsWith('/api/health')) return;
