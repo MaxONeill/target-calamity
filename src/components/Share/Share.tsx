@@ -21,15 +21,20 @@ const SHARE_URL = 'https://targetcalamity.org';
 /**
  * What a shared link says about itself.
  *
- * Was "Fight the Clock" — a rallying cry, which is the one thing this share
- * text should not be. A link posted to a stranger's feed is the project's first
- * impression, and a slogan asks them to join something before it has told them
- * what it is. The site's own <meta name="description"> already says what it is,
- * so this echoes it: the name, then the claim it actually makes.
+ * Two rewrites, away from opposite failures. It was "Fight the Clock", a slogan
+ * that asked a stranger to join something before saying what it was. Replacing
+ * it with the site's own meta description fixed that and overshot: "an
+ * empirical tracker of humanity's window of viable course-correction against
+ * cascading systemic tipping points" is accurate, and it is a sentence nobody
+ * reads to the end of in a feed.
+ *
+ * This says the same thing in words people use. "A clock for" keeps it honestly
+ * framed as an instrument rather than a prediction — the countdown is a modelled
+ * projection held inside published bands, and a share line that promised a
+ * deadline would be claiming more than the model does.
  */
 const SHARE_TITLE = 'Target: Calamity';
-const SHARE_BLURB =
-  "an empirical tracker of humanity's window of viable course-correction against cascading systemic tipping points";
+const SHARE_BLURB = 'a clock for how much time we have left to change course';
 /** The copyable one-liner shown in the share field. */
 const SHARE_TEXT = `${SHARE_TITLE} — ${SHARE_BLURB}. ${SHARE_URL}`;
 
@@ -224,16 +229,10 @@ export function Share(): React.JSX.Element {
               </div>
 
               <div className="tc-share__body">
-                {/* The old copy ended "the first step is showing up", which
-                    pointed at the Discord invite below it. With that gone the
-                    line had nowhere to send anyone, so it says what sharing
-                    actually does instead of implying a destination. */}
-                <p className="tc-share__intro">
-                  Something has to be done, and it&apos;ll take out-of-the-box thinking. We may not
-                  know exactly what to do, but we know it&apos;ll be easier together.{' '}
-                  <b>Passing this on is a start</b>.
-                </p>
-
+                {/* No preamble. This dialog opens because someone chose to
+                    share; telling them why they should is a paragraph they
+                    have already walked past. The field and the buttons are the
+                    whole content. */}
                 <div className="tc-share__share-field">
                   <input
                     ref={urlRef}

@@ -100,13 +100,6 @@
   gap: 16px;
   padding: 18px;
 }
-.tc-share__intro {
-  margin: 0;
-  font-size: 12.5px;
-  line-height: 1.55;
-  color: #a9b4c2;
-}
-
 /* Share field: the copyable one-liner + a Copy button. */
 .tc-share__share-field {
   display: flex;
