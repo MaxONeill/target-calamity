@@ -42,6 +42,7 @@ import { sql } from 'kysely';
 import * as z from 'zod/v4';
 import { createDatabase, type Database } from '../db.js';
 import { notifyFieldChanged } from './notifyFieldChanged.js';
+import { locationKindFor } from './locationKind.js';
 import { createEmbeddingClient } from './embeddings.js';
 import { retrieveDocuments, hasRetrievalCredentials, publisherFromUrl } from './retrieval.js';
 import {
@@ -336,15 +337,20 @@ export async function researchOutcomes(
         // source at all — rendering as "Unsourced", which is precisely what this
         // system must never publish.
         await db.transaction().execute(async (trx) => {
-          // Placeless: an organisation's outcome rarely has one honest centroid,
-          // and inventing a lat/lon would put a pin where no source placed it.
+          // Usually placeless — an organisation's outcome rarely has one honest
+          // centroid, and inventing a lat/lon would put a pin where no source
+          // placed it. But `hasCoords` above does let a source-supplied pair
+          // through, so this is NOT unconditionally placeless and must carry the
+          // matching `location_kind` (migration 018) or the insert is rejected.
           const { rows: inserted } = await sql<{ id: string }>`
             INSERT INTO factors
               (spatial_path, name, description, effect, significance, lat, lon,
+               location_kind,
                verification_state, domains, embedding, reputability_score, reputability_reasoning)
             VALUES (${spatialPath}::ltree, ${out.name.trim().slice(0, 300)},
                     ${out.description.trim().slice(0, 2000)},
                     ${effect}, ${significance}, ${lat}, ${lon},
+                    ${locationKindFor(lat)},
                     'verified', ${domains}::text[],
                     ${vector ? `[${vector.join(',')}]` : null}::halfvec,
                     ${score.score}, ${score.reasoning})

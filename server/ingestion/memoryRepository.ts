@@ -22,7 +22,7 @@ import type {
   QuarantineEntry,
 } from './pipeline.js';
 import type { FactorCandidate } from './dedupe.js';
-import type { TippingPoint, VerificationState } from '../../shared/types.js';
+import type { LocationKind, TippingPoint, VerificationState } from '../../shared/types.js';
 
 /** A persisted factor as the in-memory store holds it (the fields we can inspect). */
 export interface StoredFactor {
@@ -33,6 +33,14 @@ export interface StoredFactor {
   significance: number;
   lat: number | null;
   lon: number | null;
+  /**
+   * Mirrored from the Postgres column so the two implementations of the port do
+   * not disagree about the shape they persist. This repository has no CHECK
+   * constraint, which is exactly why the missing column went unnoticed for a
+   * whole commit — every offline test wrote here happily while production
+   * rejected the same row.
+   */
+  locationKind: LocationKind | null;
   spatialPath: string;
   verificationState: VerificationState;
   reputabilityScore: number | undefined;
@@ -105,6 +113,7 @@ export function createMemoryIngestionRepository(): MemoryIngestionRepository {
         significance: input.significance,
         lat: input.lat,
         lon: input.lon,
+        locationKind: input.locationKind,
         spatialPath: input.spatialPath,
         verificationState: input.verificationState,
         reputabilityScore: input.reputabilityScore,

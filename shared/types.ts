@@ -9,6 +9,7 @@ import type {
   ZoneLevelSchema,
   SortModeSchema,
   VerificationStateSchema,
+  LocationKindSchema,
   TippingPointSchema,
   QuantityThresholdSchema,
   ProjectionSchema,
@@ -32,6 +33,7 @@ import type {
 export type ZoneLevel = z.infer<typeof ZoneLevelSchema>;
 export type SortMode = z.infer<typeof SortModeSchema>;
 export type VerificationState = z.infer<typeof VerificationStateSchema>;
+export type LocationKind = z.infer<typeof LocationKindSchema>;
 
 export type TippingPoint = z.infer<typeof TippingPointSchema>;
 export type QuantityThreshold = z.infer<typeof QuantityThresholdSchema>;

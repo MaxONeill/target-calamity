@@ -108,11 +108,12 @@ async function insertFactor(trx: Transaction<DB>, input: NewFactorInput): Promis
   const { rows } = await sql<{ id: string }>`
     INSERT INTO factors
       (spatial_path, name, description, embedding,
-       effect, significance, lat, lon, verification_state, tipping_point,
+       effect, significance, lat, lon, location_kind, verification_state, tipping_point,
        reputability_score, reputability_reasoning, domains)
     VALUES
       (${input.spatialPath}::ltree, ${input.name}, ${input.description}, ${vec}::halfvec,
-       ${input.effect}, ${input.significance}, ${input.lat}, ${input.lon}, ${input.verificationState},
+       ${input.effect}, ${input.significance}, ${input.lat}, ${input.lon},
+       ${input.locationKind}, ${input.verificationState},
        ${tippingPointJson}::jsonb,
        ${reputabilityScore}, ${reputabilityReasoning}, ${sql.val(domains)}::text[])
     RETURNING id

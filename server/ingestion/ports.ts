@@ -5,7 +5,7 @@
  * deterministic offline counterpart, which is what keeps the whole pipeline
  * runnable — and testable — with no network and no database.
  */
-import type { TippingPoint, VerificationState } from '../../shared/types.js';
+import type { LocationKind, TippingPoint, VerificationState } from '../../shared/types.js';
 import type { Domain } from '../../shared/domains.js';
 import type { EscalationDirectionality, FactorCandidate, ResolverVerdict } from './dedupe.js';
 import type { EmbeddingClient } from './embeddings.js';
@@ -93,6 +93,15 @@ export interface NewFactorInput {
   /** WGS84 degrees, or null for a placeless factor. Both or neither. */
   lat: number | null;
   lon: number | null;
+  /**
+   * What KIND of point the coordinates are (migration 018). REQUIRED, not
+   * optional, on purpose: `factors` carries
+   * `CHECK ((lat IS NULL) = (location_kind IS NULL))`, so a writer that omits it
+   * does not degrade gracefully — every placed factor becomes unwritable. Making
+   * it optional here is what let that ship as a runtime failure instead of a
+   * compile error. Derive it with `locationKindFor(lat)` rather than by hand.
+   */
+  locationKind: LocationKind | null;
   spatialPath: string;
   /** 512-dim vector, stored as `halfvec(512)` by the repository. */
   embedding: number[];

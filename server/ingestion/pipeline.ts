@@ -26,6 +26,7 @@ import {
   resolveOutcome,
 } from './dedupe.js';
 import { contentHash, draftContentHash, bucketKey } from './contentHash.js';
+import { locationKindFor } from './locationKind.js';
 import { ExtractedFactorSchema } from './types.js';
 import type { ExtractedFactorDraft, InboundIntelItem } from './types.js';
 import type {
@@ -240,6 +241,10 @@ export function createPipeline(deps: PipelineDeps) {
           significance: p.draft.significance,
           lat: p.draft.lat,
           lon: p.draft.lon,
+          // The draft's coordinates come from a source that placed the event, so
+          // the pin is `measured` (migration 018). Never `representative` — that
+          // is an editorial choice `backfillLocations.ts` makes, with a note.
+          locationKind: locationKindFor(p.draft.lat),
           spatialPath: p.draft.spatialPath,
           embedding,
           verificationState: p.draft.verificationState ?? 'pending',
