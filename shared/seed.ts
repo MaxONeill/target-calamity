@@ -52,6 +52,9 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
     significance: 0.9,
     lat: 85.0,
     lon: 0.0,
+    locationKind: 'representative',
+    locationNote:
+      'The central Arctic Ocean stands for a basin-wide satellite measurement; NSIDC’s 14.33 million km² figure is the whole ice pack, not this point.',
     zoneLevel: 'global',
     verificationState: 'verified',
     createdAt: ts(1),
@@ -87,6 +90,9 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
     significance: 0.85,
     lat: 67.5,
     lon: 100.0,
+    locationKind: 'representative',
+    locationNote:
+      'Central Siberia stands for the circumpolar permafrost belt; the 1,460–1,600 Gt carbon store spans the northern latitudes.',
     zoneLevel: 'global',
     verificationState: 'verified',
     createdAt: ts(2),
@@ -117,6 +123,9 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
     significance: 0.85,
     lat: -3.47,
     lon: -62.2,
+    locationKind: 'representative',
+    locationNote:
+      'A point in the central Amazon basin stands for a biome-wide transition risk affecting an estimated 10–47% of the forest.',
     zoneLevel: 'national',
     verificationState: 'verified',
     createdAt: ts(3),
@@ -152,6 +161,9 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
     significance: 0.75,
     lat: 59.0,
     lon: -30.0,
+    locationKind: 'representative',
+    locationNote:
+      'The subpolar North Atlantic, where deep-water formation is weakening, stands for an ocean-basin circulation with no point location.',
     zoneLevel: 'global',
     verificationState: 'verified',
     createdAt: ts(4),
@@ -187,6 +199,9 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
     significance: 0.8,
     lat: 20.0,
     lon: 0.0,
+    locationKind: 'representative',
+    locationNote:
+      'A global IPBES assessment of invertebrate pollinators; there is no defensible point, so this is a marker rather than a place.',
     zoneLevel: 'global',
     verificationState: 'verified',
     createdAt: ts(5),
@@ -217,6 +232,9 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
     significance: 0.75,
     lat: -18.28,
     lon: 147.7,
+    locationKind: 'representative',
+    locationNote:
+      'The Great Barrier Reef stands for warm-water reefs worldwide; the IPCC’s 70–99% projection is global.',
     zoneLevel: 'global',
     verificationState: 'verified',
     createdAt: ts(6),
@@ -246,6 +264,9 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
     significance: 0.95,
     lat: 0.0,
     lon: 0.0,
+    locationKind: 'representative',
+    locationNote:
+      'A global mean temperature has no location; the point is a marker at the origin, not a place the record was set.',
     zoneLevel: 'global',
     verificationState: 'verified',
     createdAt: ts(7),
@@ -276,6 +297,9 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
     significance: 0.6,
     lat: 38.8977,
     lon: -77.0365,
+    locationKind: 'representative',
+    locationNote:
+      'Washington DC, where US federal lobbying is registered and conducted; the $4.4 billion is a national total.',
     zoneLevel: 'national',
     verificationState: 'verified',
     createdAt: ts(8),
@@ -305,6 +329,9 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
     significance: 0.55,
     lat: 47.6062,
     lon: -122.3321,
+    locationKind: 'representative',
+    locationNote:
+      'Seattle, home to two of the three firms named (AWS and Azure), stands for a worldwide infrastructure market.',
     zoneLevel: 'national',
     verificationState: 'verified',
     createdAt: ts(9),
@@ -335,6 +362,9 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
     significance: 0.7,
     lat: 46.8,
     lon: 9.83,
+    locationKind: 'representative',
+    locationNote:
+      'Davos, as the recognised symbol of concentrated wealth, stands for an Oxfam finding about billionaire wealth globally.',
     zoneLevel: 'global',
     verificationState: 'verified',
     createdAt: ts(10),
@@ -364,6 +394,9 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
     significance: 0.6,
     lat: 37.7749,
     lon: -122.4194,
+    locationKind: 'representative',
+    locationNote:
+      'San Francisco, where the models behind the estimate are built, stands for Goldman Sachs’ global 300-million-job figure.',
     zoneLevel: 'global',
     verificationState: 'verified',
     createdAt: ts(11),
@@ -394,6 +427,9 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
     significance: 0.72,
     lat: 15.0,
     lon: 30.0,
+    locationKind: 'representative',
+    locationNote:
+      'The Sahel and Sudan, among the most active theatres, stand for a global count of 56 conflicts across 92 countries.',
     zoneLevel: 'global',
     verificationState: 'verified',
     createdAt: ts(12),
@@ -422,6 +458,9 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
     significance: 0.45,
     lat: 23.8103,
     lon: 90.4125,
+    locationKind: 'representative',
+    locationNote:
+      'Dhaka, a centre of garment manufacturing, stands for a linear model whose waste figures here are US EPA national data.',
     zoneLevel: 'global',
     verificationState: 'verified',
     createdAt: ts(13),
@@ -452,6 +491,9 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
     significance: 0.45,
     lat: 37.3349,
     lon: -122.009,
+    locationKind: 'representative',
+    locationNote:
+      'Apple Park, site of the documented “Batterygate” throttling, stands for a strategy practised across the industry.',
     zoneLevel: 'national',
     verificationState: 'verified',
     createdAt: ts(14),
@@ -494,6 +536,9 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
     significance: 0.6,
     lat: 41.5,
     lon: -93.6,
+    locationKind: 'representative',
+    locationNote:
+      'Iowa, in the US maize belt, stands for a synchronised-failure risk across the world’s top exporting regions.',
     zoneLevel: 'global',
     // Held at 'pending': the cited PNAS study is real and well-known but is NOT
     // reproduced in docs/seed data-bibliography.md, so it cannot ship as 'verified'
@@ -526,6 +571,9 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
     significance: 0.6,
     lat: 20.0,
     lon: 0.0,
+    locationKind: 'representative',
+    locationNote:
+      'A global risk ranking with no single location; the point is a marker rather than a place.',
     zoneLevel: 'global',
     verificationState: 'verified',
     createdAt: ts(17),
@@ -556,6 +604,8 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
     significance: 0.75,
     lat: 0.0,
     lon: 0.0,
+    locationKind: 'representative',
+    locationNote: 'A global investment total has no location; the point is a marker at the origin.',
     zoneLevel: 'global',
     verificationState: 'verified',
     createdAt: ts(18),
@@ -585,6 +635,9 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
     significance: 0.7,
     lat: 10.0,
     lon: 0.0,
+    locationKind: 'representative',
+    locationNote:
+      'A cost comparison that holds across most of the world; the point is a marker, not a place.',
     zoneLevel: 'global',
     // Held at 'pending': IRENA is a real source but is NOT in the seed data
     // bibliography (rule #4). Stays in the feed, off the verified field/Clock.
@@ -617,6 +670,9 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
     significance: 0.62,
     lat: 5.0,
     lon: 0.0,
+    locationKind: 'representative',
+    locationNote:
+      'A globally-crossed adoption threshold with no single location; the point is a marker.',
     zoneLevel: 'global',
     // Held at 'pending': the Global Tipping Points Report is real but is NOT in
     // the seed data bibliography (rule #4). Stays in the feed, off the field/Clock.
@@ -649,6 +705,9 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
     significance: 0.45,
     lat: 51.1657,
     lon: 10.4515,
+    locationKind: 'representative',
+    locationNote:
+      'Germany, the centre of European energy-cooperative membership, stands for REScoop.eu’s 2,250+ cooperatives across the continent.',
     zoneLevel: 'national',
     // Held at 'pending': REScoop.eu is a real source but is NOT in the seed data
     // bibliography (rule #4). Stays in the feed, off the verified field/Clock.
@@ -681,6 +740,9 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
     significance: 0.4,
     lat: 38.8895,
     lon: -77.0353,
+    locationKind: 'representative',
+    locationNote:
+      'Washington DC, home of the World Resources Institute, stands for a monitoring system covering forests worldwide.',
     zoneLevel: 'global',
     // Held at 'pending': Global Forest Watch is a real source but is NOT in the
     // seed data bibliography (rule #4). Stays in the feed, off the field/Clock.
@@ -712,6 +774,9 @@ const SEED_FACTORS_RAW: Omit<Factor, 'efforts'>[] = [
     significance: 0.4,
     lat: 40.706,
     lon: -74.009,
+    locationKind: 'representative',
+    locationNote:
+      'Wall Street, where the squeeze played out, stands for coordination that happened online rather than at any address.',
     zoneLevel: 'national',
     verificationState: 'verified',
     createdAt: ts(23),
