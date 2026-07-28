@@ -265,6 +265,18 @@
   line-height: 1.55;
 }
 
+/*
+ * The daily-limit note under the outcome. Quieter than the server's own message
+ * — it is context for why there is no retry button, not the answer itself.
+ */
+.tc-submit__result-note {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--tc-text-dim);
+  opacity: 0.75;
+  line-height: 1.5;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Status-bar trigger                                                         */
 /* -------------------------------------------------------------------------- */

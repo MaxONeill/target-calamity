@@ -99,22 +99,65 @@ export function SubmitFactor({ onClose }: SubmitFactorProps): React.JSX.Element 
       }
 
       setState({ kind: 'submitting' });
+
+      // THREE DISTINCT FAILURES, THREE DISTINCT MESSAGES. A single try/catch
+      // around the whole exchange used to report all of them as "Could not reach
+      // the server", which was actively misleading: `res.json()` throws on ANY
+      // non-JSON body, so an API that was reached and answered — a dev-proxy 502,
+      // a gateway error page, an empty body — was reported as unreachable, and
+      // the one diagnosis the message offered was the one thing that had not
+      // happened. Whether the request left the machine is exactly the fact a
+      // submitter needs to know, so it is now determined separately.
+      let res: Response;
       try {
-        const res = await fetch('/api/factors/submit', {
+        res = await fetch('/api/factors/submit', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify(parsed.data),
         });
-        const json: unknown = await res.json();
-        const body = SubmissionResponseSchema.safeParse(json);
-        if (!body.success) {
-          setState({ kind: 'error', message: 'The server sent an unexpected response.' });
-          return;
-        }
-        setState({ kind: 'done', response: body.data });
       } catch {
-        setState({ kind: 'error', message: 'Could not reach the server. Try again shortly.' });
+        // Genuinely never got an answer: offline, DNS, connection refused.
+        setState({
+          kind: 'error',
+          message: 'Could not reach the server. Check your connection and try again.',
+        });
+        return;
       }
+
+      let json: unknown;
+      try {
+        json = await res.json();
+      } catch {
+        // Something answered, but not with JSON. Carrying the status is what
+        // makes this diagnosable at all — a 502 here means the API behind the
+        // proxy is down, which looks identical to every other failure without it.
+        setState({
+          kind: 'error',
+          message: `The server returned an unreadable response (HTTP ${String(res.status)}). It may be restarting.`,
+        });
+        return;
+      }
+
+      // Parsed BEFORE any `res.ok` check, on purpose: a 429 rate-limit is a
+      // legitimate, contract-shaped answer that the submitter should see in full,
+      // and treating every non-2xx as an error would replace its "try again in
+      // about N hours" with something vaguer.
+      const body = SubmissionResponseSchema.safeParse(json);
+      if (body.success) {
+        setState({ kind: 'done', response: body.data });
+        return;
+      }
+
+      // JSON, but not the contract. A 400 means this form and the server disagree
+      // about the schema, which a reload usually fixes; anything else is a fault
+      // on their side that retrying might not.
+      setState({
+        kind: 'error',
+        message:
+          res.status === 400
+            ? 'The server rejected this submission as malformed. Reload the page — this build may be out of date.'
+            : `The server sent an unexpected response (HTTP ${String(res.status)}).`,
+      });
     },
     [claim, sourceUrl, note, submitting],
   );
@@ -135,12 +178,25 @@ export function SubmitFactor({ onClose }: SubmitFactorProps): React.JSX.Element 
           aria-live="polite"
         >
           <p className="tc-submit__result-msg">{message}</p>
-          <button
-            type="button"
-            className="tc-submit__btn tc-submit__btn--ghost"
-            onClick={() => setState({ kind: 'idle' })}
-          >
-            Submit another
+          {/*
+            NO "Submit another" BUTTON. It used to sit here unconditionally, and
+            it could never do what it said: every outcome that reaches this screen
+            has already spent the day's allowance — `queued`, `duplicate` and
+            `rejected` all count toward the 24h window, and `rate_limited` means
+            it was already spent. So the button returned to a form whose next
+            submission was guaranteed to be refused. Worse, until the
+            accompanying store fix, that refusal RESET the 24h clock, so taking
+            the invitation locked the submitter out for another full day.
+            The honest affordance is to close.
+          */}
+          {outcome !== 'rate_limited' && (
+            <p className="tc-submit__result-note">
+              That is your submission for today — one per day, so the queue stays reviewable by
+              hand.
+            </p>
+          )}
+          <button type="button" className="tc-submit__btn tc-submit__btn--ghost" onClick={onClose}>
+            Close
           </button>
         </div>
       </div>
