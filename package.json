@@ -34,7 +34,8 @@
     "format:check": "prettier --check .",
     "verify": "tsc --noEmit && eslint . && prettier --check . && vitest run",
     "research:outcomes": "tsx --env-file-if-exists=.env server/ingestion/researchOutcomes.ts",
-    "backfill:locations": "tsx --env-file-if-exists=.env server/ingestion/backfillLocations.ts"
+    "backfill:locations": "tsx --env-file-if-exists=.env server/ingestion/backfillLocations.ts",
+    "submissions:drain": "tsx --env-file-if-exists=.env server/submissions/drainQueue.ts"
   },
   "dependencies": {
     "@fastify/static": "^8.3.0",

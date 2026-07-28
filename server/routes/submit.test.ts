@@ -141,14 +141,30 @@ describe('FactorSubmissionSchema — what a submitter may send', () => {
 /* -------------------------------------------------------------------------- */
 
 describe('decideSubmission — happy path', () => {
-  it('accepts a plausible first submission and hands it to the pipeline', async () => {
+  it('QUEUES a plausible first submission rather than vetting it', async () => {
     const deps = makeDeps();
     const decision = await decideSubmission(request(), deps);
 
     expect(decision.statusCode).toBe(200);
     expect(decision.body).toEqual(RECEIVED_RESPONSE);
     expect(deps.accepted).toHaveLength(1);
-    expect(deps.store.submissions()[0]?.status).toBe('accepted');
+    // `queued`, NOT `accepted`: nothing has classified or vetted this claim yet.
+    // `accepted` is reachable only from the drain, once the model has had its say.
+    expect(deps.store.submissions()[0]?.status).toBe('queued');
+  });
+
+  it('blocks a duplicate of a still-QUEUED claim', async () => {
+    // Regression guard. The duplicate lookup used to match only
+    // ('accepted', 'duplicate'); once the request handler started writing
+    // `queued`, that set matched nothing a submitter had just sent, so the same
+    // claim could be re-submitted without limit until someone drained the queue.
+    const deps = makeDeps();
+    await decideSubmission(request(), deps);
+    // A DIFFERENT identity, so the rate limiter is not what stops this one.
+    const second = await decideSubmission(request(OTHER_IDENTITY), deps);
+
+    expect(second.body).toEqual(DUPLICATE_RESPONSE);
+    expect(deps.store.submissions()[1]?.status).toBe('duplicate');
   });
 });
 
@@ -184,18 +200,68 @@ describe('decideSubmission — shadow ban', () => {
     expect(deps.store.submissions().at(-1)?.status).toBe('quarantined');
   });
 
-  it('a banned submitter is not rate-limited into a distinguishable 429', async () => {
+  it('answers a banned submitter EXACTLY as an unbanned one, step for step', async () => {
+    // THE property, and the one the previous version of this test missed. It
+    // compared a banned submitter's first response to their own second, so it
+    // passed while banned and unbanned submitters diverged from each other —
+    // which is the only comparison an attacker can actually make. Submitting
+    // twice in a day used to yield 200 for the banned and 429 for everyone else.
+    //
+    // Two stores, identical inputs, identical fake clock. Every response must
+    // match at every step.
+    let clock = new Date('2026-07-28T09:00:00.000Z');
+
+    const bannedStore = createMemorySubmissionStore(() => clock);
+    await bannedStore.ban({ identity: IDENTITY, reason: 'prior abuse' });
+    const banned = makeDeps({ store: bannedStore, now: () => clock });
+    const clean = makeDeps({ store: createMemorySubmissionStore(() => clock), now: () => clock });
+
+    // 1. First submission of the day.
+    const firstA = await decideSubmission(request(), banned);
+    const firstB = await decideSubmission(request(), clean);
+    expect(firstA).toEqual(firstB);
+
+    // 2. Second submission, same day → both must be refused identically.
+    clock = new Date('2026-07-28T10:00:00.000Z');
+    const secondA = await decideSubmission(
+      request(IDENTITY, 'A different claim entirely.'),
+      banned,
+    );
+    const secondB = await decideSubmission(request(IDENTITY, 'A different claim entirely.'), clean);
+    expect(secondA).toEqual(secondB);
+    expect(secondA.statusCode).toBe(429);
+
+    // 3. Next day, re-submitting the ORIGINAL claim → both must read duplicate.
+    //    This is what the identity-scoped quarantine rule buys: without it the
+    //    banned submitter's own claim would not block them and they alone would
+    //    be told `received`.
+    clock = new Date('2026-07-29T09:00:01.000Z');
+    const thirdA = await decideSubmission(request(), banned);
+    const thirdB = await decideSubmission(request(), clean);
+    expect(thirdA).toEqual(thirdB);
+    expect(thirdA.body).toEqual(DUPLICATE_RESPONSE);
+
+    // …while the rows written differ, which is the whole point of a shadow ban.
+    expect(bannedStore.submissions()[0]?.status).toBe('quarantined');
+    expect(banned.accepted).toHaveLength(0);
+    expect(clean.accepted).toHaveLength(1);
+  });
+
+  it("a banned submitter's claim does NOT block anyone else's", async () => {
+    // The other half of the identity-scoping rule. If a quarantined row blocked
+    // everyone, a banned submitter could silently reserve any claim they liked
+    // and every genuine submitter who tried it would lose their day to a row
+    // that never entered the queue.
     const store = createMemorySubmissionStore();
     await store.ban({ identity: IDENTITY, reason: 'prior abuse' });
     const deps = makeDeps({ store });
 
-    const first = await decideSubmission(request(), deps);
-    const second = await decideSubmission(
-      request(IDENTITY, 'A different claim entirely here.'),
-      deps,
-    );
-    expect(second.statusCode).toBe(first.statusCode);
-    expect(second.body).toEqual(first.body);
+    await decideSubmission(request(), deps);
+    expect(store.submissions()[0]?.status).toBe('quarantined');
+
+    const other = await decideSubmission(request(OTHER_IDENTITY), deps);
+    expect(other.body).toEqual(RECEIVED_RESPONSE);
+    expect(store.submissions().at(-1)?.status).toBe('queued');
   });
 });
 
@@ -212,6 +278,38 @@ describe('decideSubmission — rate limit', () => {
     expect(second.body.outcome).toBe('rate_limited');
     expect(second.body.retryAfterSeconds).toBe(SUBMISSION_WINDOW_MS / 1000 - 60);
     expect(deps.store.submissions().at(-1)?.status).toBe('rate_limited');
+  });
+
+  it('a rejected retry does NOT extend the window', async () => {
+    // Observed in the running app: with one hour of the window left, a single
+    // retry reset the wait to a full 24 hours, because the `rate_limited` row
+    // the rejection wrote then counted as the "most recent submission". Retrying
+    // was self-defeating, and the form's "Submit another" button invited it.
+    let clock = new Date('2026-07-28T00:00:00.000Z');
+    const deps = makeDeps({ now: () => clock });
+
+    await decideSubmission(request(), deps);
+
+    // 23 hours later: one hour left to wait.
+    clock = new Date('2026-07-28T23:00:00.000Z');
+    const first = await decideSubmission(request(), deps);
+    expect(first.body.retryAfterSeconds).toBe(3600);
+
+    // A retry a minute later must count down, not start over.
+    clock = new Date('2026-07-28T23:01:00.000Z');
+    const second = await decideSubmission(request(), deps);
+    expect(second.body.retryAfterSeconds).toBe(3540);
+
+    // And the allowance still frees up on schedule, rather than 24h after the
+    // last rejected attempt.
+    clock = new Date('2026-07-29T00:00:01.000Z');
+    // A different claim, so the duplicate check is not what lets it through.
+    const third = await decideSubmission(
+      request(IDENTITY, 'A second, entirely different checkable claim about the world.'),
+      deps,
+    );
+    expect(third.statusCode).toBe(200);
+    expect(third.body.outcome).not.toBe('rate_limited');
   });
 
   it('allows the next submission once the window has passed', async () => {
@@ -287,7 +385,12 @@ describe('decideSubmission — noise filter', () => {
     expect(deps.store.bans()).toHaveLength(0);
   });
 
-  it('never runs the classifier for a banned submitter (no free spend)', async () => {
+  it('DOES run the classifier for a banned submitter, so noise still reads as noise', async () => {
+    // This used to assert the opposite, to stop a banned submitter burning model
+    // calls. That reasoning expired twice over: the request path's classifier is
+    // now the free deterministic heuristic (no network, no key), and skipping it
+    // would hand back a fresh oracle — nonsense from a banned submitter would
+    // answer `received` where everyone else gets `rejected`.
     const store = createMemorySubmissionStore();
     await store.ban({ identity: IDENTITY, reason: 'prior abuse' });
     let calls = 0;
@@ -295,11 +398,15 @@ describe('decideSubmission — noise filter', () => {
       store,
       classify: async () => {
         calls++;
-        return assessment('plausible');
+        return assessment('nonsense', 0.6);
       },
     });
-    await decideSubmission(request(), deps);
-    expect(calls).toBe(0);
+
+    const decision = await decideSubmission(request(), deps);
+
+    expect(calls).toBe(1);
+    // Identical to what an unbanned submitter is told for the same verdict.
+    expect(decision.body).toEqual(REJECTED_RESPONSE);
   });
 
   it('never runs the classifier for a rate-limited submission', async () => {

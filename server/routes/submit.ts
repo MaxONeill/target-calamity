@@ -14,8 +14,28 @@
  *   2. Ban check                      free   one indexed lookup → SHADOW BAN
  *   3. Rate limit                     free   one indexed lookup → 429
  *   4. Duplicate check                free   one indexed lookup → 200 duplicate
- *   5. Noise classifier               cheap  ONE small constrained model call
- *   6. Vetting pipeline               costly retrieval + extraction + embeddings
+ *   5. Noise heuristic                free   deterministic string matching only
+ *   6. Queue                          free   one row; nothing downstream runs
+ *
+ * NOTHING IN THIS HANDLER COSTS MONEY (migration 019). Every step above is a
+ * schema check or an indexed lookup, except step 5, which is
+ * `classifySubmissionOffline` — pure string matching with no network and no
+ * credentials. A submission ends as a row with `vetted_at IS NULL` and nothing
+ * else happens.
+ *
+ * This route used to do two paid things while the submitter waited: ONE LLM call
+ * to classify, then `vetSubmission` fire-and-forget, which is the entire
+ * ingestion pipeline (retrieval, extraction, embeddings, the write). Both were
+ * reachable by an anonymous HTTP request with only the rate limiter as a brake,
+ * so spend scaled with the number of distinct addresses willing to send one
+ * request a day. Both now belong to whoever drains the queue.
+ *
+ * WHY THE HEURISTIC STAYS. It is free, and it is what still auto-shadow-bans
+ * blatant spam and still tells a confused human their text was not a checkable
+ * claim. Deferring it too would mean an abusive submitter kept earning a queued
+ * row every day until someone drained, and would replace a useful reply with
+ * silence. It is a triage, NOT a judgement — the model's verdict at drain time
+ * can still reject what the heuristic let through.
  *
  * SHADOW-BAN SEMANTICS. A banned submitter's request is persisted as
  * `quarantined` and answered with the BYTE-IDENTICAL payload and status code a
@@ -34,11 +54,10 @@ import { FactorSubmissionSchema, SubmissionResponseSchema } from '../../shared/s
 import type { SubmissionResponse } from '../../shared/types.js';
 import type { AppContext } from '../db.js';
 import {
-  classifySubmission,
+  classifySubmissionOffline,
   isNoise,
   shouldAutoBan,
   type NoiseAssessment,
-  type NoiseFilterOptions,
 } from '../ingestion/noiseFilter.js';
 import {
   hashIdentity,
@@ -54,7 +73,8 @@ import {
   type SubmissionStore,
   type SubmitterIdentity,
 } from '../submissions/store.js';
-import { vetSubmission, type Logger as VetLogger } from '../submissions/vetting.js';
+// NOTE: `vetSubmission` is deliberately NOT imported here any more. Step 6 queues
+// (migration 019); the queue drainer owns that call.
 
 /* -------------------------------------------------------------------------- */
 /* The responses                                                              */
@@ -90,8 +110,8 @@ export const DUPLICATE_RESPONSE: Readonly<SubmissionResponse> = Object.freeze({
 export const REJECTED_RESPONSE: Readonly<SubmissionResponse> = Object.freeze({
   outcome: 'rejected' as const,
   message:
-    'That did not look like a checkable claim about a source. Try a single ' +
-    'factual statement plus the page that supports it.',
+    'That did not look like a checkable claim about a source. Tomorrow, try a ' +
+    'single factual statement plus the page that supports it.',
 });
 
 /** Friendly 429 body, carrying the wait. */
@@ -117,7 +137,12 @@ export interface SubmissionDeps {
     sourceUrl: string;
     note?: string | undefined;
   }) => Promise<NoiseAssessment>;
-  /** Called (fire-and-forget) after an acceptance is recorded. */
+  /**
+   * Called after an acceptance is recorded. Since migration 019 this signals
+   * that a row was QUEUED, and must not itself run the vetting pipeline — the
+   * decision core stays free of paid work. Kept as a dep so tests can observe
+   * which submissions reached the queue.
+   */
   onAccepted: (submission: { claim: string; sourceUrl: string; note?: string | undefined }) => void;
   now?: () => Date;
   windowMs?: number;
@@ -157,14 +182,21 @@ export async function decideSubmission(
   };
 
   // --- 2. Ban check (free) → SHADOW BAN -----------------------------------
-  // Recorded as `quarantined` and answered with the SAME success payload an
-  // accepted submission gets. The submitter is never told, and no later check
-  // runs — a banned submitter must not be able to probe the duplicate table or
-  // the classifier either.
-  if (await deps.store.isBanned(req.identity)) {
-    await deps.store.record({ ...base, status: 'quarantined', reason: 'shadow-banned submitter' });
-    return { statusCode: 200, body: { ...RECEIVED_RESPONSE } };
-  }
+  //
+  // THE BAN CHANGES WHAT IS STORED. IT NEVER CHANGES WHAT IS RETURNED, NOR
+  // WHICH CHECKS RUN. This used to return here, and that early return was itself
+  // the tell: every later check was skipped, so a banned submitter never met the
+  // rate limiter. An ordinary submitter's second attempt of the day is a 429; a
+  // banned submitter's was another 200. Submitting twice therefore answered the
+  // one question the shadow ban exists to leave unanswered, and no amount of
+  // byte-identical payload could hide it, because the difference was in WHICH
+  // payload arrived.
+  //
+  // So the flag is now carried, not acted on, and every branch below reaches the
+  // same response for a banned and an unbanned submitter given the same inputs.
+  // The only divergence is the row written at step 6, which the submitter cannot
+  // see.
+  const banned = await deps.store.isBanned(req.identity);
 
   // --- 3. Rate limit (free) ------------------------------------------------
   const previous = await deps.store.lastSubmissionAt(req.identity, windowStart(at, windowMs));
@@ -178,7 +210,7 @@ export async function decideSubmission(
 
   // --- 4. Duplicate (free) -------------------------------------------------
   const normalized = normalizeSubmission(req.claim, req.sourceUrl);
-  if (await deps.store.isDuplicate(normalized)) {
+  if (await deps.store.isDuplicate(normalized, req.identity)) {
     await deps.store.record({
       ...base,
       status: 'duplicate',
@@ -199,20 +231,36 @@ export async function decideSubmission(
     await deps.store.record({ ...base, status: 'rejected_noise', reason });
 
     if (shouldAutoBan(assessment)) {
-      // Auto shadow-ban: from now on this identity gets the success payload and
-      // nothing else. They are NOT told — telling them converts a silent cost
-      // into a free evasion signal.
-      await deps.store.ban({ identity: req.identity, reason });
+      // Auto shadow-ban: from now on this identity's submissions are quarantined.
+      // They are NOT told — telling them converts a silent cost into a free
+      // evasion signal. Skipped when already banned, so the ban list does not
+      // accumulate a row per attempt; the response is identical either way.
+      if (!banned) await deps.store.ban({ identity: req.identity, reason });
       return { statusCode: 200, body: { ...RECEIVED_RESPONSE } };
     }
     return { statusCode: 200, body: { ...REJECTED_RESPONSE } };
   }
 
-  // --- 6. Accepted → the existing vetting pipeline -------------------------
+  // --- 6. QUEUED for classification + vetting (migration 019) --------------
+  // The row lands with `vetted_at IS NULL`. Nothing paid runs here: the model
+  // classification and the pipeline both belong to whoever drains the queue.
+  // NOT `accepted` — it cleared the free checks and a string heuristic, which
+  // is a far weaker claim than the word `accepted` would make.
+  //
+  // THE ONLY PLACE THE BAN SHOWS. A banned submitter's row is `quarantined`
+  // instead of `queued`, so it never reaches the drain and never becomes a
+  // factor — but it still consumes their daily allowance (see WINDOW_CONSUMING)
+  // and still blocks their own duplicates, so from the outside their day looks
+  // exactly like anyone else's. The response below is the same object either way.
+  if (banned) {
+    await deps.store.record({ ...base, status: 'quarantined', reason: 'shadow-banned submitter' });
+    return { statusCode: 200, body: { ...RECEIVED_RESPONSE } };
+  }
+
   await deps.store.record({
     ...base,
-    status: 'accepted',
-    reason: `noise filter: plausible (${assessment.provenance})`,
+    status: 'queued',
+    reason: `heuristic: plausible (${assessment.provenance})`,
   });
   deps.onAccepted({
     claim: req.claim,
@@ -236,27 +284,15 @@ function trustProxy(env: NodeJS.ProcessEnv): boolean {
   return raw === '1' || raw === 'true';
 }
 
-/**
- * Adapt Fastify's pino logger to the `Pick<Console, …>` shape the ingestion
- * modules take. Pino has no `log`, so it maps onto `info`; the signature
- * differences are absorbed here rather than by casting the logger away.
- */
-function routeLogger(fastify: FastifyInstance): VetLogger {
-  return {
-    log: (...args: unknown[]) => fastify.log.info(args.map(String).join(' ')),
-    info: (...args: unknown[]) => fastify.log.info(args.map(String).join(' ')),
-    warn: (...args: unknown[]) => fastify.log.warn(args.map(String).join(' ')),
-    error: (...args: unknown[]) => fastify.log.error(args.map(String).join(' ')),
-  };
-}
-
 export interface SubmitRouteOptions {
   /** The salt read at bootstrap (`readSubmissionSalt`). */
   salt: string;
   /** Override the store (tests / seed mode). Defaults from `fastify.appCtx`. */
   store?: SubmissionStore;
-  /** Override the classifier (tests). Defaults to the real filter. */
-  noiseOptions?: NoiseFilterOptions;
+  // NOTE: there is no `noiseOptions` any more. It existed to inject an LLM
+  // client/model into the request-path classifier; the request path no longer
+  // calls a model, so the option had nothing left to configure. Whatever drains
+  // the queue owns the model configuration instead.
 }
 
 export default async function submitRoutes(
@@ -272,8 +308,8 @@ export default async function submitRoutes(
   if (ctx.mode !== 'db') {
     fastify.log.warn(
       'SEED MODE — /api/factors/submit uses an IN-MEMORY submission store. ' +
-        'Rate limits and shadow bans reset on every restart, and accepted ' +
-        'submissions are vetted into an in-memory repository, not Postgres.',
+        'Rate limits, shadow bans AND the vetting queue all reset on every ' +
+        'restart, so a queued submission does not survive to be drained.',
     );
   }
 
@@ -317,14 +353,19 @@ export default async function submitRoutes(
         },
         {
           store,
-          classify: (input) => classifySubmission(input, options.noiseOptions ?? {}),
+          // The DETERMINISTIC heuristic, not `classifySubmission`. That entry
+          // point makes an LLM call whenever credentials exist, which is exactly
+          // the paid work this route must not do. `classifySubmissionOffline` is
+          // pure string matching: no network, no key, no spend. The model gets
+          // its say later, at drain time, where someone is watching.
+          classify: (input) => Promise.resolve(classifySubmissionOffline(input)),
           onAccepted: (accepted) => {
-            // Fire-and-forget: the submitter is answered immediately, and the
-            // (slow, paid) retrieval + extraction runs after. A failure in there
-            // is logged by `vetSubmission` and never surfaces to the client —
-            // which also means an accepted submission is a promise of REVIEW,
-            // not of publication, exactly as the response says.
-            void vetSubmission(ctx, accepted, routeLogger(fastify));
+            // QUEUED, not vetted (migration 019). The pipeline is run later by an
+            // operator draining `status = 'accepted' AND vetted_at IS NULL`, so
+            // the paid work happens under observation instead of inside a request
+            // nobody is watching. The submitter's answer is unchanged and was
+            // always a promise of REVIEW rather than publication.
+            fastify.log.info(`[submissions] queued for vetting: ${accepted.sourceUrl}`);
           },
         },
       );
