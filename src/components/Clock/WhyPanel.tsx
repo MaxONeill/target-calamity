@@ -1,7 +1,7 @@
 import type React from 'react';
 import type { ClockModel } from '../../lib/clock/clockModel.js';
 import type { Requirement } from '../../../shared/types.js';
-import { formatYear } from './format.js';
+import { formatYear, reversalFallback } from './format.js';
 
 /** How each requirement status reads, and how urgently. */
 const STATUS_LABEL: Record<Requirement['status'], string> = {
@@ -177,95 +177,113 @@ function Thresholds({
         rest are real dated evidence, but they are not what the window is measured against.
       </p>
       <ul className="tc-why-list">
-        {model.thresholds.map((t, i) => (
-          <li key={t.label ?? i} className="tc-why-threshold" data-anchors={t.anchors}>
-            <span className="tc-why-row-label">
-              {t.label ?? 'Unlabelled threshold'}
-              {/* The derivation, stated rather than implied: whether this drives
+        {model.thresholds.map((t, i) => {
+          // Resolved once: the contingency chain is consulted BOTH by the
+          // reversal summary below and by the tree, and reading it in only one
+          // of the two is what let them contradict each other.
+          const reversalSteps = requirementsByFactor.get(t.factorId ?? '') ?? [];
+
+          return (
+            <li key={t.label ?? i} className="tc-why-threshold" data-anchors={t.anchors}>
+              <span className="tc-why-row-label">
+                {t.label ?? 'Unlabelled threshold'}
+                {/* The derivation, stated rather than implied: whether this drives
                   the countdown, where its year came from, and whether forces
                   were withheld to avoid double-counting a scenario. */}
-              {t.anchors ? null : <span className="tc-why-row-meta"> · informs only</span>}
-              {t.dating === 'projected' ? (
-                <span className="tc-why-row-meta"> · dated from a projection</span>
-              ) : null}
-              {t.anchors && !t.forcesApply ? (
-                <span className="tc-why-row-meta">
-                  {' '}
-                  · forces withheld (scenario already assumes action)
-                </span>
-              ) : null}
-              {t.crossed ? <span className="tc-why-crossed"> · already crossed</span> : null}
-            </span>
+                {t.anchors ? null : <span className="tc-why-row-meta"> · informs only</span>}
+                {t.dating === 'projected' ? (
+                  <span className="tc-why-row-meta"> · dated from a projection</span>
+                ) : null}
+                {t.anchors && !t.forcesApply ? (
+                  <span className="tc-why-row-meta">
+                    {' '}
+                    · forces withheld (scenario already assumes action)
+                  </span>
+                ) : null}
+                {t.crossed ? <span className="tc-why-crossed"> · already crossed</span> : null}
+              </span>
 
-            {/* A crossed threshold is a debt, not an ending. What reversal would
+              {/* A crossed threshold is a debt, not an ending. What reversal would
                 take is shown in full — effort, timescale, reasoning and the
                 source — because that is the only part of a past-due threshold a
                 reader can act on. An absent timescale is stated as absent
                 rather than filled in. */}
-            {t.crossed && t.recovery ? (
-              <div className="tc-why-recovery">
-                <div className="tc-why-recovery-head">
-                  Reversing this:{' '}
-                  {t.recovery.timescaleYears !== undefined ? (
-                    <strong>
-                      ~{t.recovery.timescaleYears} yr
-                      {t.recovery.timescaleLowYears !== undefined &&
-                      t.recovery.timescaleHighYears !== undefined
-                        ? ` (${t.recovery.timescaleLowYears}–${t.recovery.timescaleHighYears})`
-                        : ''}
-                    </strong>
-                  ) : (
-                    <em>no timescale published</em>
-                  )}
+              {t.crossed && t.recovery ? (
+                <div className="tc-why-recovery">
+                  <div className="tc-why-recovery-head">
+                    Reversing this:{' '}
+                    {t.recovery.timescaleYears !== undefined ? (
+                      <strong>
+                        ~{t.recovery.timescaleYears} yr
+                        {t.recovery.timescaleLowYears !== undefined &&
+                        t.recovery.timescaleHighYears !== undefined
+                          ? ` (${t.recovery.timescaleLowYears}–${t.recovery.timescaleHighYears})`
+                          : ''}
+                      </strong>
+                    ) : (
+                      <em>no timescale published</em>
+                    )}
+                  </div>
+                  <div className="tc-why-recovery-effort">{t.recovery.effort}</div>
+                  <p className="tc-why-recovery-reason">{t.recovery.reasoning}</p>
+                  <a
+                    className="tc-why-recovery-source"
+                    href={t.recovery.sourceUrl}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                  >
+                    {t.recovery.publisher ?? 'source'}
+                  </a>
                 </div>
-                <div className="tc-why-recovery-effort">{t.recovery.effort}</div>
-                <p className="tc-why-recovery-reason">{t.recovery.reasoning}</p>
-                <a
-                  className="tc-why-recovery-source"
-                  href={t.recovery.sourceUrl}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                >
-                  {t.recovery.publisher ?? 'source'}
-                </a>
-              </div>
-            ) : t.crossed ? (
-              <div className="tc-why-recovery">
-                <em className="tc-why-recovery-reason">Reversal not yet assessed.</em>
-              </div>
-            ) : null}
+              ) : t.crossed ? (
+                <div className="tc-why-recovery">
+                  {/* "Not yet assessed" is only true when NOTHING is known about
+                    reversing this. It used to be shown whenever `recovery` was
+                    absent, ignoring the contingency chain — so a threshold with
+                    a full requirement tree announced that reversal was
+                    unassessed and then, in the very next block, set out what
+                    reversal would require. What is missing in that case is the
+                    published timescale and effort, not the assessment, and
+                    saying so is both accurate and more useful than a blanket
+                    denial. */}
+                  <em className="tc-why-recovery-reason">
+                    {reversalFallback(reversalSteps.length)}
+                  </em>
+                </div>
+              ) : null}
 
-            {/* The contingency chain. Every node is a cited claim, so the tree
+              {/* The contingency chain. Every node is a cited claim, so the tree
                 is an argument a reader can follow and check rather than a
                 summary they have to trust. */}
-            {t.crossed && (requirementsByFactor.get(t.factorId ?? '') ?? []).length > 0 ? (
-              <div className="tc-req-tree">
-                <div className="tc-req-tree-head">What reversal would require</div>
-                <ul className="tc-req-children">
-                  {(requirementsByFactor.get(t.factorId ?? '') ?? []).map((r) => (
-                    <RequirementBranch key={r.id} node={r} byParent={byParent} />
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-            <span className="tc-why-threshold-years">
-              {formatYear(t.baselineYear)}
-              {Math.abs(t.shiftYears) >= 0.05 ? (
-                <>
-                  {' → '}
-                  <span className={signClass(t.shiftYears)}>{formatYear(t.warpedYear)}</span>
-                  <span className="tc-why-row-meta">
-                    {' '}
-                    ({t.shiftYears < 0 ? '−' : '+'}
-                    {Math.abs(t.shiftYears).toFixed(1)} yr)
-                  </span>
-                </>
-              ) : (
-                <span className="tc-why-row-meta"> · unmoved</span>
-              )}
-            </span>
-          </li>
-        ))}
+              {t.crossed && reversalSteps.length > 0 ? (
+                <div className="tc-req-tree">
+                  <div className="tc-req-tree-head">What reversal would require</div>
+                  <ul className="tc-req-children">
+                    {reversalSteps.map((r) => (
+                      <RequirementBranch key={r.id} node={r} byParent={byParent} />
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              <span className="tc-why-threshold-years">
+                {formatYear(t.baselineYear)}
+                {Math.abs(t.shiftYears) >= 0.05 ? (
+                  <>
+                    {' → '}
+                    <span className={signClass(t.shiftYears)}>{formatYear(t.warpedYear)}</span>
+                    <span className="tc-why-row-meta">
+                      {' '}
+                      ({t.shiftYears < 0 ? '−' : '+'}
+                      {Math.abs(t.shiftYears).toFixed(1)} yr)
+                    </span>
+                  </>
+                ) : (
+                  <span className="tc-why-row-meta"> · unmoved</span>
+                )}
+              </span>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatYear, pad2, splitDuration } from './format.js';
+import { formatYear, pad2, reversalFallback, splitDuration } from './format.js';
 
 const YEAR_MS = 365.25 * 86_400 * 1000;
 const DAY_MS = 86_400 * 1000;
@@ -45,5 +45,27 @@ describe('formatYear', () => {
     expect(formatYear(2048.3)).toBe('2048');
     expect(formatYear(2048.7)).toBe('2049');
     expect(formatYear(2020.93)).toBe('2021');
+  });
+});
+
+describe('reversalFallback', () => {
+  it('says nothing is assessed only when there is genuinely nothing', () => {
+    expect(reversalFallback(0)).toBe('Reversal not yet assessed.');
+  });
+
+  it('does NOT claim reversal is unassessed when a requirement chain exists', () => {
+    // The reported bug: a crossed threshold with a full contingency chain
+    // rendered "Reversal not yet assessed." immediately above a block headed
+    // "What reversal would require", listing cited steps. The panel contradicted
+    // itself because this sentence was chosen from `recovery` alone.
+    const message = reversalFallback(3);
+    expect(message).not.toContain('not yet assessed');
+    expect(message).toContain('timescale');
+  });
+
+  it('is driven by the requirement count, not by luck', () => {
+    // One root step is enough for the claim "nothing is assessed" to be false.
+    expect(reversalFallback(1)).toBe(reversalFallback(9));
+    expect(reversalFallback(1)).not.toBe(reversalFallback(0));
   });
 });
