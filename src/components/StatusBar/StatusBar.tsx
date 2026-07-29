@@ -37,7 +37,6 @@ export function StatusBar({ streamStatus }: StatusBarProps): React.JSX.Element {
           {label}
         </span>
         <span className="tc-brand-name">TARGET: CALAMITY</span>
-        <span className="tc-brand-alpha">(Alpha)</span>
       </div>
 
       {/* Share sits beside SOURCE rather than in a bottom-centre CTA slot. The

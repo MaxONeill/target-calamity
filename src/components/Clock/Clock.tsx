@@ -72,13 +72,21 @@ export function Clock({
     >
       <div className="tc-clock-window-group">
         <span className="tc-clock-window-label">Course-correction window:</span>
-        <ClockCompact
-          remaining={remaining}
-          hasBaseline={model.hasBaseline}
-          overdue={overdue}
-          expanded={expanded}
-          onToggle={() => setExpanded((open) => !open)}
-        />
+        {/* (Alpha) sits beside the countdown rather than in the header, where
+            it qualified the brand. Here it qualifies the NUMBER, which is what
+            it was always really warning about: the model is young and the
+            figure will move as the corpus fills out. Outside the button on
+            purpose, so it is not part of the expander's hit area. */}
+        <div className="tc-clock-headline">
+          <ClockCompact
+            remaining={remaining}
+            hasBaseline={model.hasBaseline}
+            overdue={overdue}
+            expanded={expanded}
+            onToggle={() => setExpanded((open) => !open)}
+          />
+          <span className="tc-clock-alpha">(Alpha)</span>
+        </div>
       </div>
 
       <div className="tc-clock-expander" role="group" aria-hidden={!expanded}>

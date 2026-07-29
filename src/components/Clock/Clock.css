@@ -51,6 +51,22 @@
   align-items: flex-start;
   gap: 4px;
 }
+/* The countdown and its pre-release marker, on one line. */
+.tc-clock-headline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.tc-clock-alpha {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #d9a441; /* amber — pre-release marker */
+  white-space: nowrap;
+}
+
 .tc-clock-window-label {
   font-size: 10px;
   letter-spacing: 0.08em;
