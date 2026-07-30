@@ -110,8 +110,13 @@ camera or pagination path.
   and it passes a `|v| = R` check.
 - Render-on-demand: no unconditional rAF. `requestRender()` is called on actual
   change only.
-- Grey/untinted geography means _no data_ and must stay distinguishable from
-  purple, which means _documented opposing forces_.
+- **Untinted geography means _no data_** and must stay distinguishable from the
+  contested violet, which means _documented opposing forces_. Both sit at P ≈ 0;
+  the evidence channel W is what separates them, and that separation is the whole
+  reason the field carries two channels rather than one. (This rule used to say
+  "grey" — the no-data state was once a flat inert grey. It has been plain
+  geography for some time; `COLOR_INERT_GREY` and its uniform were removed once
+  it became clear they had been allocated but unsampled for a while.)
 - Ingested factors land `pending` and stay out of the field bake and the Clock
   aggregate until the reputability gate promotes them.
 - The submission schema is `.strict()` on purpose: `effect`, `significance`,

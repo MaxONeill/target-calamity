@@ -126,8 +126,12 @@ export class Coastlines {
 
   constructor(options: CoastlinesOptions) {
     const radius = options.radius * (options.lift ?? SURFACE_LIFT);
-    const color = options.color ?? 0x5fd0d8;
-    const opacity = options.opacity ?? 0.55;
+    // Dimmed from 0x5fd0d8 / 0.55. The old cyan measured relative luminance
+    // 0.525 — second only to the polar ice, and brighter than any data on the
+    // globe. Coastlines are a reference grid; they should sit under the reading,
+    // not glow over it.
+    const color = options.color ?? 0x3f8a96;
+    const opacity = options.opacity ?? 0.42;
 
     // TopoJSON → GeoJSON MultiLineString of all coastline arcs.
     const topology = landTopo110m as unknown as Topology<{ land: GeometryCollection }>;
@@ -149,7 +153,11 @@ export class Coastlines {
       // occludes the far-side coastlines (the back of the Earth stays hidden).
       depthWrite: false,
       depthTest: true,
-      blending: THREE.AdditiveBlending,
+      // NORMAL blending, not additive. Additive meant the lines could only ever
+      // brighten what was beneath them, so a coastline over dark ocean lit up
+      // and there was no dimming it without making it vanish over land. Normal
+      // blending lets the colour and opacity above actually govern how it reads.
+      blending: THREE.NormalBlending,
     });
 
     this.lines = new THREE.LineSegments(this.geometry, this.material);

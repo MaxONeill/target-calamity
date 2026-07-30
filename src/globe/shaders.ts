@@ -7,12 +7,22 @@
  *
  * The fragment shader does not loop over factors. It samples the pre-baked
  * two-channel field texture (R = net polarity P, G = evidence density W) and
- * applies the three-state color model, gating hue on W so that absence of data
- * and contested equilibrium — which both sit at P ≈ 0 — never render alike:
- *   W < W_min            → INERT GREY  (off-ramp unlit baseline ~#3A3A42)
- *   W >= W_min           → hue = ramp(P), crimson(−1)–purple(0)–blue(+1),
- *                          saturation = smoothstep(W_min, W_full, W)
- * so genuine contested equilibrium is vivid purple and absence-of-data is grey.
+ * gates hue on W, so that absence of data and contested equilibrium — which both
+ * sit at P ≈ 0 — never render alike:
+ *   W < W_min   → PLAIN GEOGRAPHY. The field contributes nothing; you read ocean,
+ *                 land, rock and ice. This is the no-data state.
+ *   W >= W_min  → hue = ramp(P), Calamity(−1)–contested(0)–Humanity(+1), mixed
+ *                 into the geography with a strength that climbs in log space
+ *                 between HALO_RIM and HALO_PEAK.
+ * So genuine contested equilibrium is a distinct violet and absence-of-data is
+ * untinted terrain.
+ *
+ * HISTORICAL NOTE, because the previous wording outlived the code by a long way:
+ * the no-data state used to be a flat INERT GREY, and this header described that
+ * for some time after the shader had stopped using it. `COLOR_INERT_GREY`, the
+ * `uGrey` uniform and `W_FULL` were all still exported and allocated while
+ * touching no pixel; they have been removed. If you are looking for grey because
+ * a comment or a test name sent you here, this is why it is not there.
  */
 import * as THREE from 'three';
 
@@ -20,30 +30,61 @@ import * as THREE from 'three';
 /* Color model (shared with PinLayer)                                         */
 /* -------------------------------------------------------------------------- */
 
-/** Ramp anchor: pure Calamity (P = −1). Luminous crimson. */
-export const COLOR_CRIMSON: [number, number, number] = [0.85, 0.16, 0.28];
-/** Ramp midpoint (P = 0): deep purple — contested equilibrium (only behind the W gate). */
-export const COLOR_PURPLE: [number, number, number] = [0.42, 0.17, 0.55];
-/** Ramp anchor: pure Humanity (P = +1). Electric blue. */
-export const COLOR_BLUE: [number, number, number] = [0.18, 0.62, 0.98];
-/** Off-ramp baseline for W < W_min: inert grey ≈ #3A3A42 (absence of data, not a finding). */
-export const COLOR_INERT_GREY: [number, number, number] = [0.227, 0.227, 0.259];
+/*
+ * THE RAMP: deep, not desaturated.
+ *
+ * The previous anchors read as bright pastel against a dark instrument panel,
+ * which is the wrong register for the subject. The instinct is to mute them, and
+ * that turns out to be unavailable: every desaturated candidate collapsed the
+ * violet midpoint into the Humanity blue (normal-vision ΔE 10–13.6 against a
+ * floor of 15 — two colours a full-colour reader cannot reliably tell apart).
+ * The saturation is what buys the separation.
+ *
+ * "Pastel" is a LIGHTNESS problem here, not a chroma one. The old blue sat at
+ * OKLCH L 0.681 and the old violet at 0.428 — one too light to be sober, the
+ * other too dark to be seen. These three hold their chroma and sit together
+ * inside the 0.48–0.67 band.
+ *
+ * Validated with the dataviz palette checker against the space background
+ * (#08080b), all-pairs — because on a globe any two of these can end up side by
+ * side. Worst pair ΔE 9.6 under deuteranopia (target 8) and 18.8 under normal
+ * vision (floor 15). Re-run it before nudging any of them:
+ *   validate_palette.js "#b8283c,#7c3a9e,#2a7fc4" --mode dark --surface "#08080b" --pairs all
+ */
+
+/** Ramp anchor: pure Calamity (P = −1). Deep oxide red. */
+export const COLOR_CRIMSON: [number, number, number] = [0.722, 0.157, 0.235];
+/** Ramp midpoint (P = 0): contested equilibrium — only ever seen behind the W gate. */
+export const COLOR_PURPLE: [number, number, number] = [0.486, 0.227, 0.62];
+/** Ramp anchor: pure Humanity (P = +1). Cold steel blue. */
+export const COLOR_BLUE: [number, number, number] = [0.165, 0.498, 0.769];
 
 /**
- *  geographic base colors. Ocean is a deep, desaturated blue (#123a63) —
- * deliberately darker/greyer than the field's Humanity blue (#2e9ef7) so a blue
- * ocean can never be mistaken for a strong-Humanity reading. Land is a muted
- * green (#2f6b3a) that reads as terrain under the cyan coastline lines.
+ * Geographic base colours, deliberately dimmer than anything the data draws.
+ *
+ * These are DESATURATED, and that is doing measurable work rather than taste. The
+ * field tints by mixing toward a ramp colour, so how visible a tint is depends on
+ * how far the geography already sits from it. Against the previous saturated
+ * green land, a Humanity-blue tint at the reduced strength measured only ΔE 4.4
+ * in OKLab — indistinguishable from untinted terrain, which would have collapsed
+ * exactly the evidence-vs-absence distinction the two-channel field exists to
+ * protect. Greying the geography buys that separation back without turning the
+ * wash up: the same tint now measures ΔE 8.0.
+ *
+ * Spend saturation on the data, not the basemap.
+ *
+ * Ocean also stays far darker and greyer than the Humanity blue, so a blue ocean
+ * can never be mistaken for a strong-Humanity reading.
  */
-export const COLOR_OCEAN: [number, number, number] = [0.071, 0.227, 0.388];
-export const COLOR_LAND: [number, number, number] = [0.184, 0.42, 0.227];
+export const COLOR_OCEAN: [number, number, number] = [0.072, 0.112, 0.158];
+export const COLOR_LAND: [number, number, number] = [0.152, 0.223, 0.175];
 
 /**
  *  elevation ramp — high ground. A muted, desaturated brown for exposed
  * rock/soil above the vegetated lowlands, sitting between {@link COLOR_LAND} and
  * {@link COLOR_ICE} on the green→brown→white climb.
  */
-export const COLOR_MOUNTAIN: [number, number, number] = [0.42, 0.33, 0.22];
+export const COLOR_MOUNTAIN: [number, number, number] = [0.29, 0.265, 0.225];
 
 /**
  *  elevation-ramp thresholds, in units of the ELEVATION FRACTION
@@ -69,8 +110,15 @@ export const ELEV_SNOW_FULL = 0.07;
  * (|sin lat| from SNOW_START → SNOW_FULL ≈ lat 55° → 68°), so polar landmasses —
  * Antarctica, Greenland, the Arctic fringe — read as ice/snow rather than green.
  * Tunable: lower SNOW_START to push the snow line toward the equator.
+ *
+ * TONED DOWN, twice. At [0.9, 0.93, 0.97] the caps measured relative luminance
+ * 0.841 — seven times the land and twenty times the ocean, making the poles the
+ * brightest object on screen and the single largest contributor to the globe
+ * reading as "bright". A first pass to 0.751 still left them 1.7x the brightest
+ * pin. At 0.631 the ice is still plainly the lightest terrain, and the data is
+ * no longer competing with the weather for attention.
  */
-export const COLOR_ICE: [number, number, number] = [0.9, 0.93, 0.97];
+export const COLOR_ICE: [number, number, number] = [0.6, 0.635, 0.68];
 export const SNOW_START = 0.82; // |sin lat| ≈ 55°
 export const SNOW_FULL = 0.93; // |sin lat| ≈ 68°
 
@@ -81,7 +129,18 @@ export const SNOW_FULL = 0.93; // |sin lat| ≈ 68°
  * it, so a green/blue Earth stays visible under a contained pin halo. The W gate
  * still keeps no-data areas as pure geography. Tunable knob.
  */
-export const FIELD_STRENGTH_CAP = 0.6;
+export const FIELD_STRENGTH_CAP = 0.35;
+/*
+ * Lowered from 0.6. The surface wash is now CONTEXT: it still shows where the
+ * evidence clusters, but the pins are the sharp layer.
+ *
+ * 0.35 IS A FLOOR, NOT A PREFERENCE. Lowering the wash narrows the gap between a
+ * tinted surface and an untinted one, which is the evidence-vs-absence
+ * distinction the two-channel field exists for. Measured in OKLab against the
+ * basemap, the weakest tint/no-tint pair runs: 0.22 → ΔE 4.4 (indistinguishable),
+ * 0.30 → 7.0, 0.35 → 8.0 (adequate). It was tried at 0.22 first and put back.
+ * If you lower this, measure that pair again; correctness outranks the look.
+ */
 
 /**
  * Ceiling on the placeless-factor wash.
@@ -92,13 +151,22 @@ export const FIELD_STRENGTH_CAP = 0.6;
  * located here" and only a flat, even shift means "global factors". Raising
  * this materially would start to erase that distinction.
  */
-export const GLOBAL_TINT_CAP = 0.18;
+export const GLOBAL_TINT_CAP = 0.1;
+/*
+ * Lowered from 0.18, holding its ~0.3 ratio to the local cap. FORCED rather than cosmetic. The rule above
+ * is that the spatially-varying local field must stay visually dominant, so a
+ * varying tint means "evidence located here" and only a flat, even shift means
+ * "global factors". Leaving this at 0.18 while the local cap dropped to 0.22
+ * would make the two nearly equal and erase that distinction — the flat wash
+ * would read as local evidence everywhere. The RATIO is what matters; move both
+ * or neither.
+ */
 
 /**
  * Radial attenuation window. The field kernel `W ∝ 1/dᵏ` (k=2.5, eps=0.05)
  * has a huge dynamic range — across one 8° halo `W` runs ~120 at the rim to ~1600
- * at the pin — so a `smoothstep(W_MIN, W_FULL, W)` saturates and the halo reads as
- * a flat disc. Instead the tint is mapped in LOG space between these two densities
+ * at the pin — so a linear ramp between the gate and full density saturates and
+ * the halo reads as a flat disc. Instead the tint is mapped in LOG space between these two densities
  * so the color fades smoothly from the pin centre out to the rim — it attenuates
  * as it expands. Tunable knobs:
  *   - raise `HALO_RIM` to pull the fade tighter to the pin (rim goes fainter);
@@ -109,12 +177,12 @@ export const HALO_RIM = 100;
 export const HALO_PEAK = 1200;
 
 /**
- * Evidence-gate uniforms. Units of Σ S/d²; re-tune if the effect or
- * significance domains change. `W_MIN` is the grey↔colored threshold; `W_FULL`
- * the density at which saturation reaches 1.
+ * Evidence gate. Units of Σ S/d²; re-tune if the effect or significance domains
+ * change. `W_MIN` is the threshold between plain geography and a tinted surface
+ * — the line between "no evidence here" and "evidence here", which is the whole
+ * reason the field carries two channels rather than one.
  */
 export const W_MIN = 0.05;
-export const W_FULL = 1.0;
 
 /**
  * The ±0.5 ramp thresholds from : |P| ≥ RAMP_EDGE saturates to a pure
@@ -131,7 +199,6 @@ export const COLORS = {
   crimson: () => toColor(COLOR_CRIMSON),
   purple: () => toColor(COLOR_PURPLE),
   blue: () => toColor(COLOR_BLUE),
-  inertGrey: () => toColor(COLOR_INERT_GREY),
 };
 
 /**
@@ -215,7 +282,6 @@ precision highp float;
 uniform sampler2D uField;   // R = net polarity P, G = evidence density W
 uniform sampler2D uLandMask; // R = land fraction (1 = land, 0 = ocean)
 uniform float uWMin;
-uniform float uWFull;
 uniform float uRampEdge;
 uniform float uFieldCap;    //  cap on field tint over the geographic base
 uniform vec3  uGlobalTint;  // ramp color of the placeless-factor aggregate
@@ -365,7 +431,6 @@ export interface GlobeUniforms {
   uField: { value: THREE.Texture | null };
   uLandMask: { value: THREE.Texture | null };
   uWMin: { value: number };
-  uWFull: { value: number };
   uRampEdge: { value: number };
   uFieldCap: { value: number };
   uGlobalTint: { value: THREE.Color };
@@ -373,7 +438,6 @@ export interface GlobeUniforms {
   uCrimson: { value: THREE.Vector3 };
   uPurple: { value: THREE.Vector3 };
   uBlue: { value: THREE.Vector3 };
-  uGrey: { value: THREE.Vector3 };
   uOceanColor: { value: THREE.Vector3 };
   uLandColor: { value: THREE.Vector3 };
   uMountainColor: { value: THREE.Vector3 };
@@ -388,7 +452,6 @@ export function createGlobeUniforms(): GlobeUniforms {
     uField: { value: null },
     uLandMask: { value: null },
     uWMin: { value: W_MIN },
-    uWFull: { value: W_FULL },
     uRampEdge: { value: RAMP_EDGE },
     uFieldCap: { value: FIELD_STRENGTH_CAP },
     uGlobalTint: { value: new THREE.Color(0, 0, 0) },
@@ -396,7 +459,6 @@ export function createGlobeUniforms(): GlobeUniforms {
     uCrimson: { value: new THREE.Vector3(...COLOR_CRIMSON) },
     uPurple: { value: new THREE.Vector3(...COLOR_PURPLE) },
     uBlue: { value: new THREE.Vector3(...COLOR_BLUE) },
-    uGrey: { value: new THREE.Vector3(...COLOR_INERT_GREY) },
     uOceanColor: { value: new THREE.Vector3(...COLOR_OCEAN) },
     uLandColor: { value: new THREE.Vector3(...COLOR_LAND) },
     uMountainColor: { value: new THREE.Vector3(...COLOR_MOUNTAIN) },

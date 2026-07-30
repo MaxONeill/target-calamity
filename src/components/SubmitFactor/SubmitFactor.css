@@ -15,8 +15,6 @@
   --tc-text: #c8c8d0;
   --tc-text-dim: #8b8b98;
   --tc-text-faint: #5a5a66;
-  --tc-humanity: #37b6ff;
-  --tc-calamity: #ff3b5c;
   --tc-pending: #d9a441;
   --tc-radius: 3px;
   --tc-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'Cascadia Code', Menlo, Consolas, monospace;
@@ -283,10 +281,10 @@
 
 .tc-status-submit {
   appearance: none;
-  border: 1px solid rgba(55, 182, 255, 0.35);
+  border: 1px solid rgba(42, 127, 196, 0.35);
   border-radius: 3px;
-  background: rgba(55, 182, 255, 0.08);
-  color: #37b6ff;
+  background: rgba(42, 127, 196, 0.08);
+  color: var(--tc-humanity);
   font: inherit;
   font-size: 10px;
   letter-spacing: 0.12em;
@@ -298,11 +296,11 @@
 }
 
 .tc-status-submit:hover {
-  background: rgba(55, 182, 255, 0.16);
+  background: rgba(42, 127, 196, 0.16);
 }
 
 .tc-status-submit:focus-visible {
-  outline: 1px solid #37b6ff;
+  outline: 1px solid var(--tc-humanity);
   outline-offset: 2px;
 }
 

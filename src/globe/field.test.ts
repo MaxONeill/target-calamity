@@ -2,7 +2,7 @@
  * Unit tests for the CPU field kernel (field.ts is the  test target). These
  * assert the two-field, three-state model and the  baker↔pin
  * inverse — including the acceptance test that a single Calamity factor paints a
- * red patch with grey everywhere else and ZERO purple.
+ * red patch with UNTINTED geography everywhere else and ZERO contested violet.
  */
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
@@ -31,7 +31,7 @@ describe('kernel (accumulateAt)', () => {
     expect(b.P).toBeCloseTo(-1, 6); // P independent of eps
   });
 
-  it('returns W = 0 (grey) outside the angular support', () => {
+  it('returns W = 0 (untinted) outside the angular support', () => {
     const pins = toPinVecs([CALAMITY]);
     const far = latLonToVector3(0, 90, 1); // 90° away, well past θ_max = 15°
     const r = accumulateAt(far, pins);
@@ -112,7 +112,7 @@ describe('bake (acceptance: one Calamity factor at (0,0))', () => {
     expect(litCount).toBeGreaterThan(0); // there IS a red patch
   });
 
-  it('leaves the far side inert grey (W < W_min)', () => {
+  it('leaves the far side untinted (W < W_min)', () => {
     // Antipode texel (lon ≈ 180, lat ≈ 0).
     const grid = bakeFieldData([CALAMITY], DEFAULT_FIELD_PARAMS, w, h);
     const y = Math.floor(h / 2);

@@ -45,13 +45,13 @@
 }
 
 .tc-card--selected.tc-card--calamity {
-  box-shadow: inset 0 0 0 1px rgba(255, 59, 92, 0.25);
+  box-shadow: inset 0 0 0 1px rgba(184, 40, 60, 0.25);
 }
 .tc-card--selected.tc-card--humanity {
-  box-shadow: inset 0 0 0 1px rgba(55, 182, 255, 0.25);
+  box-shadow: inset 0 0 0 1px rgba(42, 127, 196, 0.25);
 }
 .tc-card--selected.tc-card--neutral {
-  box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.25);
+  box-shadow: inset 0 0 0 1px rgba(124, 58, 158, 0.25);
 }
 
 /* ---- card header row ---- */
@@ -171,12 +171,12 @@
 
 .tc-effectbar__fill--neg {
   right: 50%;
-  background: linear-gradient(90deg, var(--tc-calamity) 0%, rgba(255, 59, 92, 0.55) 100%);
+  background: linear-gradient(90deg, var(--tc-calamity) 0%, rgba(184, 40, 60, 0.55) 100%);
 }
 
 .tc-effectbar__fill--pos {
   left: 50%;
-  background: linear-gradient(90deg, rgba(55, 182, 255, 0.55) 0%, var(--tc-humanity) 100%);
+  background: linear-gradient(90deg, rgba(42, 127, 196, 0.55) 0%, var(--tc-humanity) 100%);
 }
 
 .tc-metric__value--calamity {

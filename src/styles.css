@@ -24,10 +24,18 @@
   --tc-ink-dim: #8b8f9e;
   --tc-ink-faint: #5b5f6e;
 
-  /* Semantic accents — shared with the field ramp. */
-  --tc-calamity: #d92947; /* crimson  — negative effect */
-  --tc-humanity: #2e9ef7; /* electric blue — positive effect */
-  --tc-equilibrium: #6b2c8c; /* contested purple */
+  /*
+   * Semantic accents — THE field ramp, not a copy of it. These mirror
+   * COLOR_CRIMSON / COLOR_BLUE / COLOR_PURPLE in src/globe/shaders.ts, which is
+   * the source of truth; nothing enforces the match, so change both together.
+   *
+   * Four stylesheets used to shadow these with brighter values of their own, so
+   * --tc-calamity resolved to a different red depending on which subtree you
+   * were in and the sidebar never matched the globe. They now inherit.
+   */
+  --tc-calamity: #b8283c; /* deep oxide red — negative effect */
+  --tc-humanity: #2a7fc4; /* cold steel blue — positive effect */
+  --tc-equilibrium: #7c3a9e; /* contested violet */
   --tc-signal: #c8b26a; /* amber — advisory / pending */
   --tc-live: #3fbf7f; /* green — live stream */
 
@@ -64,7 +72,7 @@ body {
 }
 
 ::selection {
-  background: rgba(46, 158, 247, 0.32);
+  background: rgba(42, 127, 196, 0.32);
   color: #fff;
 }
 

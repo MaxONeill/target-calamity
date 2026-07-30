@@ -117,8 +117,8 @@
 
 .tc-explainer-close:hover,
 .tc-explainer-close:focus-visible {
-  color: #d8465b;
-  border-color: #d8465b;
+  color: var(--tc-calamity);
+  border-color: var(--tc-calamity);
   outline: none;
 }
 

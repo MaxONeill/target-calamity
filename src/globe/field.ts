@@ -187,7 +187,8 @@ export function toPinVecs(pins: readonly FieldInputPin[]): FieldPinVec[] {
 /**
  * Reference kernel evaluated at a single unit direction — the ground truth the
  * baked grid must reproduce texel-for-texel. Returns the two fields (W, P);
- * `P = 0` when `W = 0` (no pin in support), which the color gate treats as grey.
+ * `P = 0` when `W = 0` (no pin in support), which the colour gate renders as
+ * untinted geography.
  *
  * @param dir   a UNIT direction on the sphere
  * @param pins  pins in unit-vector form (see {@link toPinVecs})
@@ -321,7 +322,7 @@ export function bakeFieldData(
     }
   }
 
-  // P = Σ E_i·w_i / W, undefined→0 where W = 0 (grey behind the gate).
+  // P = Σ E_i·w_i / W, undefined→0 where W = 0 (untinted behind the gate).
   const polarity = new Float32Array(texelCount);
   for (let idx = 0; idx < texelCount; idx++) {
     const wSum = density[idx]!;

@@ -23,11 +23,6 @@
   --tc-text-dim: #8b8b98;
   --tc-text-faint: #5a5a66;
 
-  /* polarity — matches the globe ramp endpoints */
-  --tc-calamity: #ff3b5c; /* negative effect, "Pure Red" */
-  --tc-humanity: #37b6ff; /* positive effect, "Electric Blue" */
-  --tc-equilibrium: #8b5cf6; /* purple, contested/near-zero */
-
   /* status */
   --tc-pending: #d9a441; /* amber — unreviewed / machine-extracted */
   --tc-warn: #d9a441;
@@ -334,7 +329,7 @@
 .tc-cite__link {
   color: var(--tc-humanity);
   text-decoration: none;
-  border-bottom: 1px solid rgba(55, 182, 255, 0.35);
+  border-bottom: 1px solid rgba(42, 127, 196, 0.35);
   overflow-wrap: anywhere;
 }
 
