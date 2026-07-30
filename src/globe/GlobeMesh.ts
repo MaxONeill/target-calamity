@@ -69,6 +69,26 @@ export interface GlobeMeshOptions {
   elevation?: GlobeElevation;
 }
 
+/**
+ * Draw the wireframe etch over the shaded faces.
+ *
+ * OFF. The etch reads as structure rather than data — it is the same field
+ * colour as the faces underneath, boosted, so it adds no information the
+ * surface was not already carrying, and at detail 100 it lays ~600k line
+ * segments over the planet. The result was busy in a way that competed with the
+ * pins, which ARE the data.
+ *
+ * Kept as a switch rather than deleted: it is the globe's original look and the
+ * call is aesthetic, so it should be one boolean to get back, not an archaeology
+ * exercise. Turning it on also restores the per-terrain-load rebuild below.
+ *
+ * Annotated `: boolean` deliberately. Left as an inferred `false` literal,
+ * TypeScript narrows every guarded branch to dead code and the linter reports
+ * the guards as always-falsy — which would make flipping this to `true` a
+ * larger edit than flipping a boolean.
+ */
+const SHOW_WIREFRAME: boolean = false;
+
 export class GlobeMesh {
   readonly radius: number;
 
@@ -76,9 +96,9 @@ export class GlobeMesh {
   private readonly material: THREE.ShaderMaterial;
   private readonly uniforms: GlobeUniforms;
   private readonly mesh: THREE.Mesh;
-  private wireGeometry: THREE.WireframeGeometry;
-  private readonly wireMaterial: THREE.ShaderMaterial;
-  private readonly wire: THREE.LineSegments;
+  private wireGeometry: THREE.WireframeGeometry | null = null;
+  private readonly wireMaterial: THREE.ShaderMaterial | null = null;
+  private readonly wire: THREE.LineSegments | null = null;
   private readonly baker: FieldBaker;
   /** Undisplaced (base-sphere) vertex positions — the origin for every re-displace. */
   private readonly basePositions: Float32Array;
@@ -128,24 +148,26 @@ export class GlobeMesh {
     // tinting toward the Calamity/Humanity color where the field has coverage.
     // Drawn after the faces, no depth write so it doesn't fight the field;
     // depthTest keeps the far side occluded.
-    this.wireGeometry = new THREE.WireframeGeometry(this.geometry);
-    this.wireMaterial = new THREE.ShaderMaterial({
-      glslVersion: THREE.GLSL3,
-      // Spread shares the SAME IUniform value objects as the face material.
-      uniforms: {
-        ...(this.uniforms as unknown as Record<string, THREE.IUniform>),
-        uLineBoost: { value: LINE_BOOST },
-      },
-      vertexShader,
-      fragmentShader: lineFragmentShader,
-      transparent: false,
-      depthWrite: false,
-      depthTest: true,
-    });
-    this.wire = new THREE.LineSegments(this.wireGeometry, this.wireMaterial);
-    this.wire.name = 'globe-wire';
-    this.wire.renderOrder = 1;
-    this.mesh.add(this.wire);
+    if (SHOW_WIREFRAME) {
+      this.wireGeometry = new THREE.WireframeGeometry(this.geometry);
+      this.wireMaterial = new THREE.ShaderMaterial({
+        glslVersion: THREE.GLSL3,
+        // Spread shares the SAME IUniform value objects as the face material.
+        uniforms: {
+          ...(this.uniforms as unknown as Record<string, THREE.IUniform>),
+          uLineBoost: { value: LINE_BOOST },
+        },
+        vertexShader,
+        fragmentShader: lineFragmentShader,
+        transparent: false,
+        depthWrite: false,
+        depthTest: true,
+      });
+      this.wire = new THREE.LineSegments(this.wireGeometry, this.wireMaterial);
+      this.wire.name = 'globe-wire';
+      this.wire.renderOrder = 1;
+      this.mesh.add(this.wire);
+    }
 
     // Apply the initial displacement (fallback or real) if one was supplied.
     if (options.elevation) this.displace(options.elevation);
@@ -236,11 +258,15 @@ export class GlobeMesh {
     this.geometry.computeVertexNormals();
 
     // Rebuild the wireframe overlay from the displaced positions so the etch
-    // follows the terrain rather than the pristine sphere.
-    const nextWire = new THREE.WireframeGeometry(this.geometry);
-    this.wire.geometry = nextWire;
-    this.wireGeometry.dispose();
-    this.wireGeometry = nextWire;
+    // follows the terrain rather than the pristine sphere. Skipped entirely
+    // when the etch is off: regenerating every edge of a 204k-face icosphere is
+    // the most expensive thing that happens on a terrain load.
+    if (this.wire && this.wireGeometry) {
+      const nextWire = new THREE.WireframeGeometry(this.geometry);
+      this.wire.geometry = nextWire;
+      this.wireGeometry.dispose();
+      this.wireGeometry = nextWire;
+    }
   }
 
   /**
@@ -274,8 +300,8 @@ export class GlobeMesh {
     this.listeners.clear();
     this.geometry.dispose();
     this.material.dispose();
-    this.wireGeometry.dispose();
-    this.wireMaterial.dispose();
+    this.wireGeometry?.dispose();
+    this.wireMaterial?.dispose();
     this.baker.dispose();
   }
 }
