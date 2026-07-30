@@ -73,6 +73,7 @@ function toPins(rows: readonly FieldRow[]): FieldPin[] {
     .filter((r): r is FieldRow & { lat: number; lon: number } => r.lat !== null && r.lon !== null)
     .map((r) => ({
       id: r.id,
+      name: r.name,
       effect: r.effect,
       significance: r.significance,
       lat: r.lat,

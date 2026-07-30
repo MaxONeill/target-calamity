@@ -84,7 +84,7 @@ export const COLOR_LAND: [number, number, number] = [0.152, 0.223, 0.175];
  * rock/soil above the vegetated lowlands, sitting between {@link COLOR_LAND} and
  * {@link COLOR_ICE} on the green→brown→white climb.
  */
-export const COLOR_MOUNTAIN: [number, number, number] = [0.29, 0.265, 0.225];
+export const COLOR_MOUNTAIN: [number, number, number] = [0.21, 0.155, 0.105];
 
 /**
  *  elevation-ramp thresholds, in units of the ELEVATION FRACTION
@@ -93,17 +93,22 @@ export const COLOR_MOUNTAIN: [number, number, number] = [0.29, 0.265, 0.225];
  * green → brown over [BROWN_START, BROWN_FULL] and then brown → ice over
  * [SNOW_START, SNOW_FULL].
  *
- * CALIBRATION IS TIED TO {@link DEFAULT_EXAGGERATION} (120) — GlobeMesh maps
- * `offset = (meters / EARTH_RADIUS_M) · exaggeration · R`, so with a grid max of
- * ~6379 m the fraction spans ~0 → ~0.12. Change the exaggeration and these four
- * numbers must be rescaled by the same factor or the whole planet goes white
- * (or stays green). Ocean is unaffected: displacement is floored at sea level,
- * so e = 0 there and the ocean color is chosen by the land mask regardless.
+ * CALIBRATION IS TIED TO {@link DEFAULT_EXAGGERATION} — GlobeMesh maps
+ * `offset = (meters / EARTH_RADIUS_M) · exaggeration · R`, so the fraction a
+ * given mountain reaches scales linearly with it. Change the exaggeration and
+ * these four numbers must be rescaled by the SAME factor, or the whole planet
+ * goes uniformly white (thresholds now too low) or flat green (too high).
+ *
+ * They were rescaled by 0.2 alongside the exaggeration going 120 → 24, so each
+ * colour band still lands on the same real-world elevation it always did; only
+ * the relief got flatter. Ocean is unaffected either way: displacement is
+ * floored at sea level, so e = 0 there and the ocean colour comes from the land
+ * mask regardless.
  */
-export const ELEV_BROWN_START = 0.012;
-export const ELEV_BROWN_FULL = 0.03;
-export const ELEV_SNOW_START = 0.032;
-export const ELEV_SNOW_FULL = 0.07;
+export const ELEV_BROWN_START = 0.0024;
+export const ELEV_BROWN_FULL = 0.006;
+export const ELEV_SNOW_START = 0.0064;
+export const ELEV_SNOW_FULL = 0.014;
 
 /**
  *  polar ice. Land fades to near-white toward the poles over a snow line
@@ -206,6 +211,33 @@ export const COLORS = {
  * ±0.5 saturation edge. Used to color pins by their own `effect` so a pin and
  * the field it sits in read as the same hue ( pins share 's ramp).
  */
+/**
+ * Ramp colour for a MATERIAL — pins and ring arcs.
+ *
+ * THE DIFFERENCE MATTERS AND IS NOT COSMETIC. Every colour constant in this file
+ * is authored as sRGB byte fractions (#b8283c → [0.722, 0.157, 0.235]) but
+ * three.js treats a Color's components as LINEAR working space and sRGB-encodes
+ * on output. Handed straight to a material, the authored colour therefore
+ * renders about 50% lighter than intended:
+ *
+ *   authored #b8283c → on screen #dd6e85   (washed pink)
+ *   authored #7c3a9e → on screen #b983ce   (light lavender)
+ *   authored #2a7fc4 → on screen #71bbe3   (pale sky blue)
+ *
+ * which is precisely the "bright and pastel" the pins were reported as. The
+ * surface escapes it because the field mixes into dark terrain at
+ * FIELD_STRENGTH_CAP, diluting the error until it stops showing — so the planet
+ * looked right while the pins did not, from one shared constant.
+ *
+ * Converting to linear first makes a pin render as the hex that was authored and
+ * validated. Use this for anything assigned to a material; use `rampColor` for
+ * values fed to a shader uniform, which are mixed in linear space and are
+ * already correct.
+ */
+export function rampColorMaterial(p: number, out: THREE.Color = new THREE.Color()): THREE.Color {
+  return rampColor(p, out).convertSRGBToLinear();
+}
+
 export function rampColor(p: number, out: THREE.Color = new THREE.Color()): THREE.Color {
   const purple = COLOR_PURPLE;
   if (p < 0) {

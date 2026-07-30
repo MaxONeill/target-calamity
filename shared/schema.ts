@@ -504,6 +504,14 @@ export const FactorSchema = z.object({
  */
 export const FieldPinSchema = z.object({
   id: z.string().uuid(),
+  /**
+   * Display name. Pins used to omit this — identity came from the feed when one
+   * was selected — but a hover peek has to label several pins at once, before
+   * any of them is selected, and the feed cannot be relied on to hold them: it
+   * is bounded, and in `recent` mode it is paginated. Same reasoning that
+   * already put `name` on GlobalFactorSchema for the directly-clickable ring.
+   */
+  name: z.string(),
   /** measured = a source placed it. representative = we chose a point for it. */
   locationKind: LocationKindSchema.default('measured'),
   effect: z.number().gte(-1).lte(1),

@@ -35,12 +35,23 @@ import {
 /** Mean Earth radius in meters — the denominator for the meters→radius fraction. */
 export const EARTH_RADIUS_M = 6_371_000;
 /**
- * Default vertical exaggeration. Real relief is ~0.1% of Earth's radius,
- * invisible on a globe — at 30× a 6 km peak rose only ~2.3% of the radius (barely
- * readable). 120× lifts the highest terrain ~11% so continents show clear relief.
- * Tunable knob: raise for more dramatic mountains, lower for a subtler surface.
+ * Default vertical exaggeration. Real relief is ~0.1% of Earth's radius, so it
+ * is invisible on a globe without help: at 30× a 6 km peak rises only ~2.3% of
+ * the radius.
+ *
+ * Lowered 120 → 24. At 120 the highest terrain stood ~11% of the radius off the
+ * sphere, which reads as a spiky relief model rather than a planet and competed
+ * with the pins — themselves spikes standing off the same surface. At 24 the
+ * continents still show their shape and the pins are unambiguously the things
+ * sticking out.
+ *
+ * CHANGING THIS ALONE IS A BUG. The four `ELEV_*` thresholds in shaders.ts pick
+ * the green/brown/ice bands out of the elevation FRACTION, which scales with
+ * this number; they were rescaled by the same 0.2 so each band still lands on
+ * the same real elevation. Move one without the other and the planet goes
+ * uniformly white or flat green.
  */
-export const DEFAULT_EXAGGERATION = 120;
+export const DEFAULT_EXAGGERATION = 24;
 
 /** An elevation source for the mesh displacement. */
 export interface GlobeElevation {

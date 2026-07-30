@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { GlobalFactor } from '../../shared/types.js';
-import { rampColor } from './shaders.js';
+import { rampColorMaterial } from './shaders.js';
 
 /** Ring radius as a multiple of the globe radius. */
 const RING_RADIUS = 1.42;
@@ -292,7 +292,8 @@ export class GlobalRing {
     const halfThickness = (this.#globeRadius * thickness) / 2;
     const midRadius = inner + halfThickness;
 
-    const baseColor = rampColor(factor.effect).clone();
+    // Linear, for the same reason as the pins — see rampColorMaterial.
+    const baseColor = rampColorMaterial(factor.effect).clone();
     const material = new THREE.MeshBasicMaterial({
       color: baseColor.clone(),
       side: THREE.DoubleSide,

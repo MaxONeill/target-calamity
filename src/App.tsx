@@ -1,7 +1,8 @@
 import type React from 'react';
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Clock } from './components/Clock/index.js';
 import { FactorDetails } from './components/FactorDetails/index.js';
+import { PinPeek } from './components/PinPeek/index.js';
 import { Sidebar } from './components/Sidebar/index.js';
 import { Slideout } from './components/Slideout/Slideout.js';
 import { StatusBar } from './components/StatusBar/StatusBar.js';
@@ -27,11 +28,25 @@ import type { SceneHandle } from './scene/types.js';
  * invalidation, never on a camera move, scroll, sort or selection. That is what
  * makes the rendered planet a function of the data alone.
  */
+/** Shallow, order-sensitive id comparison — the peek's list is ordered. */
+function sameIds(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((v, i) => v === b[i]);
+}
+
 export function App(): React.JSX.Element {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<SceneHandle | null>(null);
-  // Coastlines stay on; the toggle was removed from the top bar.
-  const landVisible = true;
+  /*
+   * Coastlines OFF. With the basemap greyed and the ice toned down, the outline
+   * stopped earning its place: the land/ocean boundary already reads from the
+   * colour difference, and a second line over it was one more thing between the
+   * reader and the pins.
+   *
+   * Hidden rather than removed — this is the scene's existing `setLandVisible`
+   * channel, so it is one boolean to bring them back, and `Coastlines` keeps its
+   * dimmed colour ready for that.
+   */
+  const landVisible = false;
 
   const appRef = useRef<HTMLDivElement>(null);
 
@@ -67,6 +82,28 @@ export function App(): React.JSX.Element {
   // factor's weight depend on what else happens to have been ingested.
   const scenePins = useMemo(() => withDisplayWeight(fieldPins), [fieldPins]);
   const sceneGlobalFactors = useMemo(() => withDisplayWeight(globalFactors), [globalFactors]);
+
+  /*
+   * Which pins the cursor is over, and where the cursor is. Held in React state
+   * rather than pushed imperatively into the scene, because the peek is DOM —
+   * it has to be clickable to reach an occluded pin, which a canvas overlay
+   * cannot be.
+   */
+  const [peek, setPeek] = useState<{ ids: readonly string[]; x: number; y: number }>({
+    ids: [],
+    x: 0,
+    y: 0,
+  });
+
+  const closePeek = useCallback(() => {
+    setPeek((prev) => (prev.ids.length === 0 ? prev : { ids: [], x: 0, y: 0 }));
+  }, []);
+
+  const pinsById = useMemo(() => new Map(fieldPins.map((p) => [p.id, p])), [fieldPins]);
+  const peekPins = useMemo(
+    () => peek.ids.map((id) => pinsById.get(id)).filter((p) => p !== undefined),
+    [peek.ids, pinsById],
+  );
 
   const coordsRef = useFactorCoords(fieldPins, feed.factors);
 
@@ -107,6 +144,26 @@ export function App(): React.JSX.Element {
     onHoverFactor: useCallback((id: string | null) => {
       sceneRef.current?.setHighlighted(id);
       document.body.style.cursor = id ? 'pointer' : '';
+    }, []),
+    onHoverPins: useCallback((ids: readonly string[], x: number, y: number) => {
+      /*
+       * THE ANCHOR IS LATCHED ON OPEN and never moved while the peek is up.
+       *
+       * Re-anchoring only when the pin SET changed was not enough: in a densely
+       * populated area the set changes on nearly every pointer step, so the panel
+       * re-anchored constantly and walked away from the cursor exactly as before.
+       * Content may update freely; the position may not.
+       *
+       * Nothing closes the peek from here, an empty list included. Dismissal is
+       * the panel's own business, governed by how far the cursor has travelled
+       * from its EDGES — the only rule under which the trip from pin to row is
+       * guaranteed to stay possible while the list keeps changing underneath it.
+       */
+      setPeek((prev) => {
+        if (ids.length === 0) return prev;
+        if (prev.ids.length === 0) return { ids, x, y };
+        return sameIds(prev.ids, ids) ? prev : { ...prev, ids };
+      });
     }, []),
     // The scene drops its own alignment lock on manual input; nothing on the
     // React side needs to react, so this is a no-op.
@@ -159,6 +216,17 @@ export function App(): React.JSX.Element {
           a spiked white ball on every load. Revealing on data rather than on
           mount means the first thing anyone sees is the real planet. */}
       <div className="tc-globe-mount" ref={mountRef} aria-hidden="true" data-ready={settled} />
+
+      <PinPeek
+        pins={peekPins}
+        x={peek.x}
+        y={peek.y}
+        onDismiss={closePeek}
+        onSelect={(id) => {
+          closePeek();
+          selectFactor(id, { scrollIntoView: true });
+        }}
+      />
 
       {!settled ? (
         <div className="tc-globe-loading" role="status" aria-live="polite">

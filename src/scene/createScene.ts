@@ -14,6 +14,7 @@ import {
 import { OrbitAlignment } from '../camera/alignment.js';
 import { attachInterrupt } from '../camera/interrupt.js';
 import { attachPicking } from './attachPicking.js';
+import { Starfield } from './Starfield.js';
 import { applyRealTerrain, landReliefSampler } from './terrain.js';
 import { latLonToVector3 } from '../lib/geo.js';
 import { viewerLocation } from '../lib/viewerLocation.js';
@@ -27,10 +28,14 @@ const GLOBE_DETAIL = 100;
 
 /**
  * Above-surface lift for the coastline lines. A vertex at height H metres sits
- * at radius·(1 + H·exaggeration/EARTH_RADIUS), so at exaggeration 120 a lift of
- * 1.001 only clears land below ~53 m — coastal relief above that pokes through
- * the outline. 1.006 clears ~320 m of coastal terrain while staying close enough
- * to the surface that the lines still read as sitting on it.
+ * at radius·(1 + H·exaggeration/EARTH_RADIUS), so the clearance a given lift buys
+ * scales with the exaggeration. At the original 120 a lift of 1.001 cleared only
+ * ~53 m and coastal relief poked through the outline; 1.007 cleared ~370 m.
+ *
+ * Since the exaggeration dropped to 24 the same lift clears ~1850 m, which is
+ * more headroom than the outline needs — it now floats further off the surface
+ * than intended. Moot while coastlines are hidden (see `landVisible` in App),
+ * but this wants revisiting to about 1.0015 if they come back.
  */
 const COASTLINE_LIFT = 1.007;
 
@@ -97,7 +102,10 @@ export function createScene(container: HTMLDivElement, callbacks: SceneCallbacks
   const pins = new PinLayer({ radius: GLOBE_RADIUS });
   const coastlines = new Coastlines({ radius: GLOBE_RADIUS, lift: COASTLINE_LIFT });
   const ring = new GlobalRing({ radius: GLOBE_RADIUS });
+  // Backdrop. Added first and drawn first; everything else paints over it.
+  const starfield = new Starfield();
 
+  scene.add(starfield.object3D);
   scene.add(globe.object3D);
   scene.add(pins.object3D);
   scene.add(coastlines.object3D);
@@ -229,6 +237,7 @@ export function createScene(container: HTMLDivElement, callbacks: SceneCallbacks
     globeRadius: GLOBE_RADIUS,
     onPick: callbacks.onPickFactor,
     onHover: callbacks.onHoverFactor,
+    onHoverPins: callbacks.onHoverPins,
     requestRender,
   });
 
@@ -317,6 +326,7 @@ export function createScene(container: HTMLDivElement, callbacks: SceneCallbacks
       unsubRing();
       alignment.cancel();
       rig.dispose();
+      starfield.dispose();
       globe.dispose();
       pins.dispose();
       coastlines.dispose();

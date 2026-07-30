@@ -31,6 +31,15 @@ export interface SceneCallbacks {
   onPickFactor(id: string): void;
   /** The hovered factor changed. Null when the pointer left every target. */
   onHoverFactor(id: string | null): void;
+  /**
+   * EVERY factor whose pin sits under or beside the pointer, nearest first,
+   * with the client-space cursor position to anchor a peek to.
+   *
+   * Separate from {@link onHoverFactor} because they answer different
+   * questions: that one drives the single-pin emphasis in the scene, this one
+   * drives a DOM list. Empty array when the pointer is over no pin.
+   */
+  onHoverPins(ids: readonly string[], clientX: number, clientY: number): void;
   /** Manual camera input dropped an in-flight alignment lock. */
   onInterrupt(): void;
 }

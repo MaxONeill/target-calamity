@@ -20,6 +20,8 @@ export interface UseSceneOptions {
   onPickFactor: (id: string) => void;
   /** The hovered factor changed (null when the pointer is over nothing). */
   onHoverFactor: (id: string | null) => void;
+  /** Every pin under/near the pointer, nearest first, plus the cursor position. */
+  onHoverPins: (ids: readonly string[], clientX: number, clientY: number) => void;
   onInterrupt: () => void;
 }
 
@@ -40,16 +42,19 @@ export function useScene({
   landVisible,
   onPickFactor,
   onHoverFactor,
+  onHoverPins,
   onInterrupt,
 }: UseSceneOptions): void {
   const pickRef = useRef(onPickFactor);
   const hoverRef = useRef(onHoverFactor);
+  const hoverPinsRef = useRef(onHoverPins);
   const interruptRef = useRef(onInterrupt);
   useEffect(() => {
     pickRef.current = onPickFactor;
     hoverRef.current = onHoverFactor;
+    hoverPinsRef.current = onHoverPins;
     interruptRef.current = onInterrupt;
-  }, [onPickFactor, onHoverFactor, onInterrupt]);
+  }, [onPickFactor, onHoverFactor, onHoverPins, onInterrupt]);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -58,6 +63,7 @@ export function useScene({
     const handle = createScene(mount, {
       onPickFactor: (id) => pickRef.current(id),
       onHoverFactor: (id) => hoverRef.current(id),
+      onHoverPins: (ids, x, y) => hoverPinsRef.current(ids, x, y),
       onInterrupt: () => interruptRef.current(),
     });
     sceneRef.current = handle;

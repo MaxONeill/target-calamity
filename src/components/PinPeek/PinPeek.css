@@ -1,0 +1,118 @@
+/*
+ * Hover peek: the pins under the cursor.
+ *
+ * Same dark instrument language as the feed. It floats over the canvas and
+ * follows the pointer, so it is deliberately compact and low-contrast — it is a
+ * disambiguation aid, not a panel, and the globe has to stay readable behind it.
+ */
+
+.tc-peek {
+  position: fixed;
+  z-index: 6;
+  min-width: 170px;
+  max-width: 320px;
+  padding: 6px;
+  border: 1px solid var(--tc-hairline-strong);
+  border-radius: 4px;
+  background: rgba(10, 11, 15, 0.94);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  font-family: var(--tc-mono, ui-monospace, monospace);
+  /*
+   * Pointer-interactive on purpose: clicking a row is the only way to reach a
+   * pin that is completely behind another one. The panel sits offset from the
+   * cursor so it does not land under the pointer the instant it appears.
+   */
+  pointer-events: auto;
+}
+
+.tc-peek__head,
+.tc-peek__more {
+  padding: 3px 6px;
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--tc-ink-faint);
+}
+
+.tc-peek__more {
+  border-top: 1px solid var(--tc-hairline);
+  margin-top: 3px;
+}
+
+.tc-peek__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  /*
+   * Scrolls rather than clips. The densest clusters in the live field put ~13
+   * factors under one hover, and a row you cannot reach is the exact failure
+   * this panel was built to fix — so it stays reachable even when it overflows.
+   */
+  max-height: 46vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.tc-peek__row {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  width: 100%;
+  appearance: none;
+  border: 0;
+  background: none;
+  text-align: left;
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--tc-ink);
+  padding: 4px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.tc-peek__row:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.tc-peek__dot {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  /* Redundant with the signed number beside it — colour is never the only cue. */
+  background: var(--tc-ink-faint);
+}
+.tc-peek__dot--calamity {
+  background: var(--tc-calamity);
+}
+.tc-peek__dot--humanity {
+  background: var(--tc-humanity);
+}
+.tc-peek__dot--neutral {
+  background: var(--tc-equilibrium);
+}
+
+.tc-peek__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  /* Two lines, then clip: a long factor name must not turn the peek into a wall. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.35;
+}
+
+.tc-peek__effect {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--tc-ink-dim);
+}
+.tc-peek__effect--calamity {
+  color: var(--tc-calamity);
+}
+.tc-peek__effect--humanity {
+  color: var(--tc-humanity);
+}

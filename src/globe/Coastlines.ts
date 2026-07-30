@@ -130,6 +130,10 @@ export class Coastlines {
     // 0.525 — second only to the polar ice, and brighter than any data on the
     // globe. Coastlines are a reference grid; they should sit under the reading,
     // not glow over it.
+    //
+    // A black outline was tried and abandoned: at any opacity that made it
+    // legible it read as a cartoon ink line rather than a map. If these come
+    // back on, they come back as a dim line in the palette, not as ink.
     const color = options.color ?? 0x3f8a96;
     const opacity = options.opacity ?? 0.42;
 

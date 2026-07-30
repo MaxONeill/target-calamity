@@ -13,7 +13,7 @@
 import * as THREE from 'three';
 import { latLonToVector3 } from '../lib/geo.js';
 import { DEFAULT_FIELD_PARAMS } from './field.js';
-import { rampColor } from './shaders.js';
+import { rampColorMaterial } from './shaders.js';
 
 /** Minimal pin shape — satisfied structurally by both `Factor` and `FieldPin`. */
 export interface PinInput {
@@ -82,6 +82,71 @@ void main() {
 }
 `;
 
+/**
+ * Cosine of the horizon angle for a camera at `distance` from the centre of a
+ * sphere of radius `radius`.
+ *
+ * A surface point is on the visible near side when its direction, dotted with
+ * the camera's direction, exceeds this. Everything below it is around the back
+ * of the globe.
+ */
+/**
+ * How far past the geometric horizon a pin still counts as visible.
+ *
+ * Pins stand off the surface, so one just around the limb still shows its tip.
+ * Small enough that the far hemisphere stays excluded.
+ */
+const HORIZON_BIAS = 0.04;
+
+export function horizonCos(radius: number, distance: number): number {
+  if (distance <= radius) return -1; // inside the sphere: nothing is occluded
+  return radius / distance;
+}
+
+/**
+ * Decode a square region of the GPU pick buffer into distinct factor ids,
+ * nearest to the centre first.
+ *
+ * Pure and exported because the ranking is easy to get wrong and has no visual
+ * tell: a pin covering many pixels must be ranked by its CLOSEST one, not by
+ * whichever pixel the scan happened to reach first, or a large near-miss
+ * outranks a small direct hit. The peek still lists the right pins either way —
+ * just in the wrong order, which looks fine and is wrong.
+ *
+ * ROW ORIENTATION DOES NOT MATTER HERE, which is worth stating because
+ * `readRenderTargetPixels` returns rows bottom-up and the instinct is to flip
+ * them. The region is exactly centred (`sidePx === half * 2 + 1`) and `dy` is
+ * only ever used squared, so flipping maps `dy → −dy` and leaves every distance
+ * identical. A flip was written first, and removed once a test proved it could
+ * not change the output.
+ *
+ * @param sidePx side length of the square, in device px
+ * @param half   centre offset — the pointer sits at (half, half)
+ */
+export function decodePickRegion(
+  buffer: Uint8Array,
+  sidePx: number,
+  half: number,
+  factorIds: readonly string[],
+): string[] {
+  const best = new Map<string, number>();
+  for (let row = 0; row < sidePx; row++) {
+    const dy = row - half;
+    for (let col = 0; col < sidePx; col++) {
+      const o = (row * sidePx + col) * 4;
+      const id = buffer[o]! + (buffer[o + 1]! << 8) + (buffer[o + 2]! << 16);
+      if (id === 0) continue;
+      const factorId = factorIds[id - 1];
+      if (factorId === undefined) continue;
+      const dx = col - half;
+      const d2 = dx * dx + dy * dy;
+      const prev = best.get(factorId);
+      if (prev === undefined || d2 < prev) best.set(factorId, d2);
+    }
+  }
+  return [...best.entries()].sort((a, b) => a[1] - b[1]).map(([id]) => id);
+}
+
 export class PinLayer {
   private readonly radius: number;
   private readonly baseSize: number;
@@ -102,13 +167,16 @@ export class PinLayer {
   private selectedId: string | null = null;
   /** Per-pin unit surface direction, parallel to factorIds — for halo hit-testing. */
   private haloVecs: THREE.Vector3[] = [];
+  private readonly tmpVec2 = new THREE.Vector3();
   private disposed = false;
 
   private readonly white = /* @__PURE__ */ new THREE.Color(1, 1, 1);
 
   // Offscreen picking resources (allocated lazily on first pick).
   private pickTarget: THREE.WebGLRenderTarget | null = null;
-  private readonly pickBuffer = new Uint8Array(4);
+  private pickBuffer = new Uint8Array(4);
+  /** Side length the pick target is currently sized for. */
+  private pickTargetSide = 1;
   private readonly drawSize = new THREE.Vector2();
 
   // Scratch — reused to avoid per-instance / per-pick allocation.
@@ -289,7 +357,9 @@ export class PinLayer {
     mesh.setMatrixAt(i, this.tmpMatrix);
 
     // Hue by effect sign, shared with the field ramp; brightened when emphasized.
-    rampColor(pin.effect, this.tmpColor);
+    // `rampColorMaterial`, not `rampColor` — a material colour has to be linear
+    // or three.js's output encoding renders it ~50% lighter than authored.
+    rampColorMaterial(pin.effect, this.tmpColor);
     if (emphasis.whiten > 0) this.tmpColor.lerp(this.white, emphasis.whiten);
     mesh.setColorAt(i, this.tmpColor);
   }
@@ -301,13 +371,42 @@ export class PinLayer {
   }
 
   /**
-   * GPU pick. Renders per-instance IDs to a 1×1 offscreen target at the pointer
-   * and reads the pixel back. `x`/`y` are CSS pixels from the canvas top-left.
+   * GPU pick. Renders per-instance IDs to a small offscreen target at the
+   * pointer and reads it back. `x`/`y` are CSS pixels from the canvas top-left.
    * Returns the factor id under the pointer, or null.
    */
   pick(renderer: THREE.WebGLRenderer, camera: THREE.Camera, x: number, y: number): string | null {
+    return this.pickAll(renderer, camera, x, y, 0)[0] ?? null;
+  }
+
+  /**
+   * Every distinct factor whose pin paints within `radius` CSS px of the
+   * pointer, nearest first.
+   *
+   * WHY A NEIGHBOURHOOD RATHER THAN A RAY. Pins are thin spikes and they cluster
+   * — a single pixel resolves whichever one happens to be frontmost, so an
+   * overlapping group is unselectable except by luck, and the reader has no way
+   * to know the others are there. Reading a square of the ID buffer answers the
+   * question actually being asked: what is under the cursor, all of it.
+   *
+   * A CPU raycast was the alternative and is worse here. An infinitely thin ray
+   * only finds pins it geometrically pierces, so two spikes a pixel apart —
+   * visually overlapping, which is exactly the reported case — would still
+   * return one hit.
+   *
+   * Cost is one render and one readback either way; only the rectangle grows.
+   * Ordering is by distance from the centre, so the frontmost thing under the
+   * exact pointer stays first and `pick()` is just this with radius 0.
+   */
+  pickAll(
+    renderer: THREE.WebGLRenderer,
+    camera: THREE.Camera,
+    x: number,
+    y: number,
+    radius: number,
+  ): string[] {
     const mesh = this.mesh;
-    if (this.disposed || mesh === null || mesh.count === 0) return null;
+    if (this.disposed || mesh === null || mesh.count === 0) return [];
 
     this.pickTarget ??= new THREE.WebGLRenderTarget(1, 1, {
       format: THREE.RGBAFormat,
@@ -318,16 +417,33 @@ export class PinLayer {
 
     renderer.getDrawingBufferSize(this.drawSize);
     const dpr = renderer.getPixelRatio();
-    const px = Math.floor(x * dpr);
-    const py = Math.floor(y * dpr);
-    if (px < 0 || py < 0 || px >= this.drawSize.x || py >= this.drawSize.y) {
-      return null;
+    // The rectangle is in DEVICE pixels, so a CSS-px radius covers the same
+    // apparent area on a retina display as on a plain one.
+    const half = Math.max(0, Math.round(radius * dpr));
+    const sidePx = half * 2 + 1;
+    const px = Math.floor(x * dpr) - half;
+    const py = Math.floor(y * dpr) - half;
+    if (px + sidePx <= 0 || py + sidePx <= 0 || px >= this.drawSize.x || py >= this.drawSize.y) {
+      return [];
     }
 
-    // Render only the pointer pixel via a 1×1 view offset (three's origin is
+    if (this.pickTargetSide !== sidePx) {
+      this.pickTarget.dispose();
+      this.pickTarget = new THREE.WebGLRenderTarget(sidePx, sidePx, {
+        format: THREE.RGBAFormat,
+        type: THREE.UnsignedByteType,
+        colorSpace: THREE.NoColorSpace,
+        depthBuffer: true,
+      });
+      this.pickTargetSide = sidePx;
+    }
+    const needed = sidePx * sidePx * 4;
+    if (this.pickBuffer.length < needed) this.pickBuffer = new Uint8Array(needed);
+
+    // Render only the pointer neighbourhood via a view offset (three's origin is
     // top-left, matching CSS pointer coordinates).
     const persp = camera as THREE.PerspectiveCamera;
-    persp.setViewOffset(this.drawSize.x, this.drawSize.y, px, py, 1, 1);
+    persp.setViewOffset(this.drawSize.x, this.drawSize.y, px, py, sidePx, sidePx);
 
     const prevTarget = renderer.getRenderTarget();
     const prevClear = renderer.getClearColor(this.tmpColor).clone();
@@ -340,7 +456,7 @@ export class PinLayer {
     // Render the InstancedMesh alone (it sits at world origin under the group).
     renderer.render(mesh, camera);
 
-    renderer.readRenderTargetPixels(this.pickTarget, 0, 0, 1, 1, this.pickBuffer);
+    renderer.readRenderTargetPixels(this.pickTarget, 0, 0, sidePx, sidePx, this.pickBuffer);
 
     // Restore renderer + camera state.
     mesh.material = this.displayMaterial;
@@ -348,11 +464,38 @@ export class PinLayer {
     renderer.setClearColor(prevClear, prevAlpha);
     persp.clearViewOffset();
 
-    const b = this.pickBuffer;
-    const id = b[0]! + (b[1]! << 8) + (b[2]! << 16);
-    if (id === 0) return null;
-    const index = id - 1;
-    return this.factorIds[index] ?? null;
+    /*
+     * DISCARD ANYTHING AROUND THE BACK. The pass above renders the pin mesh
+     * ALONE — no globe — so nothing occludes the far hemisphere and a pin on the
+     * other side of the planet paints into the ID buffer exactly like a near
+     * one. With a single-pixel pick that was mostly hidden, because a near pin
+     * usually won the depth test; reading a neighbourhood surfaced it, and the
+     * peek started listing factors from the opposite side of the world.
+     *
+     * Rendering the globe as a depth occluder would also work and would be more
+     * exact for terrain, but it means threading the globe mesh into the pick
+     * call. The sphere's horizon is analytic, so a dot product settles it.
+     */
+    const camPos = this.tmpVec.setFromMatrixPosition(camera.matrixWorld);
+    const camDist = camPos.length();
+    const visibleIds = new Set<string>();
+    if (camDist > 0) {
+      const camDir = this.tmpVec2.copy(camPos).divideScalar(camDist);
+      // Biased slightly past the horizon: a pin STANDS OFF the surface, so one
+      // just beyond the limb still shows its tip and should stay pickable.
+      const limit = horizonCos(this.radius, camDist) - HORIZON_BIAS;
+      for (let i = 0; i < this.haloVecs.length; i++) {
+        const surface = this.haloVecs[i];
+        const id = this.factorIds[i];
+        if (surface === undefined || id === undefined) continue;
+        if (surface.dot(camDir) <= limit) continue;
+        visibleIds.add(id);
+      }
+    }
+
+    return decodePickRegion(this.pickBuffer, sidePx, half, this.factorIds).filter((id) =>
+      visibleIds.has(id),
+    );
   }
 
   /**
@@ -364,18 +507,35 @@ export class PinLayer {
    * Returns null on bare geography (outside every halo).
    */
   pickHalo(dir: THREE.Vector3): string | null {
-    if (this.disposed) return null;
+    return this.pickHaloAll(dir)[0] ?? null;
+  }
+
+  /**
+   * EVERY factor whose painted halo covers a surface direction, closest first.
+   *
+   * The peek needs this as well as the geometry hits, because a pin's claim on
+   * the globe is not its spike — it is the area of surface its field tints. Two
+   * pins can sit far enough apart that no pixel of their markers overlaps while
+   * their halos overlap heavily, and the reader looking at that blended patch is
+   * looking at both factors. Reporting only the spikes would answer a narrower
+   * question than the one the surface is visibly posing.
+   *
+   * Same angular support as the field bake (θ_max), so what this reports is
+   * exactly what is painted — not an approximation of it.
+   */
+  pickHaloAll(dir: THREE.Vector3): string[] {
+    if (this.disposed) return [];
     const cosMax = Math.cos((DEFAULT_FIELD_PARAMS.thetaMaxDeg * Math.PI) / 180);
-    let bestDot = cosMax; // must be at least this close to count as inside a halo
-    let bestIdx = -1;
+    const hits: { id: string; dot: number }[] = [];
     for (let i = 0; i < this.haloVecs.length; i++) {
       const dot = dir.dot(this.haloVecs[i]!);
-      if (dot > bestDot) {
-        bestDot = dot;
-        bestIdx = i;
-      }
+      // Larger dot = smaller angle = closer to the pin at the halo's centre.
+      if (dot <= cosMax) continue;
+      const id = this.factorIds[i];
+      if (id === undefined) continue;
+      hits.push({ id, dot });
     }
-    return bestIdx >= 0 ? (this.factorIds[bestIdx] ?? null) : null;
+    return hits.sort((a, b) => b.dot - a.dot).map((h) => h.id);
   }
 
   /** Subscribe to redraw requests. Returns an unsubscribe function. */
