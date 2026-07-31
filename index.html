@@ -4,10 +4,21 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#08080b" />
+
+    <title>Target: Calamity — a live map and countdown of global tipping points</title>
     <meta
       name="description"
-      content="Target: Calamity — an empirical, non-linear reality tracker measuring humanity's window of viable course-correction against cascading systemic tipping points."
+      content="A live map of the forces pushing the world toward crisis and the ones pushing back, with a countdown to the earliest published point of no return."
     />
+    <!--
+      max-image-preview:large is what lets the social card show at full size in
+      results rather than as a thumbnail. index,follow is the default; it is
+      stated because the server sends X-Robots-Tag: noindex on the SPA fallback
+      for unknown paths, and it should be obvious that the real page opts in.
+    -->
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+
     <!--
       The canonical address. The .com is registered defensively and the server
       308s it here (CANONICAL_HOST), so this is belt-and-braces — it also covers
@@ -15,7 +26,67 @@
       cached copy or a crawler that indexed the other host first.
     -->
     <link rel="canonical" href="https://targetcalamity.org/" />
-    <title>Target: Calamity</title>
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/icon-512.png" sizes="512x512" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!--
+      Link previews. These are the whole first impression on Hacker News, Reddit
+      and every chat app, and they are read by crawlers that never execute the
+      bundle — so the card has to be static HTML, not something the app sets on
+      mount. Absolute URLs are required: scrapers do not resolve relative ones.
+    -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Target: Calamity" />
+    <meta property="og:url" content="https://targetcalamity.org/" />
+    <meta
+      property="og:title"
+      content="Target: Calamity — a live map and countdown of global tipping points"
+    />
+    <meta
+      property="og:description"
+      content="A live map of the forces pushing the world toward crisis and the ones pushing back, with a countdown to the earliest published point of no return."
+    />
+    <meta property="og:image" content="https://targetcalamity.org/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="A dark planet ringed by red, violet and blue arcs, beside the words Target: Calamity."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Target: Calamity — a live map and countdown of global tipping points"
+    />
+    <meta
+      name="twitter:description"
+      content="A live map of the forces pushing the world toward crisis and the ones pushing back, with a countdown to the earliest published point of no return."
+    />
+    <meta name="twitter:image" content="https://targetcalamity.org/og.png" />
+
+    <!--
+      Structured data. Deliberately thin: name, purpose, free access. No author,
+      no rating, no datePublished — each of those would be a claim nothing here
+      backs up, and a knowingly wrong one is worse than an absent one.
+      type="application/ld+json" is a data block rather than executable script,
+      so the CSP's script-src 'self' does not apply to it.
+    -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Target: Calamity",
+        "url": "https://targetcalamity.org/",
+        "applicationCategory": "https://schema.org/BrowserApplication",
+        "browserRequirements": "Requires JavaScript and WebGL.",
+        "isAccessibleForFree": true,
+        "inLanguage": "en",
+        "description": "An empirical tracker that maps documented forces pushing the world toward crisis and the ones pushing back onto a 3D globe, and counts down to the earliest published estimate of an irreversible threshold."
+      }
+    </script>
+
     <style>
       /* Boot-time baseline so there is no white flash before the app mounts.
          The application owns all real styling; this is only the dark canvas. */
@@ -41,6 +112,100 @@
   </head>
   <body>
     <div id="root"></div>
+
+    <!--
+      The page is a WebGL canvas, so without JavaScript there is nothing here at
+      all: an empty <div> to a reader with scripting off, and to every crawler
+      and link scraper that does not execute a bundle. This block is what those
+      read instead.
+
+      It describes the same thing the app shows, in the same words, and makes no
+      claim the app does not make — no countdown figure, no factor count. Those
+      are live values, and a number frozen into static HTML would be stale the
+      day after it shipped while looking exactly like a current one. Text
+      written for crawlers that differs from what visitors see is cloaking, and
+      it is also just dishonest; keep this in step with the explainer copy in
+      src/components/ExplainerModal/explainerCopy.ts.
+    -->
+    <noscript>
+      <style>
+        /* The app suppresses scrolling for the globe; this fallback is a document. */
+        body {
+          overflow: auto;
+        }
+        .tc-noscript {
+          max-width: 46rem;
+          margin: 0 auto;
+          padding: 4rem 1.5rem;
+          line-height: 1.65;
+        }
+        .tc-noscript h1 {
+          font-size: 1.5rem;
+          letter-spacing: 0.14em;
+          color: #e8e8ef;
+        }
+        .tc-noscript h2 {
+          font-size: 0.95rem;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          color: #9a9aa8;
+          margin-top: 2.5rem;
+        }
+        .tc-noscript p {
+          color: #c8c8d0;
+        }
+      </style>
+      <div class="tc-noscript">
+        <h1>Target: Calamity</h1>
+        <p>
+          This page is an interactive 3D globe and needs JavaScript and WebGL to run. What follows
+          is a description of what it shows.
+        </p>
+
+        <h2>What this is</h2>
+        <p>
+          A map of the forces pushing the world toward crisis, and the ones pushing back. Every part
+          of the globe is tinted by what is happening there: red where the evidence points toward
+          damage, blue where it points toward repair, purple where strong forces pull both ways.
+        </p>
+
+        <h2>What the countdown is counting</h2>
+        <p>
+          Some changes cannot be undone once they start. An ice sheet that will not reform. A
+          rainforest that will not grow back. Scientists publish estimates of when those points are
+          reached, and the Clock counts down to the earliest one we know about. It is not a
+          countdown to the end of the world. It is an estimate of how long we still have to change
+          the outcome, because after that point some of the damage continues no matter what anyone
+          does.
+        </p>
+
+        <h2>Where the numbers come from</h2>
+        <p>
+          Everything here is taken from published sources, and every entry keeps its citations so
+          you can open them and judge for yourself. Each finding is weighed by how much of the world
+          it affects, so the loss of a global ecosystem counts for more than one country recovering
+          one species. Where the science gives a range of dates rather than a single year, we keep
+          the range instead of picking a number.
+        </p>
+
+        <h2>What it cannot tell you</h2>
+        <p>
+          This is a model, not a measurement. It only knows what it has found and read, and a gap in
+          what it has found looks exactly like good news even though it is not. The sources are
+          real, but the judgements about them are made by a language model reading those sources,
+          and it gets things wrong.
+        </p>
+
+        <h2>This is an alpha</h2>
+        <p>
+          This is an early proof of concept and should not be treated as more than that. The data is
+          incomplete and the numbers can change substantially from one day to the next as the method
+          improves, not because the world changed but because the model did. Please do not cite it,
+          plan around it, or repeat any figure from it as fact.
+        </p>
+      </div>
+    </noscript>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

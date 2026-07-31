@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  One page, one entry. It exists because it costs nothing and gives Search
+  Console something to verify against, not because a single URL is hard to
+  discover.
+
+  No <lastmod>. The data behind the page changes continuously while the page
+  itself does not, and a date that says either "today, always" or a fixed day in
+  the past is worse than an absent one — the first is a lie crawlers learn to
+  ignore, the second goes stale silently. Add real per-URL dates here if this
+  ever grows routes whose content is genuinely versioned.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://targetcalamity.org/</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>

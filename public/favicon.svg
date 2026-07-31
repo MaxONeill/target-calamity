@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Target: Calamity">
+  <!--
+    A dark planet inside the diverging ramp, the same mark as the ring arcs the
+    app draws for global factors. Colours are the shaders.ts anchors verbatim:
+    crimson #b8283c, violet #7c3a9e, blue #2a7fc4.
+
+    Drawn as three stroked arcs rather than a detailed globe because this is
+    rendered at 16px in a tab strip, where anything finer turns to mud. The PNG
+    siblings (icon-512, apple-touch-icon) carry the same geometry for the
+    surfaces that will not take an SVG.
+  -->
+  <rect width="64" height="64" rx="12" fill="#08080b" />
+  <circle cx="32" cy="32" r="15" fill="#121b26" />
+  <g fill="none" stroke-width="4" stroke-linecap="butt">
+    <path d="M 30.08 10.08 A 22 22 0 0 1 44.62 50.02" stroke="#b8283c" />
+    <path d="M 41.3 51.94 A 22 22 0 0 1 19.38 50.02" stroke="#7c3a9e" />
+    <path d="M 16.44 47.56 A 22 22 0 0 1 26.31 10.75" stroke="#2a7fc4" />
+  </g>
+</svg>

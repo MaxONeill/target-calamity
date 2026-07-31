@@ -372,3 +372,50 @@ degrades to the deterministic heuristic rather than to "plausible".
 not eliminate it. Someone who clears local storage and changes IP gets another
 attempt. What the design buys is that each attempt costs a new network position,
 the classifier re-flags the behaviour, and they receive no feedback either way.
+
+## Serving and discovery
+
+### The crawlable version of a canvas is written by hand
+
+The page is a WebGL globe. To anything that does not execute the bundle — a
+link scraper, a crawler that skips JS, a reader with scripting off — the
+document is an empty `<div id="root">`. So `index.html` carries a `<noscript>`
+block with real prose describing what the app shows, and the head carries the
+Open Graph and Twitter tags statically rather than setting them on mount, since
+the scrapers that read them never reach mount.
+
+Two constraints on that block. It states no live value — no countdown figure,
+no factor count — because a number frozen into static HTML is stale the day
+after it ships while looking exactly like a current one. And it says the same
+things the app says, in the same words, drawn from
+`src/components/ExplainerModal/explainerCopy.ts`. Text written for crawlers
+that differs from what visitors see is cloaking; it is also just dishonest, and
+this is the one place in the codebase where the two audiences could be given
+different answers without anyone noticing.
+
+### `/` is indexable; the SPA fallback is not
+
+`server/staticClient.ts` serves `dist/` and falls back to `index.html` for
+unknown non-API GETs, so `/anything` answers `200` with the full page. To a
+crawler that is an unbounded supply of URLs serving identical content, each one
+a candidate to be indexed in place of the real address, so the fallback sends
+`X-Robots-Tag: noindex` — which outranks the document's `<meta name="robots">`.
+
+The load-bearing part is that `/` is answered by the static handler and never
+reaches that fallback. If it ever did, the homepage would go `noindex` and the
+site would leave search results with no error, no log line, and every page
+still loading correctly. That is why the plugin was extracted from `index.ts`
+at all: so `staticClient.test.ts` can assert it against a real directory.
+
+### Cache-Control splits on the assets folder, not the extension
+
+Vite content-hashes into `dist/assets/`, so a URL there can never change
+meaning and pins for a year as `immutable`. Everything else — `index.html`,
+`og.png`, the icons, `robots.txt`, `sitemap.xml` — keeps a stable name across
+deploys and gets `no-cache`, which permits caching but requires revalidation.
+Pinning those would serve the previous build's HTML, pointing at asset
+filenames that no longer exist, until the TTL expired.
+
+`cacheControl: false` is passed to `@fastify/static` deliberately: left at its
+default the plugin writes `public, max-age=0` itself and the split above
+becomes a silent no-op.

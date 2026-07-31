@@ -1,0 +1,13 @@
+# Target: Calamity
+#
+# Everything readable is meant to be read. The only exclusion is /api/, which
+# serves JSON to the page's own fetches: indexing it would put paginated feed
+# responses in results competing with the page itself, and crawling it would
+# spend database time on requests no reader benefits from. It is not secret,
+# and this file is not a security control — the routes are public either way.
+
+User-agent: *
+Allow: /
+Disallow: /api/
+
+Sitemap: https://targetcalamity.org/sitemap.xml

@@ -36,7 +36,15 @@ export function StatusBar({ streamStatus }: StatusBarProps): React.JSX.Element {
         <span className="tc-visually-hidden" role="status">
           {label}
         </span>
-        <span className="tc-brand-name">TARGET: CALAMITY</span>
+        {/*
+          An <h1>, not a <span>. The page had no top-level heading at all — the
+          sidebar, the explainer and the details panel all opened at <h2> under
+          nothing — which is a broken outline for a screen reader working the
+          heading list, and leaves a crawler with no stated subject for a page
+          that is otherwise a canvas. Styling is unchanged; the element carries
+          size and weight of its own, so only the default margin is reset.
+        */}
+        <h1 className="tc-brand-name">TARGET: CALAMITY</h1>
       </div>
 
       {/* Share sits beside SOURCE rather than in a bottom-centre CTA slot. The

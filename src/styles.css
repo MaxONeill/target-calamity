@@ -247,7 +247,11 @@ body {
   font-size: 15px;
   transform: translateY(1px);
 }
+/* This is the page's <h1>. Size and weight were already declared, so the only
+   UA default that needs undoing is the margin — an h1's 0.67em top and bottom
+   would push the topbar's height out by ~17px. */
 .tc-brand-name {
+  margin: 0;
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.16em;

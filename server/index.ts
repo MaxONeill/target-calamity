@@ -15,12 +15,12 @@ import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Fastify from 'fastify';
-import fastifyStatic from '@fastify/static';
 import { createDatabase, type AppContext } from './db.js';
 import factorsRoutes from './routes/factors.js';
 import fieldRoutes from './routes/field.js';
 import streamRoutes from './routes/stream.js';
 import submitRoutes from './routes/submit.js';
+import staticClient from './staticClient.js';
 import { readSubmissionSalt } from './submissions/identity.js';
 
 // Railway (and most PaaS) inject the bind port as $PORT. Fall back to API_PORT
@@ -201,22 +201,8 @@ await app.register(submitRoutes, { salt: submissionSalt });
 /* Static client (production)                                                 */
 /* -------------------------------------------------------------------------- */
 
-/**
- * In production the Fastify server also serves the built client, so the whole
- * app is one origin and there is no CORS surface (matching the dev proxy). In
- * dev the client is served by Vite, so this is skipped when `dist/` is absent.
- * The API routes above are registered first and win; the SPA fallback returns
- * `index.html` only for non-API GETs so client-side routes resolve.
- */
 if (existsSync(CLIENT_DIST)) {
-  await app.register(fastifyStatic, { root: CLIENT_DIST, wildcard: false });
-  app.setNotFoundHandler((request, reply) => {
-    if (request.method !== 'GET' || request.url.startsWith('/api/')) {
-      reply.code(404).send({ error: 'not found' });
-      return;
-    }
-    reply.sendFile('index.html');
-  });
+  await app.register(staticClient, { root: CLIENT_DIST });
   app.log.info('Serving built client from dist/');
 } else {
   app.log.info('No dist/ — API only (client served by Vite in dev)');
