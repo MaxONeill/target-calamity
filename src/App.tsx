@@ -3,6 +3,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { Clock } from './components/Clock/index.js';
 import { FactorDetails } from './components/FactorDetails/index.js';
 import { PinPeek } from './components/PinPeek/index.js';
+import { SeeAlso } from './components/SeeAlso/index.js';
 import { Sidebar } from './components/Sidebar/index.js';
 import { Slideout } from './components/Slideout/Slideout.js';
 import { StatusBar } from './components/StatusBar/StatusBar.js';
@@ -250,6 +251,10 @@ export function App(): React.JSX.Element {
             requirements={requirements}
           />
         </div>
+
+        {/* Sibling projects, bottom-left. Renders nothing until the entries
+            carry a real URL and description — see SeeAlso. */}
+        <SeeAlso />
 
         {/* The only instruction on screen. The globe is an unlabelled
             instrument — a reader who does not know the pins are clickable has

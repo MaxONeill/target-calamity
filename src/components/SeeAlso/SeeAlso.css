@@ -1,0 +1,112 @@
+/*
+ * "See also" — sibling projects, bottom-left over the globe.
+ *
+ * Quiet by construction. It shares the topbar's SOURCE/SHARE register rather
+ * than the panels', because it is a footnote on the page and not part of the
+ * instrument. Collapsed it is one word; opened it is three lines and a link
+ * each.
+ */
+
+.tc-seealso {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 3;
+  /*
+   * The container must not swallow drags aimed at the globe behind it, so only
+   * the interactive parts opt back in. A bare <details> with pointer-events
+   * would claim its whole box even when collapsed to one word.
+   */
+  pointer-events: none;
+  max-width: min(300px, calc(100vw - 32px));
+  font-family: var(--tc-mono, ui-monospace, monospace);
+}
+
+.tc-seealso__summary {
+  pointer-events: auto;
+  display: inline-block;
+  list-style: none;
+  cursor: pointer;
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--tc-ink-dim);
+  border-bottom: 1px solid transparent;
+  /* Bigger than the text, so it is a real target on a phone. */
+  padding: 4px 2px;
+}
+
+/* Both, because WebKit and the standard disagree on which one hides the marker. */
+.tc-seealso__summary::-webkit-details-marker {
+  display: none;
+}
+.tc-seealso__summary::marker {
+  content: '';
+}
+
+.tc-seealso__summary:hover {
+  color: var(--tc-ink);
+  border-bottom-color: var(--tc-hairline-strong);
+}
+
+.tc-seealso__summary:focus-visible {
+  outline: 2px solid var(--tc-humanity);
+  outline-offset: 2px;
+}
+
+.tc-seealso[open] .tc-seealso__summary {
+  color: var(--tc-ink);
+}
+
+.tc-seealso__list {
+  pointer-events: auto;
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 10px;
+  border: 1px solid var(--tc-hairline);
+  border-radius: 4px;
+  background: rgba(10, 11, 15, 0.9);
+  backdrop-filter: blur(6px);
+}
+
+.tc-seealso__item + .tc-seealso__item {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--tc-hairline);
+}
+
+.tc-seealso__link {
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  color: var(--tc-ink);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.tc-seealso__link:hover {
+  border-bottom-color: var(--tc-hairline-strong);
+}
+
+.tc-seealso__link:focus-visible {
+  outline: 2px solid var(--tc-humanity);
+  outline-offset: 2px;
+}
+
+.tc-seealso__desc {
+  margin: 3px 0 0;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--tc-ink-dim);
+}
+
+/*
+ * On a phone the globe owns the screen and the sidebar is a slideout; a panel
+ * pinned bottom-left competes with both. Collapsed it is still reachable.
+ */
+@media (max-width: 700px) {
+  .tc-seealso {
+    left: 12px;
+    bottom: 12px;
+    max-width: calc(100vw - 24px);
+  }
+}
