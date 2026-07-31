@@ -1,19 +1,10 @@
 ---
 name: The Titan Framework
-url:
+url: https://TitanFramework.TargetHumanity.org
 ---
 
-<!--
-  Fill this in.
+One person expects a shortage and quietly puts something aside. A neighbour notices, draws the obvious conclusion, and does the same. Now the shortage is real, and every person who caused it was behaving sensibly.
 
-  name  the project's title, exactly as it should read
-  url   absolute, including https://
-  body  ONE line saying what it is. Not why it is good — the surrounding
-        copy is deliberately plain and a sales line will stand out.
+Patterns like that are stable, they repeat at every scale, and they are very hard to talk about without sounding either paranoid or academic. The framework gives them names — Calamity for the drift toward isolation and hoarding, Humanity for the pull toward connection and trust — so they can be pointed at rather than only endured.
 
-  This entry stays hidden until name, url and this description are all
-  present, so a half-filled file cannot reach the site.
-
-  Order on screen follows the filename, hence the numeric prefix.
-  Add a project by adding a file here; remove one by deleting it.
--->
+You cannot argue with an emergent property of a complex system. You can decide not to be the next conduit for it.

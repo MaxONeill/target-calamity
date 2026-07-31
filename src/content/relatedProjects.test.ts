@@ -22,7 +22,7 @@ describe('parseProjectSource', () => {
     expect(parseProjectSource('a.md', FILLED)).toEqual({
       name: 'Target: Humanity',
       url: 'https://example.com/humanity',
-      description: 'A tracker for the other direction.',
+      paragraphs: ['A tracker for the other direction.'],
     });
   });
 
@@ -90,7 +90,9 @@ url: https://example.com
 
 The actual description.
 `;
-    expect(parseProjectSource('c.md', withComment)?.description).toBe('The actual description.');
+    expect(parseProjectSource('c.md', withComment)?.paragraphs).toEqual([
+      'The actual description.',
+    ]);
   });
 
   it('collapses a wrapped description onto one line', () => {
@@ -102,12 +104,15 @@ url: https://example.com
 A description that the author
 wrapped across two lines.
 `;
-    expect(parseProjectSource('w.md', wrapped)?.description).toBe(
+    expect(parseProjectSource('w.md', wrapped)?.paragraphs).toEqual([
       'A description that the author wrapped across two lines.',
-    );
+    ]);
   });
 
-  it('takes only the FIRST paragraph', () => {
+  it('keeps EVERY paragraph, not just the first', () => {
+    // The regression that motivated this: an earlier version returned only the
+    // opening paragraph, and the first real entry runs to three. Publishing a
+    // third of what someone wrote, silently, is the failure mode.
     const long = `---
 name: Gestalt
 url: https://example.com
@@ -115,9 +120,15 @@ url: https://example.com
 
 The one-liner.
 
-A second paragraph that should not be pulled in.
+A second paragraph the author meant to keep.
+
+And a third.
 `;
-    expect(parseProjectSource('l.md', long)?.description).toBe('The one-liner.');
+    expect(parseProjectSource('l.md', long)?.paragraphs).toEqual([
+      'The one-liner.',
+      'A second paragraph the author meant to keep.',
+      'And a third.',
+    ]);
   });
 
   it('survives a file with no frontmatter at all', () => {

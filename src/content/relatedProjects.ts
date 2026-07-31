@@ -28,8 +28,16 @@
 
 export interface RelatedProject {
   name: string;
-  /** One line. What it is, not why it is good. */
-  description: string;
+  /**
+   * The body, one entry per paragraph.
+   *
+   * ALL of them, not just the first. An earlier version kept only the opening
+   * paragraph on the theory that these are one-liners; the first real entry ran
+   * to three, and silently publishing a third of what someone wrote is the kind
+   * of quiet truncation this project refuses everywhere else. Length is the
+   * author's call — the panel scrolls.
+   */
+  paragraphs: readonly string[];
   /** Absolute URL. */
   url: string;
 }
@@ -58,16 +66,23 @@ function splitFrontmatter(source: string): { fields: Map<string, string>; body: 
 }
 
 /**
- * First non-empty paragraph, with HTML comments removed so a template can carry
- * its own instructions without them becoming the description.
+ * Body split into paragraphs, with HTML comments removed.
+ *
+ * Comments are stripped so guidance can sit in a file without becoming copy.
+ * Note that is also exactly how three filled-in descriptions once ended up
+ * invisible: the old template put its instructions inside a comment block in
+ * the body, which is where the description goes. Guidance now lives in
+ * `_README.md`, beside the content rather than inside it.
+ *
+ * Whitespace collapses WITHIN a paragraph so hard-wrapped source reflows; the
+ * blank line BETWEEN paragraphs is preserved as a real break.
  */
-function firstParagraph(body: string): string {
-  const withoutComments = body.replace(/<!--[\s\S]*?-->/g, '');
-  const paragraph = withoutComments
+function paragraphsOf(body: string): string[] {
+  return body
+    .replace(/<!--[\s\S]*?-->/g, '')
     .split(/\n\s*\n/)
-    .map((p) => p.trim())
-    .find((p) => p !== '');
-  return (paragraph ?? '').replace(/\s+/g, ' ').trim();
+    .map((p) => p.replace(/\s+/g, ' ').trim())
+    .filter((p) => p !== '');
 }
 
 /** Exported for test — every way a hand-edited file can be wrong lives here. */
@@ -75,12 +90,12 @@ export function parseProjectSource(path: string, source: string): RelatedProject
   const { fields, body } = splitFrontmatter(source);
   const name = fields.get('name') ?? '';
   const url = fields.get('url') ?? '';
-  const description = firstParagraph(body);
+  const paragraphs = paragraphsOf(body);
 
   // Unfilled template: silent by design, that is the whole point of it.
-  if (name === '' && url === '' && description === '') return null;
+  if (name === '' && url === '' && paragraphs.length === 0) return null;
 
-  if (name === '' || url === '' || description === '') {
+  if (name === '' || url === '' || paragraphs.length === 0) {
     // PARTIALLY filled is different from empty — somebody started and stopped,
     // and a silent drop would look identical to the file not existing.
     console.warn(
@@ -94,9 +109,13 @@ export function parseProjectSource(path: string, source: string): RelatedProject
     return null;
   }
 
-  return { name, description, url };
+  return { name, paragraphs, url };
 }
 
+/**
+ * `_`-prefixed files are skipped, so `_README.md` can sit beside the content
+ * without becoming an entry.
+ */
 const MODULES = import.meta.glob<string>('./projects/*.md', {
   query: '?raw',
   import: 'default',
@@ -105,6 +124,7 @@ const MODULES = import.meta.glob<string>('./projects/*.md', {
 
 /** Parsed entries, ordered by filename. */
 export const RELATED_PROJECTS: readonly RelatedProject[] = Object.keys(MODULES)
+  .filter((path) => !(path.split('/').pop() ?? '').startsWith('_'))
   .sort()
   .map((path) => parseProjectSource(path, MODULES[path] ?? ''))
   .filter((p): p is RelatedProject => p !== null);

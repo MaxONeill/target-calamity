@@ -39,7 +39,11 @@ export function SeeAlso(): React.JSX.Element | null {
               {project.name}
               <span aria-hidden="true"> ↗</span>
             </a>
-            <p className="tc-seealso__desc">{project.description}</p>
+            {project.paragraphs.map((text, i) => (
+              <p key={i} className="tc-seealso__desc">
+                {text}
+              </p>
+            ))}
           </li>
         ))}
       </ul>
